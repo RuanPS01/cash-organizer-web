@@ -1,12 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  writeBatch,
-} from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { nextMonthKey } from '../utils/dates';
 import type {
@@ -140,10 +132,12 @@ export async function closeMonth(
 
 /** Lista os meses existentes (mais recentes primeiro) para estatísticas. */
 export async function listMonths(compartmentId: string): Promise<MonthDoc[]> {
-  const snap = await getDocs(
-    query(collection(db, 'compartments', compartmentId, 'months'), orderBy('__name__', 'desc')),
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MonthDoc, 'id'>) }));
+  // Ordenação no cliente: orderBy('__name__', 'desc') não é suportado em
+  // key scans descendentes e a quantidade de meses é pequena.
+  const snap = await getDocs(collection(db, 'compartments', compartmentId, 'months'));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<MonthDoc, 'id'>) }))
+    .sort((a, b) => b.id.localeCompare(a.id));
 }
 
 /** Carrega os lançamentos variáveis de um mês (para estatísticas). */
