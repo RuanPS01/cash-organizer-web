@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { X } from 'lucide-react';
 import {
   addCategory,
   addFixedExpense,
@@ -107,7 +108,7 @@ export function ManageScreen(props: {
                 title="Remover gasto fixo"
                 onClick={() => setRemoveTarget({ kind: 'fixed', item: f })}
               >
-                ✕
+                <X size={16} aria-hidden />
               </button>
             </li>
           ))}
@@ -134,7 +135,7 @@ export function ManageScreen(props: {
       <section className="card">
         <h3>Categorias de gastos variáveis</h3>
         <p className="muted small">
-          Defina o gasto ideal do mês por categoria — ele é usado nos limites semanais e mensais.
+          Defina o gasto ideal do mês por categoria. Ele é usado nos limites semanais e mensais.
         </p>
         <ul className="manage-list">
           {categories.map((c) => (
@@ -156,7 +157,7 @@ export function ManageScreen(props: {
                   title="Remover categoria"
                   onClick={() => setRemoveTarget({ kind: 'category', item: c })}
                 >
-                  ✕
+                  <X size={16} aria-hidden />
                 </button>
               )}
             </li>

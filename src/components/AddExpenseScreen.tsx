@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Plus } from 'lucide-react';
 import { addCategory, addVariableExpense } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { monthLabel, weekOfMonth } from '../utils/dates';
@@ -115,7 +116,7 @@ export function AddExpenseScreen(props: {
             className="chip new"
             onClick={() => setShowNewCategory((v) => !v)}
           >
-            + categoria
+            <Plus size={14} aria-hidden /> categoria
           </button>
         </div>
 
@@ -178,7 +179,7 @@ export function AddExpenseScreen(props: {
             </>
           ) : (
             <p className="muted">
-              Sem gasto ideal definido para esta categoria — gasto no mês:{' '}
+              Sem gasto ideal definido para esta categoria. Gasto no mês:{' '}
               <strong>{formatBRL(info.spentMonth)}</strong>
             </p>
           )}

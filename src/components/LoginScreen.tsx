@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Wallet } from 'lucide-react';
 import { createCompartment, openCompartment, slugify } from '../services/compartments';
 import { saveSession } from '../services/session';
 import { ensureMonth } from '../services/months';
@@ -65,10 +66,12 @@ export function LoginScreen(props: { onEnter: (compartment: Compartment) => void
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <div className="login-logo">💸</div>
+        <div className="login-logo">
+          <Wallet size={40} aria-hidden />
+        </div>
         <h1>Cash Organizer</h1>
         <p className="login-hint">
-          Entre em um <strong>compartimento financeiro</strong> — a subdivisão onde ficam suas
+          Entre em um <strong>compartimento financeiro</strong>, a subdivisão onde ficam suas
           contas e gastos. Se ele ainda não existir, você poderá criá-lo.
         </p>
         <label>

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import {
+  connectFirestoreEmulator,
   initializeFirestore,
   persistentLocalCache,
   persistentSingleTabManager,
@@ -21,3 +22,11 @@ export const db = initializeFirestore(app, {
     tabManager: persistentSingleTabManager(undefined),
   }),
 });
+
+// Desenvolvimento local sem projeto real: aponte para o emulador definindo
+// VITE_FIRESTORE_EMULATOR_HOST (ex.: 127.0.0.1:8080) no .env.
+const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST as string | undefined;
+if (emulatorHost) {
+  const [host, port] = emulatorHost.split(':');
+  connectFirestoreEmulator(db, host, Number(port));
+}
