@@ -4,6 +4,8 @@ import { X } from 'lucide-react';
 import {
   addCategory,
   addFixedExpense,
+  removeCategory,
+  removeFixedExpense,
   updateCategory,
   updateFixedExpense,
 } from '../services/expenses';
@@ -64,9 +66,9 @@ export function ManageScreen(props: {
     setBusy(true);
     try {
       if (removeTarget.kind === 'fixed') {
-        await updateFixedExpense(compartmentId, removeTarget.item.id, { active: false });
+        await removeFixedExpense(compartmentId, currentMonth, removeTarget.item.id);
       } else {
-        await updateCategory(compartmentId, removeTarget.item.id, { active: false });
+        await removeCategory(compartmentId, currentMonth, removeTarget.item.id);
       }
       setRemoveTarget(null);
     } finally {
@@ -184,10 +186,18 @@ export function ManageScreen(props: {
           onConfirm={confirmRemove}
           onCancel={() => setRemoveTarget(null)}
         >
-          <p>
-            <strong>{removeTarget.item.name}</strong> deixará de aparecer nos próximos meses. Os
-            meses já criados não são alterados.
-          </p>
+          {removeTarget.kind === 'fixed' ? (
+            <p>
+              <strong>{removeTarget.item.name}</strong> será removido do mês atual em aberto e não
+              aparecerá nos próximos meses. Meses já fechados não são alterados.
+            </p>
+          ) : (
+            <p>
+              <strong>{removeTarget.item.name}</strong> não estará mais disponível para novos
+              gastos. Se já houver lançamentos neste mês, a linha permanece na tabela até o mês
+              virar; caso contrário, é removida agora.
+            </p>
+          )}
         </ConfirmModal>
       )}
     </div>
