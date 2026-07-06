@@ -35,14 +35,59 @@ async function fetchActive<T>(compartmentId: string, colName: string): Promise<(
 }
 
 /**
+ * Remove do mês em aberto as linhas cujos cadastros foram removidos
+ * (gastos fixos desativados e categorias desativadas sem lançamentos no
+ * mês). Corrige meses criados antes da remoção do cadastro.
+ */
+async function syncMonthEntries(compartmentId: string, ym: string): Promise<void> {
+  const [fixedCad, catCad, fixedEntries, catEntries, expenses] = await Promise.all([
+    getDocs(collection(db, 'compartments', compartmentId, 'fixedExpenses')),
+    getDocs(collection(db, 'compartments', compartmentId, 'categories')),
+    getDocs(fixedEntriesCol(compartmentId, ym)),
+    getDocs(categoryEntriesCol(compartmentId, ym)),
+    getDocs(expensesCol(compartmentId, ym)),
+  ]);
+
+  const activeFixed = new Set(
+    fixedCad.docs.filter((d) => d.data().active !== false).map((d) => d.id),
+  );
+  const activeCats = new Set(
+    catCad.docs.filter((d) => d.data().active !== false).map((d) => d.id),
+  );
+  const usedCats = new Set(expenses.docs.map((d) => d.data().categoryId as string));
+
+  const batch = writeBatch(db);
+  let dirty = false;
+  for (const entry of fixedEntries.docs) {
+    if (!activeFixed.has(entry.id)) {
+      batch.delete(entry.ref);
+      dirty = true;
+    }
+  }
+  for (const entry of catEntries.docs) {
+    if (!activeCats.has(entry.id) && !usedCats.has(entry.id)) {
+      batch.delete(entry.ref);
+      dirty = true;
+    }
+  }
+  if (dirty) await batch.commit();
+}
+
+/**
  * Garante que o mês existe: se não existir, cria o documento do mês e as
  * linhas de gastos fixos (com valor/ideal preenchidos a partir do cadastro)
  * e de categorias (apenas o ideal; o gasto real vem dos lançamentos).
+ * Se já existir e estiver aberto, reconcilia as linhas com os cadastros.
  */
 export async function ensureMonth(compartmentId: string, ym: string): Promise<void> {
   const ref = monthRef(compartmentId, ym);
   const snap = await getDoc(ref);
-  if (snap.exists()) return;
+  if (snap.exists()) {
+    if (snap.data().status === 'open') {
+      await syncMonthEntries(compartmentId, ym);
+    }
+    return;
+  }
 
   const [fixed, categories] = await Promise.all([
     fetchActive<Omit<FixedExpense, 'id'>>(compartmentId, 'fixedExpenses'),

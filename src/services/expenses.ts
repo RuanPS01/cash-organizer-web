@@ -4,8 +4,12 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  query,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { weekOfMonth } from '../utils/dates';
@@ -73,6 +77,44 @@ export async function updateFixedExpense(
   patch: Partial<{ name: string; amount: number; idealAmount: number; active: boolean }>,
 ): Promise<void> {
   await updateDoc(doc(db, 'compartments', compartmentId, 'fixedExpenses', id), patch);
+}
+
+async function isMonthOpen(compartmentId: string, ym: string): Promise<boolean> {
+  const month = await getDoc(monthRef(compartmentId, ym));
+  return month.exists() && month.data().status === 'open';
+}
+
+/** Desativa o gasto fixo e remove a linha dele do mês corrente em aberto. */
+export async function removeFixedExpense(
+  compartmentId: string,
+  currentMonth: string,
+  id: string,
+): Promise<void> {
+  await updateFixedExpense(compartmentId, id, { active: false });
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    await deleteDoc(doc(fixedEntriesCol(compartmentId, currentMonth), id));
+  }
+}
+
+/**
+ * Desativa a categoria e, se ela não tiver lançamentos no mês corrente em
+ * aberto, remove também a linha do mês. Com lançamentos, a linha permanece
+ * até o mês virar para não sumir com valores já gastos.
+ */
+export async function removeCategory(
+  compartmentId: string,
+  currentMonth: string,
+  id: string,
+): Promise<void> {
+  await updateCategory(compartmentId, id, { active: false });
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    const used = await getDocs(
+      query(expensesCol(compartmentId, currentMonth), where('categoryId', '==', id), limit(1)),
+    );
+    if (used.empty) {
+      await deleteDoc(doc(categoryEntriesCol(compartmentId, currentMonth), id));
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
