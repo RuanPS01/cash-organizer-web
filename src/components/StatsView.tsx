@@ -7,7 +7,7 @@ import type { MonthData } from '../hooks/useMonthData';
 import type { MonthDoc, MonthTotals, VariableExpense } from '../types';
 
 function pct(actual: number, ideal: number): string {
-  if (ideal <= 0) return '—';
+  if (ideal <= 0) return 'sem ideal';
   return `${Math.round((actual / ideal) * 100)}%`;
 }
 
@@ -136,7 +136,7 @@ export function StatsView(props: {
       </section>
 
       <section className="card">
-        <h3>Semanas — {monthLabel(viewMonth)} × {monthLabel(prevMonth)}</h3>
+        <h3>Semanas: {monthLabel(viewMonth)} × {monthLabel(prevMonth)}</h3>
         <p className="muted small">
           Ideal semanal (variáveis): {weeklyIdeal > 0 ? formatBRL(weeklyIdeal) : 'não definido'}
         </p>

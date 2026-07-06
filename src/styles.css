@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Cash Organizer — estilos globais (mobile-first)
+   Cash Organizer: estilos globais (mobile-first)
    ========================================================================== */
 
 :root {
@@ -104,6 +104,9 @@ h3 { font-size: 1.02rem; }
   padding: 0.3rem 0.6rem;
   line-height: 1;
   font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn.icon.danger {
@@ -174,7 +177,12 @@ label input { margin-top: 0.35rem; font-weight: 400; }
   max-width: 400px;
 }
 
-.login-logo { font-size: 2.4rem; text-align: center; }
+.login-logo {
+  display: flex;
+  justify-content: center;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
 
 .login-card h1 {
   text-align: center;
@@ -210,7 +218,14 @@ label input { margin-top: 0.35rem; font-weight: 400; }
   z-index: 10;
 }
 
-.brand { font-weight: 700; }
+.brand {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.brand svg { color: var(--primary); }
 
 .compartment {
   display: flex;
@@ -256,7 +271,13 @@ label input { margin-top: 0.35rem; font-weight: 400; }
 }
 
 .navbar button.active { color: var(--primary); }
-.nav-icon { font-size: 1.25rem; line-height: 1.2; }
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
 
 /* Em telas largas a navegação vira uma barra no topo do conteúdo */
 @media (min-width: 720px) {
@@ -314,6 +335,9 @@ label input { margin-top: 0.35rem; font-weight: 400; }
 
 .chip {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
@@ -457,14 +481,12 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
-  min-width: 480px;
 }
 
 th, td {
   text-align: left;
   padding: 0.45rem 0.5rem;
   border-bottom: 1px solid var(--border);
-  white-space: nowrap;
 }
 
 th {
@@ -474,7 +496,72 @@ th {
   color: var(--muted);
 }
 
-td.num, th.num { text-align: right; }
+/* Só os valores não quebram linha; nomes podem quebrar para caber na tela */
+td.num, th.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+td:first-child {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Sublinha do ideal exibida no lugar da coluna "Ideal" em telas estreitas */
+.cell-sub { display: none; }
+
+@media (max-width: 560px) {
+  /* Em telas estreitas cada linha vira um bloco: nome em cima (largura
+     total) e valor + status embaixo. A coluna "Ideal" some e o valor ideal
+     aparece na sublinha .cell-sub, continuando editável. */
+  table { font-size: 0.84rem; }
+
+  thead { display: none; }
+
+  table, tbody { display: block; width: 100%; }
+
+  tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.25rem;
+    column-gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+
+  td {
+    display: block;
+    border: none;
+    padding: 0;
+  }
+
+  td:first-child { flex: 1 1 100%; }
+  td:last-child { margin-left: auto; }
+
+  .hide-narrow { display: none; }
+
+  .details-row { background: none; }
+  .details-row td { flex: 1 1 100%; }
+
+  .cell-sub {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    font-size: 0.76rem;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .cell-sub .money-cell {
+    font-size: 0.76rem;
+    white-space: nowrap;
+    padding: 0;
+  }
+}
 
 tr:last-child td { border-bottom: none; }
 
@@ -491,6 +578,10 @@ tr:last-child td { border-bottom: none; }
   font-weight: 600;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: left;
 }
 
 .expense-list {
@@ -542,10 +633,22 @@ tr:last-child td { border-bottom: none; }
 
 .status-select {
   width: auto;
+  max-width: 9.5rem;
   font-size: 0.8rem;
   font-weight: 600;
   padding: 0.3rem 0.5rem;
   border-radius: 999px;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 560px) {
+  .status-select {
+    max-width: 100%;
+    font-size: 0.74rem;
+    padding: 0.3rem 0.4rem;
+  }
+
+  .money-cell { font-size: 0.82rem; }
 }
 
 .st-pending { color: var(--warn); border-color: var(--warn); }

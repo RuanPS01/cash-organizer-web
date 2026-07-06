@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CalendarDays, Plus, Settings, Wallet } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
 import { AddExpenseScreen } from './components/AddExpenseScreen';
 import { MonthScreen } from './components/MonthScreen';
@@ -19,7 +20,10 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand">💸 Cash Organizer</span>
+        <span className="brand">
+          <Wallet size={18} aria-hidden />
+          Cash Organizer
+        </span>
         <span className="compartment">
           {props.compartment.name}
           <button className="btn ghost small" onClick={props.onLogout}>
@@ -56,15 +60,21 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
 
       <nav className="navbar">
         <button className={view === 'add' ? 'active' : ''} onClick={() => setView('add')}>
-          <span className="nav-icon">＋</span>
+          <span className="nav-icon">
+            <Plus size={20} aria-hidden />
+          </span>
           Adicionar
         </button>
         <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>
-          <span className="nav-icon">📋</span>
+          <span className="nav-icon">
+            <CalendarDays size={20} aria-hidden />
+          </span>
           Mês
         </button>
         <button className={view === 'manage' ? 'active' : ''} onClick={() => setView('manage')}>
-          <span className="nav-icon">⚙️</span>
+          <span className="nav-icon">
+            <Settings size={20} aria-hidden />
+          </span>
           Gerenciar
         </button>
       </nav>
@@ -91,7 +101,9 @@ export default function App() {
     return (
       <div className="login-wrap">
         <div className="login-card center">
-          <div className="login-logo">💸</div>
+          <div className="login-logo">
+            <Wallet size={40} aria-hidden />
+          </div>
           <p className="muted">Abrindo seu compartimento…</p>
         </div>
       </div>

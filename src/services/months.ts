@@ -37,7 +37,7 @@ async function fetchActive<T>(compartmentId: string, colName: string): Promise<(
 /**
  * Garante que o mês existe: se não existir, cria o documento do mês e as
  * linhas de gastos fixos (com valor/ideal preenchidos a partir do cadastro)
- * e de categorias (apenas o ideal — o gasto real vem dos lançamentos).
+ * e de categorias (apenas o ideal; o gasto real vem dos lançamentos).
  */
 export async function ensureMonth(compartmentId: string, ym: string): Promise<void> {
   const ref = monthRef(compartmentId, ym);

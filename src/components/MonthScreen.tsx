@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { closeMonth, computeTotals } from '../services/months';
 import {
   deleteVariableExpense,
@@ -96,8 +97,12 @@ export function MonthScreen(props: {
   return (
     <div className="screen">
       <header className="screen-header month-nav">
-        <button className="btn icon" onClick={() => setViewMonth(prevMonthKey(viewMonth))}>
-          ◀
+        <button
+          className="btn icon"
+          aria-label="Mês anterior"
+          onClick={() => setViewMonth(prevMonthKey(viewMonth))}
+        >
+          <ChevronLeft size={18} aria-hidden />
         </button>
         <div className="month-title">
           <h2>{monthLabel(viewMonth)}</h2>
@@ -106,10 +111,11 @@ export function MonthScreen(props: {
         </div>
         <button
           className="btn icon"
+          aria-label="Próximo mês"
           disabled={isCurrent}
           onClick={() => setViewMonth(nextMonthKey(viewMonth))}
         >
-          ▶
+          <ChevronRight size={18} aria-hidden />
         </button>
       </header>
 
@@ -137,7 +143,7 @@ export function MonthScreen(props: {
                 <thead>
                   <tr>
                     <th>Nome</th>
-                    <th className="num">Ideal</th>
+                    <th className="num hide-narrow">Ideal</th>
                     <th className="num">Valor</th>
                     <th>Status</th>
                   </tr>
@@ -145,8 +151,21 @@ export function MonthScreen(props: {
                 <tbody>
                   {data.fixedEntries.map((f) => (
                     <tr key={f.id}>
-                      <td>{f.name}</td>
-                      <td className="num">
+                      <td>
+                        {f.name}
+                        <span className="cell-sub">
+                          ideal
+                          <EditableMoney
+                            valueCents={f.idealAmount}
+                            disabled={!editable}
+                            muted
+                            onSave={(v) =>
+                              updateFixedEntry(compartmentId, viewMonth, f.id, { idealAmount: v })
+                            }
+                          />
+                        </span>
+                      </td>
+                      <td className="num hide-narrow">
                         <EditableMoney
                           valueCents={f.idealAmount}
                           disabled={!editable}
@@ -195,7 +214,7 @@ export function MonthScreen(props: {
                 <thead>
                   <tr>
                     <th>Categoria</th>
-                    <th className="num">Ideal</th>
+                    <th className="num hide-narrow">Ideal</th>
                     <th className="num">Soma</th>
                     <th>Status</th>
                   </tr>
@@ -213,11 +232,29 @@ export function MonthScreen(props: {
                               className="link-btn"
                               onClick={() => setExpanded(isOpen ? null : c.id)}
                             >
-                              {isOpen ? '▾' : '▸'} {c.name}
+                              {isOpen ? (
+                                <ChevronDown size={14} aria-hidden />
+                              ) : (
+                                <ChevronRight size={14} aria-hidden />
+                              )}{' '}
+                              {c.name}
                               <span className="muted"> ({catExpenses.length})</span>
                             </button>
+                            <span className="cell-sub">
+                              ideal
+                              <EditableMoney
+                                valueCents={c.idealAmount}
+                                disabled={!editable}
+                                muted
+                                onSave={(v) =>
+                                  updateCategoryEntry(compartmentId, viewMonth, c.id, {
+                                    idealAmount: v,
+                                  })
+                                }
+                              />
+                            </span>
                           </td>
-                          <td className="num">
+                          <td className="num hide-narrow">
                             <EditableMoney
                               valueCents={c.idealAmount}
                               disabled={!editable}
@@ -254,7 +291,9 @@ export function MonthScreen(props: {
                                       <span className="muted">
                                         {dayLabel(e.createdAt)} · sem {e.week}
                                       </span>
-                                      <span className="desc">{e.description || '—'}</span>
+                                      <span className="desc">
+                                        {e.description || 'Sem descrição'}
+                                      </span>
                                       <strong>{formatBRL(e.amount)}</strong>
                                       {editable && (
                                         <button
@@ -264,7 +303,7 @@ export function MonthScreen(props: {
                                             deleteVariableExpense(compartmentId, viewMonth, e.id)
                                           }
                                         >
-                                          ✕
+                                          <X size={14} aria-hidden />
                                         </button>
                                       )}
                                     </li>
@@ -328,7 +367,7 @@ export function MonthScreen(props: {
                 </button>
                 {pendingCount > 0 && (
                   <p className="muted center small">
-                    {pendingCount} item(ns) com status "Pendente" — atualize-os para poder virar o
+                    {pendingCount} item(ns) com status "Pendente". Atualize-os para poder virar o
                     mês.
                   </p>
                 )}
