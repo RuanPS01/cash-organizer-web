@@ -279,11 +279,14 @@ label input { margin-top: 0.35rem; font-weight: 400; }
   line-height: 1;
 }
 
-/* Em telas largas a navegação vira uma barra no topo do conteúdo */
+/* Em telas largas a navegação vira uma barra no topo do conteúdo,
+   logo abaixo da topbar (ordem visual: topbar, navbar, conteúdo) */
 @media (min-width: 720px) {
+  .topbar { order: -2; }
+
   .navbar {
     position: sticky;
-    top: 53px;
+    top: 50px;
     bottom: auto;
     order: -1;
     justify-content: center;
