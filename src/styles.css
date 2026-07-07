@@ -331,9 +331,48 @@ label input { margin-top: 0.35rem; font-weight: 400; }
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.35rem;
   margin-bottom: 0.75rem;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Barra de rolagem fina e no tema do site para os contêineres de scroll
+   horizontal (Chrome/Firefox usam as propriedades padrão; o bloco -webkit-
+   cobre o Safari) */
+.chip-row,
+.table-scroll {
+  --scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.chip-row::-webkit-scrollbar,
+.table-scroll::-webkit-scrollbar {
+  height: 6px;
+  background: transparent;
+}
+
+.chip-row::-webkit-scrollbar-track,
+.table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chip-row::-webkit-scrollbar-thumb,
+.table-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+.chip-row::-webkit-scrollbar-thumb:hover,
+.table-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.chip-row::-webkit-scrollbar-button,
+.table-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .chip {
