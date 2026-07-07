@@ -115,6 +115,60 @@ export function EditableMoney(props: {
 }
 
 // ---------------------------------------------------------------------------
+// Texto editável (clique para editar, Enter/blur salva; vazio cancela)
+// ---------------------------------------------------------------------------
+
+export function EditableText(props: {
+  value: string;
+  onSave: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(props.value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  if (!editing) {
+    return (
+      <button
+        className="money-cell text-cell"
+        disabled={props.disabled}
+        onClick={() => {
+          setText(props.value);
+          setEditing(true);
+        }}
+        title={props.disabled ? undefined : 'Toque para editar'}
+      >
+        {props.value}
+      </button>
+    );
+  }
+
+  const commit = () => {
+    setEditing(false);
+    const trimmed = text.trim();
+    if (trimmed && trimmed !== props.value) props.onSave(trimmed);
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      className="money-cell-input text-cell-input"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+        if (e.key === 'Escape') setEditing(false);
+      }}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Barra de progresso simples (usada nas estatísticas e no informe)
 // ---------------------------------------------------------------------------
 

@@ -46,28 +46,66 @@ export async function deleteVariableExpense(
 // Gastos fixos (cadastro + linha do mês corrente aberto)
 // ---------------------------------------------------------------------------
 
+export interface FixedExpenseInput {
+  name: string;
+  amount: number;
+  idealAmount?: number;
+  description?: string;
+  installmentCurrent?: number | null;
+  installmentTotal?: number | null;
+}
+
+function normalizeFixedInput(input: FixedExpenseInput) {
+  return {
+    name: input.name.trim(),
+    amount: input.amount,
+    idealAmount: input.idealAmount || input.amount,
+    description: input.description?.trim() ?? '',
+    installmentCurrent: input.installmentTotal ? (input.installmentCurrent ?? 1) : null,
+    installmentTotal: input.installmentTotal ?? null,
+  };
+}
+
 export async function addFixedExpense(
   compartmentId: string,
   currentMonth: string,
-  input: { name: string; amount: number; idealAmount?: number },
+  input: FixedExpenseInput,
 ): Promise<void> {
-  const idealAmount = input.idealAmount || input.amount;
+  const data = normalizeFixedInput(input);
   const ref = await addDoc(collection(db, 'compartments', compartmentId, 'fixedExpenses'), {
-    name: input.name.trim(),
-    amount: input.amount,
-    idealAmount,
+    ...data,
     active: true,
     createdAt: Date.now(),
   });
   // Reflete no mês corrente, se ele estiver aberto.
-  const month = await getDoc(monthRef(compartmentId, currentMonth));
-  if (month.exists() && month.data().status === 'open') {
+  if (await isMonthOpen(compartmentId, currentMonth)) {
     await setDoc(doc(fixedEntriesCol(compartmentId, currentMonth), ref.id), {
-      name: input.name.trim(),
-      amount: input.amount,
-      idealAmount,
+      ...data,
       status: 'Pendente' satisfies EntryStatus,
     });
+  }
+}
+
+/**
+ * Salva a edição completa de um gasto fixo (nome, descrição, valores e
+ * parcela) e reflete os campos na linha do mês corrente em aberto.
+ */
+export async function saveFixedExpense(
+  compartmentId: string,
+  currentMonth: string,
+  id: string,
+  input: FixedExpenseInput,
+): Promise<void> {
+  const data = normalizeFixedInput(input);
+  await updateDoc(doc(db, 'compartments', compartmentId, 'fixedExpenses', id), data);
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    const entryRef = doc(fixedEntriesCol(compartmentId, currentMonth), id);
+    const entry = await getDoc(entryRef);
+    if (entry.exists()) {
+      await updateDoc(entryRef, data);
+    } else {
+      await setDoc(entryRef, { ...data, status: 'Pendente' satisfies EntryStatus });
+    }
   }
 }
 
@@ -150,6 +188,23 @@ export async function updateCategory(
   patch: Partial<{ name: string; idealAmount: number; active: boolean }>,
 ): Promise<void> {
   await updateDoc(doc(db, 'compartments', compartmentId, 'categories', id), patch);
+}
+
+/** Renomeia a categoria no cadastro e na linha do mês corrente em aberto. */
+export async function renameCategory(
+  compartmentId: string,
+  currentMonth: string,
+  id: string,
+  name: string,
+): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  await updateCategory(compartmentId, id, { name: trimmed });
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    const entryRef = doc(categoryEntriesCol(compartmentId, currentMonth), id);
+    const entry = await getDoc(entryRef);
+    if (entry.exists()) await updateDoc(entryRef, { name: trimmed });
+  }
 }
 
 // ---------------------------------------------------------------------------

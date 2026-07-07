@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { closeMonth, computeTotals } from '../services/months';
+import { closeMonth, computeTotals, setOpenMonth } from '../services/months';
 import {
   deleteVariableExpense,
   updateCategoryEntry,
@@ -47,13 +47,14 @@ function StatusSelect(props: {
 export function MonthScreen(props: {
   compartmentId: string;
   currentMonth: string;
-  onMonthClosed: (next: string) => void;
+  onCurrentMonthChange: (next: string) => void;
 }) {
   const { compartmentId, currentMonth } = props;
   const [viewMonth, setViewMonth] = useState(currentMonth);
   const [tab, setTab] = useState<'table' | 'stats'>('table');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [openStep, setOpenStep] = useState<0 | 1 | 2>(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,10 +86,25 @@ export function MonthScreen(props: {
       );
       setConfirmClose(false);
       setViewMonth(next);
-      props.onMonthClosed(next);
+      props.onCurrentMonthChange(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao virar o mês.');
       setConfirmClose(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doSetOpenMonth = async (reinitialize: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await setOpenMonth(compartmentId, viewMonth, reinitialize);
+      props.onCurrentMonthChange(viewMonth);
+      setOpenStep(0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao definir o mês em aberto.');
+      setOpenStep(0);
     } finally {
       setBusy(false);
     }
@@ -112,7 +128,6 @@ export function MonthScreen(props: {
         <button
           className="btn icon"
           aria-label="Próximo mês"
-          disabled={isCurrent}
           onClick={() => setViewMonth(nextMonthKey(viewMonth))}
         >
           <ChevronRight size={18} aria-hidden />
@@ -127,6 +142,12 @@ export function MonthScreen(props: {
           Estatísticas
         </button>
       </div>
+
+      {!isCurrent && !data.loading && (
+        <button className="btn ghost small center-self" onClick={() => setOpenStep(1)}>
+          Definir {monthLabel(viewMonth)} como mês em aberto
+        </button>
+      )}
 
       {tab === 'stats' ? (
         <StatsView compartmentId={compartmentId} viewMonth={viewMonth} data={data} />
@@ -153,6 +174,14 @@ export function MonthScreen(props: {
                     <tr key={f.id}>
                       <td>
                         {f.name}
+                        {f.installmentTotal ? (
+                          <span className="badge installment">
+                            {f.installmentCurrent ?? 1}/{f.installmentTotal}
+                          </span>
+                        ) : null}
+                        {f.description && (
+                          <span className="row-desc muted small">{f.description}</span>
+                        )}
                         <span className="cell-sub">
                           ideal
                           <EditableMoney
@@ -389,6 +418,64 @@ export function MonthScreen(props: {
           <p>
             O mês de <strong>{monthLabel(currentMonth)}</strong> será fechado como pago/quitado e o
             próximo mês será iniciado mantendo os gastos fixos e as categorias.
+          </p>
+          <p className="muted small">
+            Gastos parcelados avançam uma parcela; os que estiverem na última saem do próximo mês.
+          </p>
+        </ConfirmModal>
+      )}
+
+      {openStep === 1 && !data.month && (
+        <ConfirmModal
+          title="Definir mês em aberto?"
+          confirmLabel="Definir como mês em aberto"
+          busy={busy}
+          onConfirm={() => doSetOpenMonth(false)}
+          onCancel={() => setOpenStep(0)}
+        >
+          <p>
+            <strong>{monthLabel(viewMonth)}</strong> será iniciado com os gastos fixos e categorias
+            do cadastro e passará a ser o mês em aberto, recebendo os novos lançamentos.
+          </p>
+          <p className="muted small">
+            O mês em aberto atual ({monthLabel(currentMonth)}) deixa de receber lançamentos, mas
+            os dados dele são mantidos.
+          </p>
+        </ConfirmModal>
+      )}
+
+      {openStep === 1 && data.month && (
+        <ConfirmModal
+          title="Definir mês em aberto?"
+          confirmLabel="Continuar"
+          busy={busy}
+          onConfirm={() => setOpenStep(2)}
+          onCancel={() => setOpenStep(0)}
+        >
+          <p>
+            <strong>{monthLabel(viewMonth)}</strong> já possui informações ({data.fixedEntries.length}{' '}
+            gasto(s) fixo(s), {data.categoryEntries.length} categoria(s) e {data.expenses.length}{' '}
+            lançamento(s)).
+          </p>
+          <p>
+            Para defini-lo como mês em aberto, essas informações serão <strong>substituídas</strong>{' '}
+            pelos cadastros atuais de gastos fixos e categorias.
+          </p>
+        </ConfirmModal>
+      )}
+
+      {openStep === 2 && (
+        <ConfirmModal
+          title="Tem certeza?"
+          confirmLabel="Substituir e abrir mês"
+          busy={busy}
+          onConfirm={() => doSetOpenMonth(true)}
+          onCancel={() => setOpenStep(0)}
+        >
+          <p>
+            Os dados existentes de <strong>{monthLabel(viewMonth)}</strong>, incluindo os{' '}
+            {data.expenses.length} lançamento(s), serão apagados e o mês será reiniciado.{' '}
+            <strong>Esta ação não pode ser desfeita.</strong>
           </p>
         </ConfirmModal>
       )}
