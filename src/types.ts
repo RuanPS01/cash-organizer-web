@@ -26,6 +26,15 @@ export interface FixedExpense {
   amount: number;
   /** Gasto ideal; por padrão igual ao valor fixo. */
   idealAmount: number;
+  /** Comentário/descrição livre. */
+  description?: string;
+  /**
+   * Parcelamento opcional ("2 de 4"): a parcela atual incrementa a cada
+   * virada de mês; ao passar da última, o gasto é desativado e sai dos
+   * próximos meses.
+   */
+  installmentCurrent?: number | null;
+  installmentTotal?: number | null;
   active: boolean;
   createdAt: number;
 }
@@ -70,6 +79,9 @@ export interface FixedEntry {
   idealAmount: number;
   amount: number;
   status: EntryStatus;
+  description?: string;
+  installmentCurrent?: number | null;
+  installmentTotal?: number | null;
 }
 
 /** Linha de categoria (gasto variável) dentro de um mês. */

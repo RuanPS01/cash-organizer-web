@@ -45,7 +45,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
           <MonthScreen
             compartmentId={props.compartment.id}
             currentMonth={currentMonth}
-            onMonthClosed={setCurrentMonth}
+            onCurrentMonthChange={setCurrentMonth}
           />
         )}
         {view === 'manage' && (

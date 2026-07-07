@@ -1,16 +1,129 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { X } from 'lucide-react';
+import { Pencil, Plus, X } from 'lucide-react';
 import {
   addCategory,
   addFixedExpense,
   removeCategory,
   removeFixedExpense,
+  renameCategory,
+  saveFixedExpense,
   updateCategory,
-  updateFixedExpense,
 } from '../services/expenses';
-import { EditableMoney, MoneyInput, ConfirmModal } from './shared';
+import type { FixedExpenseInput } from '../services/expenses';
+import { EditableMoney, EditableText, MoneyInput, ConfirmModal } from './shared';
 import type { Category, FixedExpense } from '../types';
+
+function parsePositiveInt(text: string): number | null {
+  const n = Number.parseInt(text.trim(), 10);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/** Modal de criação/edição de gasto fixo com todos os campos. */
+function FixedExpenseModal(props: {
+  initial: FixedExpense | null;
+  busy: boolean;
+  onSave: (input: FixedExpenseInput) => void;
+  onCancel: () => void;
+}) {
+  const { initial } = props;
+  const [name, setName] = useState(initial?.name ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [amount, setAmount] = useState(initial?.amount ?? 0);
+  const [ideal, setIdeal] = useState(initial?.idealAmount ?? 0);
+  const [instCur, setInstCur] = useState(
+    initial?.installmentCurrent ? String(initial.installmentCurrent) : '',
+  );
+  const [instTot, setInstTot] = useState(
+    initial?.installmentTotal ? String(initial.installmentTotal) : '',
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = () => {
+    setError(null);
+    if (!name.trim()) {
+      setError('Informe o nome do gasto fixo.');
+      return;
+    }
+    if (amount <= 0) {
+      setError('Informe o valor do gasto fixo.');
+      return;
+    }
+    const hasCur = instCur.trim() !== '';
+    const hasTot = instTot.trim() !== '';
+    let installmentCurrent: number | null = null;
+    let installmentTotal: number | null = null;
+    if (hasCur || hasTot) {
+      if (!hasTot) {
+        setError('Informe até qual parcela vai (ex.: 2 de 4).');
+        return;
+      }
+      installmentCurrent = hasCur ? parsePositiveInt(instCur) : 1;
+      installmentTotal = parsePositiveInt(instTot);
+      if (!installmentCurrent || !installmentTotal || installmentCurrent > installmentTotal) {
+        setError('Parcela inválida: a atual deve ser de 1 até a parcela final.');
+        return;
+      }
+    }
+    props.onSave({
+      name,
+      amount,
+      idealAmount: ideal || undefined,
+      description: description || undefined,
+      installmentCurrent,
+      installmentTotal,
+    });
+  };
+
+  return (
+    <ConfirmModal
+      title={initial ? 'Editar gasto fixo' : 'Novo gasto fixo'}
+      confirmLabel="Salvar"
+      busy={props.busy}
+      onConfirm={submit}
+      onCancel={props.onCancel}
+    >
+      <div className="modal-form">
+        <input
+          placeholder="Nome (ex.: Aluguel)"
+          value={name}
+          autoFocus={!initial}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          placeholder="Comentário/descrição (opcional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <div className="inline-pair">
+          <MoneyInput valueCents={amount} onChange={setAmount} placeholder="Valor" />
+          <MoneyInput valueCents={ideal} onChange={setIdeal} placeholder="Ideal (opcional)" />
+        </div>
+        <div className="inline-pair installments">
+          <span className="muted small">Parcela (opcional):</span>
+          <input
+            inputMode="numeric"
+            placeholder="2"
+            value={instCur}
+            onChange={(e) => setInstCur(e.target.value.replace(/\D/g, ''))}
+          />
+          <span className="muted">de</span>
+          <input
+            inputMode="numeric"
+            placeholder="4"
+            value={instTot}
+            onChange={(e) => setInstTot(e.target.value.replace(/\D/g, ''))}
+          />
+        </div>
+        <p className="muted small">
+          Em gastos parcelados, a parcela avança a cada virada de mês; após a última, o gasto sai
+          dos próximos meses automaticamente.
+        </p>
+        {error && <p className="form-error">{error}</p>}
+      </div>
+    </ConfirmModal>
+  );
+}
 
 export function ManageScreen(props: {
   compartmentId: string;
@@ -20,9 +133,7 @@ export function ManageScreen(props: {
 }) {
   const { compartmentId, currentMonth, fixedExpenses, categories } = props;
 
-  const [fixedName, setFixedName] = useState('');
-  const [fixedAmount, setFixedAmount] = useState(0);
-  const [fixedIdeal, setFixedIdeal] = useState(0);
+  const [fixedModal, setFixedModal] = useState<'closed' | 'new' | FixedExpense>('closed');
   const [catName, setCatName] = useState('');
   const [catIdeal, setCatIdeal] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -30,23 +141,30 @@ export function ManageScreen(props: {
     { kind: 'fixed'; item: FixedExpense } | { kind: 'category'; item: Category } | null
   >(null);
 
-  const submitFixed = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!fixedName.trim() || fixedAmount <= 0 || busy) return;
+  const saveFixed = async (input: FixedExpenseInput) => {
     setBusy(true);
     try {
-      await addFixedExpense(compartmentId, currentMonth, {
-        name: fixedName,
-        amount: fixedAmount,
-        idealAmount: fixedIdeal || undefined,
-      });
-      setFixedName('');
-      setFixedAmount(0);
-      setFixedIdeal(0);
+      if (fixedModal === 'new') {
+        await addFixedExpense(compartmentId, currentMonth, input);
+      } else if (fixedModal !== 'closed') {
+        await saveFixedExpense(compartmentId, currentMonth, fixedModal.id, input);
+      }
+      setFixedModal('closed');
     } finally {
       setBusy(false);
     }
   };
+
+  const inlineSaveFixed = (f: FixedExpense, patch: Partial<FixedExpenseInput>) =>
+    saveFixedExpense(compartmentId, currentMonth, f.id, {
+      name: f.name,
+      amount: f.amount,
+      idealAmount: f.idealAmount,
+      description: f.description,
+      installmentCurrent: f.installmentCurrent,
+      installmentTotal: f.installmentTotal,
+      ...patch,
+    });
 
   const submitCategory = async (e: FormEvent) => {
     e.preventDefault();
@@ -91,20 +209,41 @@ export function ManageScreen(props: {
         <ul className="manage-list">
           {fixedExpenses.map((f) => (
             <li key={f.id}>
-              <span className="name">{f.name}</span>
-              <span className="values">
-                <span className="muted small">valor</span>
-                <EditableMoney
-                  valueCents={f.amount}
-                  onSave={(v) => updateFixedExpense(compartmentId, f.id, { amount: v })}
-                />
-                <span className="muted small">ideal</span>
-                <EditableMoney
-                  valueCents={f.idealAmount}
-                  muted
-                  onSave={(v) => updateFixedExpense(compartmentId, f.id, { idealAmount: v })}
-                />
-              </span>
+              <div className="row-main">
+                <span className="name">
+                  {f.name}
+                  {f.installmentTotal ? (
+                    <span className="badge installment">
+                      {f.installmentCurrent ?? 1}/{f.installmentTotal}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="values">
+                  <span className="pair">
+                    <span className="muted small">valor</span>
+                    <EditableMoney
+                      valueCents={f.amount}
+                      onSave={(v) => inlineSaveFixed(f, { amount: v })}
+                    />
+                  </span>
+                  <span className="pair">
+                    <span className="muted small">ideal</span>
+                    <EditableMoney
+                      valueCents={f.idealAmount}
+                      muted
+                      onSave={(v) => inlineSaveFixed(f, { idealAmount: v })}
+                    />
+                  </span>
+                </span>
+                {f.description && <span className="row-desc muted small">{f.description}</span>}
+              </div>
+              <button
+                className="btn icon"
+                title="Editar gasto fixo"
+                onClick={() => setFixedModal(f)}
+              >
+                <Pencil size={15} aria-hidden />
+              </button>
               <button
                 className="btn icon danger"
                 title="Remover gasto fixo"
@@ -116,43 +255,39 @@ export function ManageScreen(props: {
           ))}
           {fixedExpenses.length === 0 && <li className="muted">Nenhum gasto fixo ainda.</li>}
         </ul>
-        <form className="inline-form" onSubmit={submitFixed}>
-          <input
-            placeholder="Nome (ex.: Aluguel)"
-            value={fixedName}
-            onChange={(e) => setFixedName(e.target.value)}
-          />
-          <MoneyInput valueCents={fixedAmount} onChange={setFixedAmount} placeholder="Valor" />
-          <MoneyInput
-            valueCents={fixedIdeal}
-            onChange={setFixedIdeal}
-            placeholder="Ideal (opcional)"
-          />
-          <button className="btn primary" type="submit" disabled={busy}>
-            Adicionar
-          </button>
-        </form>
+        <button className="btn primary" onClick={() => setFixedModal('new')}>
+          <Plus size={16} aria-hidden /> Novo gasto fixo
+        </button>
       </section>
 
       <section className="card">
         <h3>Categorias de gastos variáveis</h3>
         <p className="muted small">
           Defina o gasto ideal do mês por categoria. Ele é usado nos limites semanais e mensais.
+          Toque no nome ou no valor para editar.
         </p>
         <ul className="manage-list">
           {categories.map((c) => (
             <li key={c.id}>
-              <span className="name">
-                {c.name}
-                {c.isDefault && <span className="badge open">padrão</span>}
-              </span>
-              <span className="values">
-                <span className="muted small">ideal</span>
-                <EditableMoney
-                  valueCents={c.idealAmount}
-                  onSave={(v) => updateCategory(compartmentId, c.id, { idealAmount: v })}
-                />
-              </span>
+              <div className="row-main">
+                <span className="name">
+                  <EditableText
+                    value={c.name}
+                    disabled={c.isDefault}
+                    onSave={(name) => renameCategory(compartmentId, currentMonth, c.id, name)}
+                  />
+                  {c.isDefault && <span className="badge open">padrão</span>}
+                </span>
+                <span className="values">
+                  <span className="pair">
+                    <span className="muted small">ideal</span>
+                    <EditableMoney
+                      valueCents={c.idealAmount}
+                      onSave={(v) => updateCategory(compartmentId, c.id, { idealAmount: v })}
+                    />
+                  </span>
+                </span>
+              </div>
               {!c.isDefault && (
                 <button
                   className="btn icon danger"
@@ -177,6 +312,15 @@ export function ManageScreen(props: {
           </button>
         </form>
       </section>
+
+      {fixedModal !== 'closed' && (
+        <FixedExpenseModal
+          initial={fixedModal === 'new' ? null : fixedModal}
+          busy={busy}
+          onSave={saveFixed}
+          onCancel={() => setFixedModal('closed')}
+        />
+      )}
 
       {removeTarget && (
         <ConfirmModal

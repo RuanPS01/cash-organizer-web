@@ -596,17 +596,23 @@ tr:last-child td { border-bottom: none; }
   gap: 0.35rem;
 }
 
+/* O botão de excluir não quebra de linha: só a descrição encolhe */
 .expense-list li {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 0.6rem;
   font-size: 0.86rem;
 }
 
+.expense-list li > * { flex: 0 0 auto; }
+
 .expense-list .desc {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .money-cell {
@@ -710,30 +716,91 @@ tr:last-child td { border-bottom: none; }
   flex-direction: column;
 }
 
+/* O conteúdo da linha (.row-main) pode quebrar; os botões de editar e
+   excluir ficam sempre à direita, alinhados ao topo (altura do título). */
 .manage-list li {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  align-items: flex-start;
+  gap: 0.35rem;
   padding: 0.55rem 0;
   border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
 }
+
+.manage-list li > .btn.icon { margin-top: 0; }
 
 .manage-list li:last-child { border-bottom: none; }
 
+.manage-list .row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
 .manage-list .name {
   font-weight: 600;
-  flex: 1;
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  min-width: 8rem;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .manage-list .values {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  min-width: 0;
+}
+
+.manage-list .pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.row-desc {
+  display: block;
+  flex: 1 1 100%;
+  font-weight: 400;
+}
+
+.badge.installment {
+  background: var(--border);
+  color: var(--muted);
+}
+
+.text-cell {
+  font-weight: 600;
+  text-align: left;
+}
+
+.text-cell-input { text-align: left; width: 10rem; }
+
+.center-self { align-self: center; }
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.modal-form p { margin: 0; }
+
+.inline-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.inline-pair.installments input {
+  width: 4.5rem;
+  flex: 0 0 auto;
+  text-align: center;
 }
 
 .inline-form {
