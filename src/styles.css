@@ -717,14 +717,16 @@ tr:last-child td { border-bottom: none; }
 }
 
 /* O conteúdo da linha (.row-main) pode quebrar; os botões de editar e
-   excluir ficam sempre fixos à direita. */
+   excluir ficam sempre à direita, alinhados ao topo (altura do título). */
 .manage-list li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.35rem;
   padding: 0.55rem 0;
   border-bottom: 1px solid var(--border);
 }
+
+.manage-list li > .btn.icon { margin-top: 0; }
 
 .manage-list li:last-child { border-bottom: none; }
 
@@ -749,7 +751,16 @@ tr:last-child td { border-bottom: none; }
 .manage-list .values {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  min-width: 0;
+}
+
+.manage-list .pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .row-desc {

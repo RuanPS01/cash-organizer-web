@@ -219,17 +219,21 @@ export function ManageScreen(props: {
                   ) : null}
                 </span>
                 <span className="values">
-                  <span className="muted small">valor</span>
-                  <EditableMoney
-                    valueCents={f.amount}
-                    onSave={(v) => inlineSaveFixed(f, { amount: v })}
-                  />
-                  <span className="muted small">ideal</span>
-                  <EditableMoney
-                    valueCents={f.idealAmount}
-                    muted
-                    onSave={(v) => inlineSaveFixed(f, { idealAmount: v })}
-                  />
+                  <span className="pair">
+                    <span className="muted small">valor</span>
+                    <EditableMoney
+                      valueCents={f.amount}
+                      onSave={(v) => inlineSaveFixed(f, { amount: v })}
+                    />
+                  </span>
+                  <span className="pair">
+                    <span className="muted small">ideal</span>
+                    <EditableMoney
+                      valueCents={f.idealAmount}
+                      muted
+                      onSave={(v) => inlineSaveFixed(f, { idealAmount: v })}
+                    />
+                  </span>
                 </span>
                 {f.description && <span className="row-desc muted small">{f.description}</span>}
               </div>
@@ -275,11 +279,13 @@ export function ManageScreen(props: {
                   {c.isDefault && <span className="badge open">padrão</span>}
                 </span>
                 <span className="values">
-                  <span className="muted small">ideal</span>
-                  <EditableMoney
-                    valueCents={c.idealAmount}
-                    onSave={(v) => updateCategory(compartmentId, c.id, { idealAmount: v })}
-                  />
+                  <span className="pair">
+                    <span className="muted small">ideal</span>
+                    <EditableMoney
+                      valueCents={c.idealAmount}
+                      onSave={(v) => updateCategory(compartmentId, c.id, { idealAmount: v })}
+                    />
+                  </span>
                 </span>
               </div>
               {!c.isDefault && (
