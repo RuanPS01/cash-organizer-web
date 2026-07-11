@@ -48,6 +48,18 @@ compartments/{id}                    nome, hash da senha, mês corrente
 
 Valores monetários são armazenados em **centavos** (inteiros).
 
+## PWA
+
+O app é um Progressive Web App: pode ser instalado no celular e no computador
+("Adicionar à tela inicial" / "Instalar app") e abre em janela própria.
+
+- Manifest e ícones gerados pelo `vite-plugin-pwa` (`vite.config.ts`);
+- Service worker com precache do app shell e atualização automática a cada
+  novo deploy (`registerType: 'autoUpdate'`);
+- O shell funciona offline; os dados vêm do cache offline do próprio SDK do
+  Firestore (IndexedDB), então os últimos dados carregados continuam
+  disponíveis sem conexão e sincronizam ao reconectar.
+
 ## Desenvolvimento
 
 ```bash
