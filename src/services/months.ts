@@ -36,9 +36,12 @@ async function fetchActive<T>(compartmentId: string, colName: string): Promise<(
 }
 
 /**
- * Remove do mês em aberto as linhas cujos cadastros foram removidos
- * (gastos fixos desativados e categorias desativadas sem lançamentos no
- * mês). Corrige meses criados antes da remoção do cadastro.
+ * Reconcilia o mês em aberto com os cadastros, nos dois sentidos:
+ * - remove linhas cujos cadastros foram removidos (fixos desativados e
+ *   categorias desativadas sem lançamentos no mês);
+ * - adiciona linhas de fixos e categorias ativos que ainda não existem no
+ *   mês (ex.: mês criado antes do cadastro, ou virada para um mês que já
+ *   existia). Garante que categorias e fixos sejam mantidos ao virar o mês.
  */
 async function syncMonthEntries(compartmentId: string, ym: string): Promise<void> {
   const [fixedCad, catCad, fixedEntries, catEntries, expenses] = await Promise.all([
@@ -56,9 +59,12 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
     catCad.docs.filter((d) => d.data().active !== false).map((d) => d.id),
   );
   const usedCats = new Set(expenses.docs.map((d) => d.data().categoryId as string));
+  const fixedEntryIds = new Set(fixedEntries.docs.map((d) => d.id));
+  const catEntryIds = new Set(catEntries.docs.map((d) => d.id));
 
   const batch = writeBatch(db);
   let dirty = false;
+
   for (const entry of fixedEntries.docs) {
     if (!activeFixed.has(entry.id)) {
       batch.delete(entry.ref);
@@ -71,6 +77,32 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
       dirty = true;
     }
   }
+
+  for (const cad of fixedCad.docs) {
+    const f = cad.data();
+    if (f.active === false || fixedEntryIds.has(cad.id)) continue;
+    batch.set(doc(fixedEntriesCol(compartmentId, ym), cad.id), {
+      name: f.name,
+      amount: f.amount,
+      idealAmount: f.idealAmount || f.amount,
+      status: 'Pendente',
+      description: f.description ?? '',
+      installmentCurrent: f.installmentCurrent ?? null,
+      installmentTotal: f.installmentTotal ?? null,
+    } satisfies Omit<FixedEntry, 'id'>);
+    dirty = true;
+  }
+  for (const cad of catCad.docs) {
+    const c = cad.data();
+    if (c.active === false || catEntryIds.has(cad.id)) continue;
+    batch.set(doc(categoryEntriesCol(compartmentId, ym), cad.id), {
+      name: c.name,
+      idealAmount: c.idealAmount,
+      status: 'Pendente',
+    } satisfies Omit<CategoryEntry, 'id'>);
+    dirty = true;
+  }
+
   if (dirty) await batch.commit();
 }
 

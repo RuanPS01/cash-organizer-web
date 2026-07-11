@@ -15,6 +15,8 @@ export function AddExpenseScreen(props: {
   data: MonthData;
 }) {
   const { compartmentId, currentMonth, categories, data } = props;
+  // Pré-seleção: a categoria padrão do compartimento (Avulso, até o usuário
+  // transferir o papel para outra); por segurança, cai na primeira da lista.
   const defaultCategory = categories.find((c) => c.isDefault) ?? categories[0];
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [cents, setCents] = useState(0);

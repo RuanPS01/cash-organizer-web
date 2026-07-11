@@ -1,17 +1,21 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Pencil, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Plus, X } from 'lucide-react';
 import {
   addCategory,
   addFixedExpense,
+  moveCategory,
   removeCategory,
   removeFixedExpense,
   renameCategory,
+  saveCategoryIdeal,
   saveFixedExpense,
-  updateCategory,
+  setDefaultCategory,
 } from '../services/expenses';
 import type { FixedExpenseInput } from '../services/expenses';
+import { formatBRL } from '../utils/money';
 import { EditableMoney, EditableText, MoneyInput, ConfirmModal } from './shared';
+import type { MonthData } from '../hooks/useMonthData';
 import type { Category, FixedExpense } from '../types';
 
 function parsePositiveInt(text: string): number | null {
@@ -130,8 +134,19 @@ export function ManageScreen(props: {
   currentMonth: string;
   fixedExpenses: FixedExpense[];
   categories: Category[];
+  monthData: MonthData;
 }) {
-  const { compartmentId, currentMonth, fixedExpenses, categories } = props;
+  const { compartmentId, currentMonth, fixedExpenses, categories, monthData } = props;
+
+  const totals = useMemo(
+    () => ({
+      fixedAmount: fixedExpenses.reduce((s, f) => s + f.amount, 0),
+      fixedIdeal: fixedExpenses.reduce((s, f) => s + (f.idealAmount || f.amount), 0),
+      varIdeal: categories.reduce((s, c) => s + c.idealAmount, 0),
+      varSpent: monthData.expenses.reduce((s, e) => s + e.amount, 0),
+    }),
+    [fixedExpenses, categories, monthData.expenses],
+  );
 
   const [fixedModal, setFixedModal] = useState<'closed' | 'new' | FixedExpense>('closed');
   const [catName, setCatName] = useState('');
@@ -206,6 +221,16 @@ export function ManageScreen(props: {
           O valor fixo é usado como gasto ideal automaticamente, a menos que você defina outro
           ideal. Novos fixos entram no mês corrente em aberto.
         </p>
+        <div className="section-totals">
+          <span>
+            <span className="muted small">Total valor</span>
+            <strong>{formatBRL(totals.fixedAmount)}</strong>
+          </span>
+          <span>
+            <span className="muted small">Total ideal</span>
+            <strong>{formatBRL(totals.fixedIdeal)}</strong>
+          </span>
+        </div>
         <ul className="manage-list">
           {fixedExpenses.map((f) => (
             <li key={f.id}>
@@ -263,42 +288,82 @@ export function ManageScreen(props: {
       <section className="card">
         <h3>Categorias de gastos variáveis</h3>
         <p className="muted small">
-          Defina o gasto ideal do mês por categoria. Ele é usado nos limites semanais e mensais.
-          Toque no nome ou no valor para editar.
+          Defina o gasto ideal do mês por categoria. Use as setas para mudar a ordem (refletida
+          nos chips de novo gasto). A categoria <strong>padrão</strong> vem pré-selecionada ao
+          adicionar um gasto; use "tornar padrão" para trocar.
         </p>
+        <div className="section-totals">
+          <span>
+            <span className="muted small">Gasto no mês</span>
+            <strong>{formatBRL(totals.varSpent)}</strong>
+          </span>
+          <span>
+            <span className="muted small">Total ideal</span>
+            <strong>{formatBRL(totals.varIdeal)}</strong>
+          </span>
+        </div>
         <ul className="manage-list">
-          {categories.map((c) => (
-            <li key={c.id}>
-              <div className="row-main">
-                <span className="name">
-                  <EditableText
-                    value={c.name}
-                    disabled={c.isDefault}
-                    onSave={(name) => renameCategory(compartmentId, currentMonth, c.id, name)}
-                  />
-                  {c.isDefault && <span className="badge open">padrão</span>}
-                </span>
-                <span className="values">
-                  <span className="pair">
-                    <span className="muted small">ideal</span>
-                    <EditableMoney
-                      valueCents={c.idealAmount}
-                      onSave={(v) => updateCategory(compartmentId, c.id, { idealAmount: v })}
+          {categories.map((c, i) => {
+            return (
+              <li key={c.id}>
+                <div className="row-main">
+                  <span className="name">
+                    <EditableText
+                      value={c.name}
+                      onSave={(name) => renameCategory(compartmentId, currentMonth, c.id, name)}
                     />
+                    {c.isDefault ? (
+                      <span className="badge open">padrão</span>
+                    ) : (
+                      <button
+                        className="mini-btn"
+                        title="Tornar esta a categoria padrão (pré-selecionada ao adicionar gasto)"
+                        onClick={() => setDefaultCategory(compartmentId, categories, c.id)}
+                      >
+                        tornar padrão
+                      </button>
+                    )}
                   </span>
-                </span>
-              </div>
-              {!c.isDefault && (
+                  <span className="values">
+                    <span className="pair">
+                      <span className="muted small">ideal</span>
+                      <EditableMoney
+                        valueCents={c.idealAmount}
+                        onSave={(v) => saveCategoryIdeal(compartmentId, currentMonth, c.id, v)}
+                      />
+                    </span>
+                  </span>
+                </div>
                 <button
-                  className="btn icon danger"
-                  title="Remover categoria"
-                  onClick={() => setRemoveTarget({ kind: 'category', item: c })}
+                  className="btn icon"
+                  title="Mover para cima"
+                  disabled={i === 0}
+                  onClick={() => moveCategory(compartmentId, categories, c.id, 'up')}
                 >
-                  <X size={16} aria-hidden />
+                  <ChevronUp size={15} aria-hidden />
                 </button>
-              )}
-            </li>
-          ))}
+                <button
+                  className="btn icon"
+                  title="Mover para baixo"
+                  disabled={i === categories.length - 1}
+                  onClick={() => moveCategory(compartmentId, categories, c.id, 'down')}
+                >
+                  <ChevronDown size={15} aria-hidden />
+                </button>
+                {!c.isDefault ? (
+                  <button
+                    className="btn icon danger"
+                    title="Remover categoria"
+                    onClick={() => setRemoveTarget({ kind: 'category', item: c })}
+                  >
+                    <X size={16} aria-hidden />
+                  </button>
+                ) : (
+                  <span className="btn-placeholder" />
+                )}
+              </li>
+            );
+          })}
         </ul>
         <form className="inline-form" onSubmit={submitCategory}>
           <input

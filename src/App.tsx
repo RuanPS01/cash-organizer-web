@@ -54,6 +54,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             currentMonth={currentMonth}
             fixedExpenses={fixedExpenses}
             categories={categories}
+            monthData={monthData}
           />
         )}
       </main>

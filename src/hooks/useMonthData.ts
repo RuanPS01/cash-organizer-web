@@ -89,7 +89,8 @@ export function useConfig(compartmentId: string) {
           setCategories(
             snap.docs
               .map((d) => ({ id: d.id, ...(d.data() as Omit<Category, 'id'>) }))
-              .filter((c) => c.active),
+              .filter((c) => c.active)
+              .sort((a, b) => (a.sortOrder ?? a.createdAt) - (b.sortOrder ?? b.createdAt)),
           );
         },
       ),

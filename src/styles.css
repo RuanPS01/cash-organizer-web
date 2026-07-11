@@ -808,6 +808,44 @@ tr:last-child td { border-bottom: none; }
   font-weight: 400;
 }
 
+.section-totals {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+  border-radius: 10px;
+}
+
+.section-totals > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-totals strong { font-size: 1.02rem; }
+
+.btn-placeholder {
+  width: 2.05rem;
+  flex: 0 0 auto;
+}
+
+.mini-btn {
+  border: 1px dashed var(--border);
+  background: none;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mini-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
 .badge.installment {
   background: var(--border);
   color: var(--muted);
