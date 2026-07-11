@@ -171,7 +171,6 @@ export async function addCategory(
     idealAmount: input.idealAmount,
     isDefault: false,
     sortOrder: now,
-    preferred: false,
     active: true,
     createdAt: now,
   });
@@ -219,22 +218,43 @@ export async function moveCategory(
   await batch.commit();
 }
 
-/** Define a categoria pré-selecionada ao abrir a tela de adicionar gasto. */
-export async function setPreferredCategory(
+/**
+ * Transfere o papel de categoria padrão (pré-selecionada e não removível)
+ * para a categoria indicada; a padrão anterior vira uma categoria comum.
+ */
+export async function setDefaultCategory(
   compartmentId: string,
   categories: Category[],
   id: string,
 ): Promise<void> {
   const batch = writeBatch(db);
   for (const c of categories) {
-    const shouldPrefer = c.id === id;
-    if ((c.preferred ?? false) !== shouldPrefer) {
+    const shouldBeDefault = c.id === id;
+    if (c.isDefault !== shouldBeDefault) {
       batch.update(doc(db, 'compartments', compartmentId, 'categories', c.id), {
-        preferred: shouldPrefer,
+        isDefault: shouldBeDefault,
       });
     }
   }
   await batch.commit();
+}
+
+/**
+ * Atualiza o gasto ideal da categoria no cadastro e também na linha do mês
+ * corrente em aberto (a tela de novo gasto lê o ideal do mês).
+ */
+export async function saveCategoryIdeal(
+  compartmentId: string,
+  currentMonth: string,
+  id: string,
+  idealAmount: number,
+): Promise<void> {
+  await updateCategory(compartmentId, id, { idealAmount });
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    const entryRef = doc(categoryEntriesCol(compartmentId, currentMonth), id);
+    const entry = await getDoc(entryRef);
+    if (entry.exists()) await updateDoc(entryRef, { idealAmount });
+  }
 }
 
 /** Renomeia a categoria no cadastro e na linha do mês corrente em aberto. */

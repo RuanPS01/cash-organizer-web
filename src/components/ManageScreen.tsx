@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ChevronDown, ChevronUp, Pencil, Plus, Star, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Plus, X } from 'lucide-react';
 import {
   addCategory,
   addFixedExpense,
@@ -8,9 +8,9 @@ import {
   removeCategory,
   removeFixedExpense,
   renameCategory,
+  saveCategoryIdeal,
   saveFixedExpense,
-  setPreferredCategory,
-  updateCategory,
+  setDefaultCategory,
 } from '../services/expenses';
 import type { FixedExpenseInput } from '../services/expenses';
 import { formatBRL } from '../utils/money';
@@ -289,7 +289,8 @@ export function ManageScreen(props: {
         <h3>Categorias de gastos variáveis</h3>
         <p className="muted small">
           Defina o gasto ideal do mês por categoria. Use as setas para mudar a ordem (refletida
-          nos chips de novo gasto) e a estrela para escolher a categoria pré-selecionada.
+          nos chips de novo gasto). A categoria <strong>padrão</strong> vem pré-selecionada ao
+          adicionar um gasto; use "tornar padrão" para trocar.
         </p>
         <div className="section-totals">
           <span>
@@ -303,41 +304,36 @@ export function ManageScreen(props: {
         </div>
         <ul className="manage-list">
           {categories.map((c, i) => {
-            const isPreferred = c.preferred ?? false;
             return (
               <li key={c.id}>
                 <div className="row-main">
                   <span className="name">
                     <EditableText
                       value={c.name}
-                      disabled={c.isDefault}
                       onSave={(name) => renameCategory(compartmentId, currentMonth, c.id, name)}
                     />
-                    {c.isDefault && <span className="badge open">padrão</span>}
+                    {c.isDefault ? (
+                      <span className="badge open">padrão</span>
+                    ) : (
+                      <button
+                        className="mini-btn"
+                        title="Tornar esta a categoria padrão (pré-selecionada ao adicionar gasto)"
+                        onClick={() => setDefaultCategory(compartmentId, categories, c.id)}
+                      >
+                        tornar padrão
+                      </button>
+                    )}
                   </span>
                   <span className="values">
                     <span className="pair">
                       <span className="muted small">ideal</span>
                       <EditableMoney
                         valueCents={c.idealAmount}
-                        onSave={(v) => updateCategory(compartmentId, c.id, { idealAmount: v })}
+                        onSave={(v) => saveCategoryIdeal(compartmentId, currentMonth, c.id, v)}
                       />
                     </span>
                   </span>
                 </div>
-                <button
-                  className={`btn icon star${isPreferred ? ' active' : ''}`}
-                  title={
-                    isPreferred
-                      ? 'Categoria pré-selecionada ao adicionar gasto'
-                      : 'Tornar pré-selecionada ao adicionar gasto'
-                  }
-                  onClick={() =>
-                    !isPreferred && setPreferredCategory(compartmentId, categories, c.id)
-                  }
-                >
-                  <Star size={15} aria-hidden fill={isPreferred ? 'currentColor' : 'none'} />
-                </button>
                 <button
                   className="btn icon"
                   title="Mover para cima"
