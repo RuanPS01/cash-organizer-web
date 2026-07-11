@@ -44,8 +44,12 @@ export interface Category {
   name: string;
   /** Gasto ideal do mês para a categoria, em centavos. */
   idealAmount: number;
-  /** "Avulso" é a categoria padrão e não pode ser removida. */
+  /** "Avulso" é a categoria do sistema e não pode ser removida. */
   isDefault: boolean;
+  /** Posição na listagem/chips (menor primeiro; ausente usa createdAt). */
+  sortOrder?: number;
+  /** Pré-selecionada ao abrir a tela de adicionar gasto. */
+  preferred?: boolean;
   active: boolean;
   createdAt: number;
 }

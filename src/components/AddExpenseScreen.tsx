@@ -15,7 +15,12 @@ export function AddExpenseScreen(props: {
   data: MonthData;
 }) {
   const { compartmentId, currentMonth, categories, data } = props;
-  const defaultCategory = categories.find((c) => c.isDefault) ?? categories[0];
+  // Pré-seleção: a categoria marcada como padrão pelo usuário; sem marcação,
+  // cai na categoria do sistema (Avulso) e por fim na primeira da lista.
+  const defaultCategory =
+    categories.find((c) => c.preferred) ??
+    categories.find((c) => c.isDefault) ??
+    categories[0];
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [cents, setCents] = useState(0);
   const [description, setDescription] = useState('');

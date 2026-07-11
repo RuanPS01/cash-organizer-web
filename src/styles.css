@@ -808,6 +808,32 @@ tr:last-child td { border-bottom: none; }
   font-weight: 400;
 }
 
+.section-totals {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+  border-radius: 10px;
+}
+
+.section-totals > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-totals strong { font-size: 1.02rem; }
+
+.btn.icon.star.active {
+  color: var(--warn);
+  border-color: transparent;
+}
+
+.btn-placeholder {
+  width: 2.05rem;
+  flex: 0 0 auto;
+}
+
 .badge.installment {
   background: var(--border);
   color: var(--muted);

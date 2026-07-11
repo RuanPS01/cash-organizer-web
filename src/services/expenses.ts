@@ -10,11 +10,12 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { weekOfMonth } from '../utils/dates';
 import { categoryEntriesCol, expensesCol, fixedEntriesCol, monthRef } from './months';
-import type { EntryStatus } from '../types';
+import type { Category, EntryStatus } from '../types';
 
 // ---------------------------------------------------------------------------
 // Lançamentos variáveis
@@ -164,12 +165,15 @@ export async function addCategory(
   currentMonth: string,
   input: { name: string; idealAmount: number },
 ): Promise<string> {
+  const now = Date.now();
   const ref = await addDoc(collection(db, 'compartments', compartmentId, 'categories'), {
     name: input.name.trim(),
     idealAmount: input.idealAmount,
     isDefault: false,
+    sortOrder: now,
+    preferred: false,
     active: true,
-    createdAt: Date.now(),
+    createdAt: now,
   });
   const month = await getDoc(monthRef(compartmentId, currentMonth));
   if (month.exists() && month.data().status === 'open') {
@@ -188,6 +192,49 @@ export async function updateCategory(
   patch: Partial<{ name: string; idealAmount: number; active: boolean }>,
 ): Promise<void> {
   await updateDoc(doc(db, 'compartments', compartmentId, 'categories', id), patch);
+}
+
+/**
+ * Move a categoria uma posição para cima ou para baixo, trocando a chave de
+ * ordenação com a vizinha (a lista recebida já deve estar na ordem exibida).
+ */
+export async function moveCategory(
+  compartmentId: string,
+  ordered: Category[],
+  id: string,
+  direction: 'up' | 'down',
+): Promise<void> {
+  const index = ordered.findIndex((c) => c.id === id);
+  const other = direction === 'up' ? index - 1 : index + 1;
+  if (index < 0 || other < 0 || other >= ordered.length) return;
+
+  const a = ordered[index];
+  const b = ordered[other];
+  const keyA = a.sortOrder ?? a.createdAt;
+  const keyB = b.sortOrder ?? b.createdAt;
+
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'compartments', compartmentId, 'categories', a.id), { sortOrder: keyB });
+  batch.update(doc(db, 'compartments', compartmentId, 'categories', b.id), { sortOrder: keyA });
+  await batch.commit();
+}
+
+/** Define a categoria pré-selecionada ao abrir a tela de adicionar gasto. */
+export async function setPreferredCategory(
+  compartmentId: string,
+  categories: Category[],
+  id: string,
+): Promise<void> {
+  const batch = writeBatch(db);
+  for (const c of categories) {
+    const shouldPrefer = c.id === id;
+    if ((c.preferred ?? false) !== shouldPrefer) {
+      batch.update(doc(db, 'compartments', compartmentId, 'categories', c.id), {
+        preferred: shouldPrefer,
+      });
+    }
+  }
+  await batch.commit();
 }
 
 /** Renomeia a categoria no cadastro e na linha do mês corrente em aberto. */
