@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, Plus, Settings, Wallet } from 'lucide-react';
+import { Banknote, BarChart3, Plus, Settings, Wallet } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
 import { AddExpenseScreen } from './components/AddExpenseScreen';
 import { MonthScreen } from './components/MonthScreen';
@@ -9,7 +9,7 @@ import { ensureMonth } from './services/months';
 import { useConfig, useMonthData } from './hooks/useMonthData';
 import type { Compartment } from './types';
 
-type View = 'add' | 'month' | 'manage';
+type View = 'add' | 'stats' | 'payment' | 'manage';
 
 function Shell(props: { compartment: Compartment; onLogout: () => void }) {
   const [view, setView] = useState<View>('add');
@@ -41,10 +41,19 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             data={monthData}
           />
         )}
-        {view === 'month' && (
+        {view === 'stats' && (
           <MonthScreen
             compartmentId={props.compartment.id}
             currentMonth={currentMonth}
+            mode="stats"
+            onCurrentMonthChange={setCurrentMonth}
+          />
+        )}
+        {view === 'payment' && (
+          <MonthScreen
+            compartmentId={props.compartment.id}
+            currentMonth={currentMonth}
+            mode="payment"
             onCurrentMonthChange={setCurrentMonth}
           />
         )}
@@ -66,11 +75,17 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
           </span>
           Adicionar
         </button>
-        <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>
+        <button className={view === 'stats' ? 'active' : ''} onClick={() => setView('stats')}>
           <span className="nav-icon">
-            <CalendarDays size={20} aria-hidden />
+            <BarChart3 size={20} aria-hidden />
           </span>
-          Mês
+          Estatísticas
+        </button>
+        <button className={view === 'payment' ? 'active' : ''} onClick={() => setView('payment')}>
+          <span className="nav-icon">
+            <Banknote size={20} aria-hidden />
+          </span>
+          Pagamento
         </button>
         <button className={view === 'manage' ? 'active' : ''} onClick={() => setView('manage')}>
           <span className="nav-icon">

@@ -47,11 +47,11 @@ function StatusSelect(props: {
 export function MonthScreen(props: {
   compartmentId: string;
   currentMonth: string;
+  mode: 'payment' | 'stats';
   onCurrentMonthChange: (next: string) => void;
 }) {
-  const { compartmentId, currentMonth } = props;
+  const { compartmentId, currentMonth, mode } = props;
   const [viewMonth, setViewMonth] = useState(currentMonth);
-  const [tab, setTab] = useState<'table' | 'stats'>('table');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   const [openStep, setOpenStep] = useState<0 | 1 | 2>(0);
@@ -134,22 +134,13 @@ export function MonthScreen(props: {
         </button>
       </header>
 
-      <div className="tabs">
-        <button className={tab === 'table' ? 'tab active' : 'tab'} onClick={() => setTab('table')}>
-          Tabela
-        </button>
-        <button className={tab === 'stats' ? 'tab active' : 'tab'} onClick={() => setTab('stats')}>
-          Estatísticas
-        </button>
-      </div>
-
       {!isCurrent && !data.loading && (
         <button className="btn ghost small center-self" onClick={() => setOpenStep(1)}>
           Definir {monthLabel(viewMonth)} como mês em aberto
         </button>
       )}
 
-      {tab === 'stats' ? (
+      {mode === 'stats' ? (
         <StatsView compartmentId={compartmentId} viewMonth={viewMonth} data={data} />
       ) : data.loading ? (
         <p className="muted center">Carregando…</p>

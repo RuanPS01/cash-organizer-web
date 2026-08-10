@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { computeTotals, fetchExpenses, listMonths } from '../services/months';
+import { computeTotals, fetchExpenses } from '../services/months';
 import { formatBRL } from '../utils/money';
 import { monthLabel, prevMonthKey } from '../utils/dates';
+import { MonthlyComparisonCard } from './MonthlyComparisonCard';
 import { ProgressBar } from './shared';
 import type { MonthData } from '../hooks/useMonthData';
-import type { MonthDoc, MonthTotals, VariableExpense } from '../types';
+import type { MonthTotals, VariableExpense } from '../types';
 
 function pct(actual: number, ideal: number): string {
   if (ideal <= 0) return 'sem ideal';
@@ -30,24 +31,15 @@ export function StatsView(props: {
   data: MonthData;
 }) {
   const { compartmentId, viewMonth, data } = props;
-  const [months, setMonths] = useState<MonthDoc[]>([]);
   const [prevExpenses, setPrevExpenses] = useState<VariableExpense[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const prevMonth = prevMonthKey(viewMonth);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    Promise.all([listMonths(compartmentId), fetchExpenses(compartmentId, prevMonth)])
-      .then(([m, pe]) => {
-        if (cancelled) return;
-        setMonths(m);
-        setPrevExpenses(pe);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    fetchExpenses(compartmentId, prevMonth).then((pe) => {
+      if (!cancelled) setPrevExpenses(pe);
+    });
     return () => {
       cancelled = true;
     };
@@ -62,26 +54,6 @@ export function StatsView(props: {
     [data],
   );
 
-  const monthlyRows = useMemo(() => {
-    return months
-      .slice(0, 6)
-      .map((m) => {
-        const totals = m.id === viewMonth ? viewTotals : m.totals;
-        return totals
-          ? {
-              id: m.id,
-              ideal: totals.fixedIdeal + totals.varIdeal,
-              actual: totals.fixedActual + totals.varActual,
-              fixed: totals.fixedActual,
-              variable: totals.varActual,
-            }
-          : null;
-      })
-      .filter((r): r is NonNullable<typeof r> => r !== null);
-  }, [months, viewMonth, viewTotals]);
-
-  const maxMonthly = Math.max(1, ...monthlyRows.map((r) => Math.max(r.actual, r.ideal)));
-
   const weeks = weeklySums(data.expenses);
   const prevWeeks = weeklySums(prevExpenses);
   const weeklyIdeal = Math.round(viewTotals.varIdeal / 4);
@@ -90,31 +62,9 @@ export function StatsView(props: {
     (a, b) => b[1].actual - a[1].actual,
   );
 
-  if (loading && months.length === 0) {
-    return <p className="muted center">Carregando estatísticas…</p>;
-  }
-
   return (
     <div className="stats">
-      <section className="card">
-        <h3>Comparativo mensal (total gasto × ideal)</h3>
-        {monthlyRows.length === 0 && <p className="muted">Ainda não há meses com dados.</p>}
-        {monthlyRows.map((r) => (
-          <div key={r.id} className="stat-row">
-            <div className="stat-head">
-              <span>{monthLabel(r.id)}</span>
-              <span>
-                <strong>{formatBRL(r.actual)}</strong>
-                <span className="muted"> / {formatBRL(r.ideal)} · {pct(r.actual, r.ideal)}</span>
-              </span>
-            </div>
-            <ProgressBar ratio={r.actual / maxMonthly} danger={r.ideal > 0 && r.actual > r.ideal} />
-            <p className="muted small">
-              Fixos {formatBRL(r.fixed)} · Variáveis {formatBRL(r.variable)}
-            </p>
-          </div>
-        ))}
-      </section>
+      <MonthlyComparisonCard compartmentId={compartmentId} viewMonth={viewMonth} data={data} />
 
       <section className="card">
         <h3>Categorias em {monthLabel(viewMonth)}</h3>

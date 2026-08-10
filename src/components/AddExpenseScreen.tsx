@@ -5,6 +5,7 @@ import { addCategory, addVariableExpense } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { monthLabel, weekOfMonth } from '../utils/dates';
 import { MoneyInput, ProgressBar } from './shared';
+import { MonthlyComparisonCard } from './MonthlyComparisonCard';
 import type { MonthData } from '../hooks/useMonthData';
 import type { Category } from '../types';
 
@@ -197,6 +198,12 @@ export function AddExpenseScreen(props: {
           </div>
         </section>
       )}
+
+      <MonthlyComparisonCard
+        compartmentId={compartmentId}
+        viewMonth={currentMonth}
+        data={data}
+      />
     </div>
   );
 }
