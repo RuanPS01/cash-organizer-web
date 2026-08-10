@@ -211,6 +211,10 @@ label input { margin-top: 0.35rem; font-weight: 400; }
   justify-content: space-between;
   align-items: center;
   padding: 0.7rem 1rem;
+  /* No iPhone (PWA instalado, tela cheia) a barra de status do sistema fica
+     sobre o topo; a inset segura empurra o header para baixo dela. Em Android
+     e no navegador a inset é 0, mantendo o mesmo espaçamento de antes. */
+  padding-top: calc(0.7rem + env(safe-area-inset-top));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -491,29 +495,6 @@ label input { margin-top: 0.35rem; font-weight: 400; }
 
 .badge.closed { background: var(--border); color: var(--muted); }
 .badge.open { background: var(--primary-soft); color: var(--primary-strong); }
-
-.tabs {
-  display: flex;
-  gap: 0.4rem;
-  background: var(--surface);
-  border-radius: 999px;
-  padding: 0.25rem;
-  box-shadow: var(--shadow);
-  align-self: center;
-}
-
-.tab {
-  border: none;
-  background: none;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 0.9rem;
-  border-radius: 999px;
-  padding: 0.4rem 1.1rem;
-  cursor: pointer;
-}
-
-.tab.active { background: var(--primary); color: #fff; }
 
 .table-card h3 { margin-bottom: 0.6rem; }
 
