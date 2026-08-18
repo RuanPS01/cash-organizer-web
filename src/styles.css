@@ -420,7 +420,52 @@ label input { margin-top: 0.35rem; font-weight: 400; }
   margin-bottom: 0.6rem;
 }
 
-.desc-input { margin-bottom: 0.75rem; }
+.desc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.desc-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.desc-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Botão de calendário ao lado da descrição: só o ícone, mesma altura do campo. */
+.date-picker {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.date-btn.active {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Campo de data nativo sobreposto ao botão (invisível): recebe o showPicker()
+   e ancora o seletor nativo junto ao botão, sem ocupar espaço próprio. */
+.date-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.date-hint { align-self: flex-start; }
 
 .info h3 { margin-bottom: 0.75rem; }
 
@@ -567,7 +612,10 @@ td:first-child {
   .hide-narrow { display: none; }
 
   .details-row { background: none; }
-  .details-row td { flex: 1 1 100%; }
+  /* min-width:0 permite ao td (item flex) encolher abaixo da largura do
+     conteúdo; sem isso a lista de lançamentos expande a tabela e cria rolagem
+     horizontal, escondendo os valores e o botão de excluir. */
+  .details-row td { flex: 1 1 100%; min-width: 0; }
 
   .cell-sub {
     display: flex;
