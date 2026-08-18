@@ -24,14 +24,22 @@ import type { Category, EntryStatus } from '../types';
 export async function addVariableExpense(
   compartmentId: string,
   ym: string,
-  input: { categoryId: string; categoryName: string; amount: number; description: string },
+  input: {
+    categoryId: string;
+    categoryName: string;
+    amount: number;
+    description: string;
+    /** Data do lançamento; sem ela, o momento atual. */
+    date?: Date;
+  },
 ): Promise<void> {
-  const now = new Date();
+  const { date, description, ...rest } = input;
+  const when = date ?? new Date();
   await addDoc(expensesCol(compartmentId, ym), {
-    ...input,
-    description: input.description.trim(),
-    createdAt: now.getTime(),
-    week: weekOfMonth(now),
+    ...rest,
+    description: description.trim(),
+    createdAt: when.getTime(),
+    week: weekOfMonth(when),
   });
 }
 

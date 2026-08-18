@@ -1,9 +1,16 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Plus } from 'lucide-react';
+import { CalendarDays, Plus } from 'lucide-react';
 import { addCategory, addVariableExpense } from '../services/expenses';
 import { formatBRL } from '../utils/money';
-import { monthLabel, weekOfMonth } from '../utils/dates';
+import {
+  dateFromDayKey,
+  dayKey,
+  dayKeyLabel,
+  monthDayRange,
+  monthLabel,
+  weekOfMonth,
+} from '../utils/dates';
 import { MoneyInput, ProgressBar } from './shared';
 import { MonthlyComparisonCard } from './MonthlyComparisonCard';
 import type { MonthData } from '../hooks/useMonthData';
@@ -27,6 +34,28 @@ export function AddExpenseScreen(props: {
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatIdeal, setNewCatIdeal] = useState(0);
+  // Data do lançamento (YYYY-MM-DD): começa no dia atual e só muda se o
+  // usuário personalizar pelo botão de calendário.
+  const today = dayKey();
+  const [date, setDate] = useState(today);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const isToday = date === today;
+
+  // O seletor cobre o mês em aberto; se ele estiver atrasado em relação ao
+  // calendário, o dia de hoje continua selecionável.
+  const dateRange = useMemo(() => {
+    const { min, max } = monthDayRange(currentMonth);
+    return { min: min < today ? min : today, max: max > today ? max : today };
+  }, [currentMonth, today]);
+
+  // Digitar direto no campo permite datas fora do intervalo; guardamos sempre
+  // um dia válido (vazio volta para hoje).
+  const pickDate = (value: string) => {
+    if (!value) return setDate(today);
+    if (value < dateRange.min) return setDate(dateRange.min);
+    if (value > dateRange.max) return setDate(dateRange.max);
+    setDate(value);
+  };
 
   const selected =
     categories.find((c) => c.id === categoryId) ?? defaultCategory ?? null;
@@ -66,8 +95,13 @@ export function AddExpenseScreen(props: {
         categoryName: selected.name,
         amount: cents,
         description,
+        date: isToday ? undefined : dateFromDayKey(date),
       });
-      setFlash(`${formatBRL(cents)} em "${selected.name}" adicionado!`);
+      setFlash(
+        `${formatBRL(cents)} em "${selected.name}" adicionado${
+          isToday ? '' : ` em ${dayKeyLabel(date)}`
+        }!`,
+      );
       setCents(0);
       setDescription('');
       setTimeout(() => setFlash(null), 2500);
@@ -142,12 +176,54 @@ export function AddExpenseScreen(props: {
         )}
 
         <MoneyInput valueCents={cents} onChange={setCents} big autoFocus />
-        <input
-          className="desc-input"
-          placeholder="Descrição (opcional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <div className="desc-row">
+          <input
+            className="desc-input"
+            placeholder="Descrição (opcional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <button
+            type="button"
+            className={`btn icon date-btn${isToday ? '' : ' active'}`}
+            aria-label={
+              isToday ? 'Escolher a data do gasto' : `Data do gasto: ${dayKeyLabel(date)}`
+            }
+            aria-expanded={showDatePicker}
+            title={isToday ? 'Escolher a data do gasto' : `Data do gasto: ${dayKeyLabel(date)}`}
+            onClick={() => setShowDatePicker((v) => !v)}
+          >
+            <CalendarDays size={18} aria-hidden />
+          </button>
+        </div>
+
+        {showDatePicker && (
+          <div className="date-picker">
+            <input
+              type="date"
+              aria-label="Data do gasto"
+              value={date}
+              min={dateRange.min}
+              max={dateRange.max}
+              onChange={(e) => pickDate(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn small"
+              disabled={isToday}
+              onClick={() => setDate(today)}
+            >
+              Hoje
+            </button>
+          </div>
+        )}
+
+        {!isToday && (
+          <p className="muted small date-hint">
+            Lançando em <strong>{dayKeyLabel(date)}</strong> · semana{' '}
+            {weekOfMonth(dateFromDayKey(date))}
+          </p>
+        )}
         <button className="btn primary block" type="submit" disabled={busy || cents <= 0}>
           {busy ? 'Salvando…' : `Adicionar em "${selected?.name ?? '…'}"`}
         </button>

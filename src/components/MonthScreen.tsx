@@ -308,7 +308,7 @@ export function MonthScreen(props: {
                                 <ul className="expense-list">
                                   {catExpenses.map((e) => (
                                     <li key={e.id}>
-                                      <span className="muted">
+                                      <span className="muted when">
                                         {dayLabel(e.createdAt)} · sem {e.week}
                                       </span>
                                       <span className="desc">

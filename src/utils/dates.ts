@@ -41,3 +41,41 @@ const dayFormatter = new Intl.DateTimeFormat('pt-BR', {
 export function dayLabel(ms: number): string {
   return dayFormatter.format(new Date(ms));
 }
+
+/** Dia no formato YYYY-MM-DD, aceito pelo <input type="date">. */
+export function dayKey(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Converte YYYY-MM-DD em um Date local. A hora vem do relógio (por padrão, o
+ * momento da inclusão) para que lançamentos do mesmo dia mantenham a ordem em
+ * que foram criados; o construtor com string seria interpretado como UTC e
+ * poderia cair no dia anterior.
+ */
+export function dateFromDayKey(key: string, time: Date = new Date()): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(
+    y,
+    m - 1,
+    d,
+    time.getHours(),
+    time.getMinutes(),
+    time.getSeconds(),
+    time.getMilliseconds(),
+  );
+}
+
+/** Rótulo curto (dd/mm) de um dia no formato YYYY-MM-DD. */
+export function dayKeyLabel(key: string): string {
+  return dayLabel(dateFromDayKey(key).getTime());
+}
+
+/** Primeiro e último dia do mês YYYY-MM, no formato YYYY-MM-DD. */
+export function monthDayRange(ym: string): { min: string; max: string } {
+  const [y, m] = ym.split('-').map(Number);
+  return { min: dayKey(new Date(y, m - 1, 1)), max: dayKey(new Date(y, m, 0)) };
+}
