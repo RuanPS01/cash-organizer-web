@@ -74,8 +74,13 @@ export function dayKeyLabel(key: string): string {
   return dayLabel(dateFromDayKey(key).getTime());
 }
 
-/** Primeiro e último dia do mês YYYY-MM, no formato YYYY-MM-DD. */
-export function monthDayRange(ym: string): { min: string; max: string } {
-  const [y, m] = ym.split('-').map(Number);
-  return { min: dayKey(new Date(y, m - 1, 1)), max: dayKey(new Date(y, m, 0)) };
+const fullDayFormatter = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+/** Rótulo completo (dd/mm/aaaa) de um dia no formato YYYY-MM-DD. */
+export function dayKeyFullLabel(key: string): string {
+  return fullDayFormatter.format(dateFromDayKey(key));
 }
