@@ -1,9 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Plus } from 'lucide-react';
+import { Calendar, Plus } from 'lucide-react';
 import { addCategory, addVariableExpense } from '../services/expenses';
 import { formatBRL } from '../utils/money';
-import { monthLabel, weekOfMonth } from '../utils/dates';
+import {
+  dayLabel,
+  fromDateInput,
+  monthDateRange,
+  monthLabel,
+  toDateInput,
+  weekOfMonth,
+} from '../utils/dates';
 import { MoneyInput, ProgressBar } from './shared';
 import { MonthlyComparisonCard } from './MonthlyComparisonCard';
 import type { MonthData } from '../hooks/useMonthData';
@@ -22,6 +29,9 @@ export function AddExpenseScreen(props: {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [cents, setCents] = useState(0);
   const [description, setDescription] = useState('');
+  // Data de inclusão do gasto; por padrão o dia atual (Date.now()).
+  const [dateMs, setDateMs] = useState(() => Date.now());
+  const dateRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [showNewCategory, setShowNewCategory] = useState(false);
@@ -32,6 +42,24 @@ export function AddExpenseScreen(props: {
     categories.find((c) => c.id === categoryId) ?? defaultCategory ?? null;
 
   const currentWeek = weekOfMonth();
+
+  const dateInputValue = toDateInput(dateMs);
+  const isCustomDate = dateInputValue !== toDateInput(Date.now());
+  const dateRange = useMemo(() => monthDateRange(currentMonth), [currentMonth]);
+
+  // Abre o seletor de data nativo a partir do botão de calendário. showPicker()
+  // exige um gesto do usuário (o clique) e pode não existir em navegadores
+  // antigos; nesse caso o focus() já expõe o campo.
+  const openDatePicker = () => {
+    const el = dateRef.current;
+    if (!el) return;
+    el.focus();
+    try {
+      el.showPicker?.();
+    } catch {
+      /* sem showPicker: o focus acima mantém o campo acessível */
+    }
+  };
 
   const info = useMemo(() => {
     const entry = data.categoryEntries.find((c) => c.id === selected?.id);
@@ -66,10 +94,12 @@ export function AddExpenseScreen(props: {
         categoryName: selected.name,
         amount: cents,
         description,
+        createdAt: dateMs,
       });
       setFlash(`${formatBRL(cents)} em "${selected.name}" adicionado!`);
       setCents(0);
       setDescription('');
+      setDateMs(Date.now());
       setTimeout(() => setFlash(null), 2500);
     } finally {
       setBusy(false);
@@ -142,12 +172,41 @@ export function AddExpenseScreen(props: {
         )}
 
         <MoneyInput valueCents={cents} onChange={setCents} big autoFocus />
-        <input
-          className="desc-input"
-          placeholder="Descrição (opcional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <div className="desc-block">
+          <div className="desc-row">
+            <input
+              className="desc-input"
+              placeholder="Descrição (opcional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <span className="date-picker">
+              <button
+                type="button"
+                className={`btn icon date-btn${isCustomDate ? ' active' : ''}`}
+                onClick={openDatePicker}
+                aria-label={`Data do gasto: ${dayLabel(dateMs)}`}
+                title={`Data do gasto: ${dayLabel(dateMs)}`}
+              >
+                <Calendar size={18} aria-hidden />
+              </button>
+              <input
+                ref={dateRef}
+                type="date"
+                className="date-native"
+                value={dateInputValue}
+                min={dateRange.min}
+                max={dateRange.max}
+                onChange={(e) => e.target.value && setDateMs(fromDateInput(e.target.value))}
+                tabIndex={-1}
+                aria-hidden
+              />
+            </span>
+          </div>
+          {isCustomDate && (
+            <span className="date-hint muted small">Data do gasto: {dayLabel(dateMs)}</span>
+          )}
+        </div>
         <button className="btn primary block" type="submit" disabled={busy || cents <= 0}>
           {busy ? 'Salvando…' : `Adicionar em "${selected?.name ?? '…'}"`}
         </button>
