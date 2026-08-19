@@ -29,15 +29,15 @@ export async function addVariableExpense(
     categoryName: string;
     amount: number;
     description: string;
-    /** Data de inclusão do gasto (ms). Padrão: agora. */
-    createdAt?: number;
+    /** Data do lançamento; sem ela, o momento atual. */
+    date?: Date;
   },
 ): Promise<void> {
-  const { createdAt, ...rest } = input;
-  const when = createdAt != null ? new Date(createdAt) : new Date();
+  const { date, description, ...rest } = input;
+  const when = date ?? new Date();
   await addDoc(expensesCol(compartmentId, ym), {
     ...rest,
-    description: input.description.trim(),
+    description: description.trim(),
     createdAt: when.getTime(),
     week: weekOfMonth(when),
   });
