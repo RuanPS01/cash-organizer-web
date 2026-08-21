@@ -5,9 +5,13 @@ export const ENTRY_STATUSES = [
   'Pago',
   'Sem gasto',
   'Não disponível ainda',
+  'Ignorar',
 ] as const;
 
 export type EntryStatus = (typeof ENTRY_STATUSES)[number];
+
+/** Status que tira a linha da soma do gasto do mês (o ideal continua valendo). */
+export const IGNORED_STATUS: EntryStatus = 'Ignorar';
 
 /** Todos os valores monetários são armazenados em centavos (inteiro). */
 export interface Compartment {
@@ -60,6 +64,8 @@ export interface CategoryTotal {
   name: string;
   ideal: number;
   actual: number;
+  /** Categoria com status "Ignorar": o gasto dela fica fora do total do mês. */
+  ignored?: boolean;
 }
 
 export interface MonthTotals {

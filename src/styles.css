@@ -434,47 +434,51 @@ label input { margin-top: 0.35rem; font-weight: 400; }
 
 .desc-input { flex: 1 1 auto; min-width: 0; }
 
-.date-btn { flex: 0 0 auto; padding: 0.55rem 0.85rem; }
+.date-btn,
+.date-clear { flex: 0 0 auto; padding: 0.55rem 0.85rem; }
 
-/* Destaque enquanto a data do lançamento não for a de hoje (mesma cor de
-   atenção da linha .date-status.custom, logo abaixo do campo) */
-.date-btn.active {
+/* O botão de data é uma "casca": o input nativo fica por cima, invisível, para
+   que o toque abra direto o calendário do sistema. */
+.date-btn { position: relative; }
+
+.date-btn .date-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  color: transparent;
+  opacity: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.date-btn:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* Com data personalizada o anel de foco acompanha o laranja da borda */
+.date-btn.custom:focus-within { outline-color: var(--warn); }
+
+/* Data diferente de hoje: borda/ícone em laranja, junto com o texto abaixo */
+.date-btn.custom {
   color: var(--warn);
   border-color: var(--warn);
 }
 
-.date-picker {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.date-picker input { flex: 1 1 auto; min-width: 0; }
-.date-picker .btn { flex: 0 0 auto; }
-
 /* Linha sempre visível dizendo em que data o gasto será lançado */
 .date-status {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.6rem;
   font-size: 0.82rem;
   color: var(--muted);
   margin: -0.35rem 0 0.75rem;
 }
 
-.date-status.custom {
-  color: var(--warn);
-  border: 1px solid var(--warn);
-  border-radius: 10px;
-  padding: 0.45rem 0.5rem 0.45rem 0.7rem;
-  margin-top: 0;
-}
-
-.date-status span { flex: 1 1 auto; min-width: 0; }
-.date-status .btn { flex: 0 0 auto; color: var(--warn); border-color: var(--warn); }
+.date-status.custom { color: var(--warn); }
 
 .info h3 { margin-bottom: 0.75rem; }
 
@@ -777,6 +781,14 @@ tr:last-child td { border-bottom: none; }
 .st-paid { color: var(--ok); border-color: var(--ok); }
 .st-none { color: var(--muted); }
 .st-unavailable { color: var(--muted); }
+.st-ignored { color: var(--muted); border-style: dashed; }
+
+/* Linha com status "Ignorar": segue visível, mas o valor gasto (coluna
+   Valor/Soma) fica riscado por estar fora da soma do mês; o ideal continua
+   valendo e por isso não é riscado. */
+tr.row-ignored td.num:not(.hide-narrow) .money-cell,
+tr.row-ignored td.num:not(.hide-narrow) strong { text-decoration: line-through; }
+tr.row-ignored td { opacity: 0.75; }
 
 .totals-card { display: flex; flex-direction: column; gap: 0.9rem; }
 
@@ -921,6 +933,12 @@ tr:last-child td { border-bottom: none; }
 .badge.installment {
   background: var(--border);
   color: var(--muted);
+}
+
+.badge.ignored {
+  background: var(--border);
+  color: var(--muted);
+  margin-left: 0.4rem;
 }
 
 .text-cell {

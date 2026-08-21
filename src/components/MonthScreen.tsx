@@ -11,7 +11,7 @@ import { dayLabel, monthLabel, nextMonthKey, prevMonthKey } from '../utils/dates
 import { useMonthData } from '../hooks/useMonthData';
 import { ConfirmModal, EditableMoney } from './shared';
 import { StatsView } from './StatsView';
-import { ENTRY_STATUSES } from '../types';
+import { ENTRY_STATUSES, IGNORED_STATUS } from '../types';
 import type { EntryStatus } from '../types';
 
 const STATUS_CLASS: Record<EntryStatus, string> = {
@@ -21,6 +21,7 @@ const STATUS_CLASS: Record<EntryStatus, string> = {
   Pago: 'st-paid',
   'Sem gasto': 'st-none',
   'Não disponível ainda': 'st-unavailable',
+  Ignorar: 'st-ignored',
 };
 
 function StatusSelect(props: {
@@ -162,7 +163,7 @@ export function MonthScreen(props: {
                 </thead>
                 <tbody>
                   {data.fixedEntries.map((f) => (
-                    <tr key={f.id}>
+                    <tr key={f.id} className={f.status === IGNORED_STATUS ? 'row-ignored' : ''}>
                       <td>
                         {f.name}
                         {f.installmentTotal ? (
@@ -246,7 +247,7 @@ export function MonthScreen(props: {
                     const isOpen = expanded === c.id;
                     return (
                       <Fragment key={c.id}>
-                        <tr>
+                        <tr className={c.status === IGNORED_STATUS ? 'row-ignored' : ''}>
                           <td>
                             <button
                               className="link-btn"

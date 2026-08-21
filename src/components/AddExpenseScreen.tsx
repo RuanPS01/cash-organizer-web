@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { CalendarDays, Plus } from 'lucide-react';
+import { CalendarDays, Eraser, Plus } from 'lucide-react';
 import { addCategory, addVariableExpense } from '../services/expenses';
+import { computeTotals } from '../services/months';
 import { formatBRL } from '../utils/money';
 import {
   dateFromDayKey,
@@ -35,18 +36,31 @@ export function AddExpenseScreen(props: {
   const [newCatName, setNewCatName] = useState('');
   const [newCatIdeal, setNewCatIdeal] = useState(0);
   // Data do lançamento (YYYY-MM-DD): começa no dia atual e só muda se o
-  // usuário personalizar pelo botão de calendário.
+  // usuário escolher outra no botão de calendário.
   const today = dayKey();
   const [date, setDate] = useState(today);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const isToday = date === today;
   const dateSummary = isToday
     ? `Data do gasto: hoje (${dayKeyLabel(date)}). Toque para escolher outra.`
-    : `Data personalizada do gasto: ${dayKeyFullLabel(date)}. Toque para alterar.`;
+    : `Data do gasto: ${dayKeyFullLabel(date)}. Toque para alterar.`;
 
   // Qualquer dia é aceito (o mês do app é só a referência da fatura); limpar o
   // campo volta para hoje.
   const pickDate = (value: string) => setDate(value || today);
+
+  // No celular o toque cai no input nativo (invisível sobre o botão) e já abre
+  // o seletor; no desktop, o clique sozinho não abre, daí o showPicker.
+  const openDatePicker = () => {
+    const el = dateInputRef.current;
+    if (!el || typeof el.showPicker !== 'function') return;
+    try {
+      el.showPicker();
+    } catch {
+      // Navegadores recusam showPicker fora de um gesto do usuário ou quando o
+      // seletor já está aberto; nesse caso o comportamento nativo basta.
+    }
+  };
 
   const selected =
     categories.find((c) => c.id === categoryId) ?? defaultCategory ?? null;
@@ -62,8 +76,9 @@ export function AddExpenseScreen(props: {
       .filter((e) => e.week === currentWeek)
       .reduce((s, e) => s + e.amount, 0);
     const weeklyIdeal = Math.round(ideal / 4);
-    const fixedTotal = data.fixedEntries.reduce((s, f) => s + f.amount, 0);
-    const varTotal = data.expenses.reduce((s, e) => s + e.amount, 0);
+    // Totais do mês pelo mesmo cálculo da aba de pagamento (linhas com status
+    // "Ignorar" ficam de fora).
+    const totals = computeTotals(data.fixedEntries, data.categoryEntries, data.expenses);
     return {
       ideal,
       weeklyIdeal,
@@ -71,8 +86,8 @@ export function AddExpenseScreen(props: {
       spentWeek,
       remainingMonth: ideal - spentMonth,
       remainingWeek: weeklyIdeal - spentWeek,
-      fixedTotal,
-      varTotal,
+      fixedTotal: totals.fixedActual,
+      varTotal: totals.varActual,
     };
   }, [data, selected, currentWeek]);
 
@@ -174,24 +189,18 @@ export function AddExpenseScreen(props: {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <button
-            type="button"
-            className={`btn icon date-btn${isToday ? '' : ' active'}`}
-            aria-label={dateSummary}
-            aria-expanded={showDatePicker}
-            title={dateSummary}
-            onClick={() => setShowDatePicker((v) => !v)}
-          >
+          {/* O input nativo fica invisível por cima do botão: o toque real
+              abre o calendário do sistema, sem campos extras na tela. */}
+          <div className={`btn icon date-btn${isToday ? '' : ' custom'}`}>
             <CalendarDays size={18} aria-hidden />
-          </button>
-        </div>
-
-        {showDatePicker && (
-          <div className="date-picker">
             <input
+              ref={dateInputRef}
               type="date"
-              aria-label="Data do gasto"
+              className="date-native"
+              aria-label={dateSummary}
+              title={dateSummary}
               value={date}
+              onClick={openDatePicker}
               onChange={(e) => {
                 // "Limpar" no seletor do celular devolve valor vazio: volta
                 // para hoje e reescreve o campo, já que o estado pode não
@@ -200,38 +209,23 @@ export function AddExpenseScreen(props: {
                 pickDate(e.target.value);
               }}
             />
-            <button
-              type="button"
-              className="btn small"
-              disabled={isToday}
-              onClick={() => setDate(today)}
-            >
-              Hoje
-            </button>
           </div>
-        )}
-
-        {/* Estado da data sempre visível: sem ele o único indício de data
-            personalizada seria a cor do botão. */}
-        <div className={`date-status${isToday ? '' : ' custom'}`}>
-          <span>
-            {isToday ? (
-              <>
-                Data: <strong>hoje ({dayKeyLabel(date)})</strong>
-              </>
-            ) : (
-              <>
-                Data personalizada: <strong>{dayKeyFullLabel(date)}</strong> · semana{' '}
-                {weekOfMonth(dateFromDayKey(date))}
-              </>
-            )}
-          </span>
-          {!isToday && (
-            <button type="button" className="btn small" onClick={() => setDate(today)}>
-              Usar hoje
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn icon date-clear"
+            aria-label="Limpar a data escolhida e voltar para hoje"
+            title="Limpar a data escolhida e voltar para hoje"
+            disabled={isToday}
+            onClick={() => setDate(today)}
+          >
+            <Eraser size={18} aria-hidden />
+          </button>
         </div>
+
+        <p className={`date-status${isToday ? '' : ' custom'}`}>
+          Data:{' '}
+          <strong>{isToday ? `hoje (${dayKeyLabel(date)})` : dayKeyFullLabel(date)}</strong>
+        </p>
         <button className="btn primary block" type="submit" disabled={busy || cents <= 0}>
           {busy ? 'Salvando…' : `Adicionar em "${selected?.name ?? '…'}"`}
         </button>
