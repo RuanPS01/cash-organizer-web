@@ -79,6 +79,12 @@ export function MonthlyComparisonCard(props: {
           <ProgressBar ratio={r.actual / maxMonthly} danger={r.ideal > 0 && r.actual > r.ideal} />
           <p className="muted small">
             Fixos {formatBRL(r.fixed)} · Variáveis {formatBRL(r.variable)}
+            {r.ideal > 0 &&
+              (r.actual <= r.ideal ? (
+                <> · Restante {formatBRL(r.ideal - r.actual)}</>
+              ) : (
+                <span className="neg"> · Excedido {formatBRL(r.actual - r.ideal)}</span>
+              ))}
           </p>
         </div>
       ))}

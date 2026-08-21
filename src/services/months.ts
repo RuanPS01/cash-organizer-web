@@ -2,6 +2,7 @@ import { collection, doc, getDoc, getDocs, updateDoc, writeBatch } from 'firebas
 import type { WriteBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { nextMonthKey } from '../utils/dates';
+import { IGNORED_STATUS } from '../types';
 import type {
   Category,
   CategoryEntry,
@@ -194,6 +195,11 @@ export async function setOpenMonth(
   await batch.commit();
 }
 
+/**
+ * Totais do mês. Linhas com status "Ignorar" ficam de fora do gasto somado
+ * (fixedActual/varActual) mas continuam contando no ideal, que é o orçamento
+ * planejado; o valor delas segue visível na tela, marcado como ignorado.
+ */
 export function computeTotals(
   fixedEntries: FixedEntry[],
   categoryEntries: CategoryEntry[],
@@ -201,21 +207,31 @@ export function computeTotals(
 ): MonthTotals {
   const byCategory: MonthTotals['byCategory'] = {};
   for (const c of categoryEntries) {
-    byCategory[c.id] = { name: c.name, ideal: c.idealAmount, actual: 0 };
+    byCategory[c.id] = {
+      name: c.name,
+      ideal: c.idealAmount,
+      actual: 0,
+      ignored: c.status === IGNORED_STATUS,
+    };
   }
   for (const e of expenses) {
     const cat = (byCategory[e.categoryId] ??= {
       name: e.categoryName,
       ideal: 0,
       actual: 0,
+      ignored: false,
     });
     cat.actual += e.amount;
   }
   return {
     fixedIdeal: fixedEntries.reduce((s, f) => s + f.idealAmount, 0),
-    fixedActual: fixedEntries.reduce((s, f) => s + f.amount, 0),
+    fixedActual: fixedEntries
+      .filter((f) => f.status !== IGNORED_STATUS)
+      .reduce((s, f) => s + f.amount, 0),
     varIdeal: categoryEntries.reduce((s, c) => s + c.idealAmount, 0),
-    varActual: expenses.reduce((s, e) => s + e.amount, 0),
+    varActual: Object.values(byCategory)
+      .filter((c) => !c.ignored)
+      .reduce((s, c) => s + c.actual, 0),
     byCategory,
   };
 }

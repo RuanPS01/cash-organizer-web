@@ -72,7 +72,12 @@ export function StatsView(props: {
         {categories.map(([id, c]) => (
           <div key={id} className="stat-row">
             <div className="stat-head">
-              <span>{c.name}</span>
+              <span>
+                {c.name}
+                {/* Categoria ignorada: o gasto aparece aqui, mas está fora do
+                    total do mês. */}
+                {c.ignored && <span className="badge ignored">ignorado</span>}
+              </span>
               <span>
                 <strong>{formatBRL(c.actual)}</strong>
                 {c.ideal > 0 && (

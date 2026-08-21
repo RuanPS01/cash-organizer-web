@@ -7,6 +7,14 @@ Frontend em **Vite + React + TypeScript**, conversando **diretamente com o Fires
 (sem backend próprio). As rules e functions do Firebase ficam no repositório
 `cash-organizer-functions`.
 
+## Documentação
+
+A pasta [`docs/`](docs/README.md) tem a documentação técnica completa:
+arquitetura, tecnologias, identidade visual, componentes e telas, padrões de
+código, banco de dados, fluxos, responsividade, contexto do produto e regras de
+manutenção. Agentes de IA devem começar por
+[`docs/00-regras-para-ia.md`](docs/00-regras-para-ia.md).
+
 ## Conceitos
 
 - **Compartimento financeiro**: subdivisão de contexto de contas (funciona como um
@@ -19,7 +27,8 @@ Frontend em **Vite + React + TypeScript**, conversando **diretamente com o Fires
   Cada categoria tem um gasto ideal do mês (o limite semanal é o ideal ÷ 4).
 - **Mês**: todos os gastos são referentes ao mês corrente do compartimento. Cada linha
   (fixo ou categoria) tem um status: `Pendente`, `Parcialmente pago`,
-  `Agendado/Automático`, `Pago`, `Sem gasto`, `Não disponível ainda`. O botão
+  `Agendado/Automático`, `Pago`, `Sem gasto`, `Não disponível ainda`, `Ignorar`
+  (este último tira o valor da soma do gasto do mês, mantendo o ideal). O botão
   **Virar mês** só é liberado quando não há linhas `Pendente`; ao virar, o mês é
   fechado (com totais gravados para estatísticas) e o próximo é criado mantendo os
   fixos e categorias. Meses anteriores continuam consultáveis.
