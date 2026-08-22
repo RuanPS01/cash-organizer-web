@@ -18,8 +18,8 @@ export default defineConfig(() => ({
         lang: 'pt-BR',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#0b1220',
-        theme_color: '#0f766e',
+        background_color: '#000000',
+        theme_color: '#000000',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -37,6 +37,29 @@ export default defineConfig(() => ({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         navigationPreload: false,
         cleanupOutdatedCaches: true,
+        // As fontes da identidade (Chakra Petch e Oxanium) vêm do Google
+        // Fonts: sem cache elas sumiriam offline e o app cairia na fonte do
+        // sistema. CacheFirst porque o arquivo servido é imutável.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

@@ -21,11 +21,13 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
     <div className="shell">
       <header className="topbar">
         <span className="brand">
-          <Wallet size={18} aria-hidden />
-          Cash Organizer
+          <span className="brand-mark" aria-hidden>
+            <Wallet size={16} />
+          </span>
+          <span className="brand-name">Cash Organizer</span>
         </span>
         <span className="compartment">
-          {props.compartment.name}
+          <span className="name">{props.compartment.name}</span>
           <button className="btn ghost small" onClick={props.onLogout}>
             Sair
           </button>
@@ -118,7 +120,9 @@ export default function App() {
       <div className="login-wrap">
         <div className="login-card center">
           <div className="login-logo">
-            <Wallet size={40} aria-hidden />
+            <span className="brand-mark big" aria-hidden>
+              <Wallet size={34} />
+            </span>
           </div>
           <p className="muted">Abrindo seu compartimento…</p>
         </div>

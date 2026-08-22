@@ -88,38 +88,46 @@ function FixedExpenseModal(props: {
       onCancel={props.onCancel}
     >
       <div className="modal-form">
-        <input
-          placeholder="Nome (ex.: Aluguel)"
-          value={name}
-          autoFocus={!initial}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          placeholder="Comentário/descrição (opcional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <span className="field">
+          <input
+            placeholder="Nome (ex.: Aluguel)"
+            value={name}
+            autoFocus={!initial}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </span>
+        <span className="field">
+          <input
+            placeholder="Comentário/descrição (opcional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </span>
         <div className="inline-pair">
           <MoneyInput valueCents={amount} onChange={setAmount} placeholder="Valor" />
           <MoneyInput valueCents={ideal} onChange={setIdeal} placeholder="Ideal (opcional)" />
         </div>
         <div className="inline-pair installments">
           <span className="muted small">Parcela (opcional):</span>
-          <input
-            inputMode="numeric"
-            placeholder="2"
-            value={instCur}
-            onChange={(e) => setInstCur(e.target.value.replace(/\D/g, ''))}
-          />
+          <span className="field">
+            <input
+              inputMode="numeric"
+              placeholder="2"
+              value={instCur}
+              onChange={(e) => setInstCur(e.target.value.replace(/\D/g, ''))}
+            />
+          </span>
           <span className="muted">de</span>
-          <input
-            inputMode="numeric"
-            placeholder="4"
-            value={instTot}
-            onChange={(e) => setInstTot(e.target.value.replace(/\D/g, ''))}
-          />
+          <span className="field">
+            <input
+              inputMode="numeric"
+              placeholder="4"
+              value={instTot}
+              onChange={(e) => setInstTot(e.target.value.replace(/\D/g, ''))}
+            />
+          </span>
         </div>
-        <p className="muted small">
+        <p className="card-hint">
           Em gastos parcelados, a parcela avança a cada virada de mês; após a última, o gasto sai
           dos próximos meses automaticamente.
         </p>
@@ -212,12 +220,12 @@ export function ManageScreen(props: {
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2>Gerenciar</h2>
+        <h2 className="h2-gold">Gerenciar</h2>
       </header>
 
       <section className="card">
         <h3>Gastos fixos</h3>
-        <p className="muted small">
+        <p className="card-hint">
           O valor fixo é usado como gasto ideal automaticamente, a menos que você defina outro
           ideal. Novos fixos entram no mês corrente em aberto.
         </p>
@@ -287,7 +295,7 @@ export function ManageScreen(props: {
 
       <section className="card">
         <h3>Categorias de gastos variáveis</h3>
-        <p className="muted small">
+        <p className="card-hint">
           Defina o gasto ideal do mês por categoria. Use as setas para mudar a ordem (refletida
           nos chips de novo gasto). A categoria <strong>padrão</strong> vem pré-selecionada ao
           adicionar um gasto; use "tornar padrão" para trocar.
@@ -313,7 +321,7 @@ export function ManageScreen(props: {
                       onSave={(name) => renameCategory(compartmentId, currentMonth, c.id, name)}
                     />
                     {c.isDefault ? (
-                      <span className="badge open">padrão</span>
+                      <span className="badge padrao">padrão</span>
                     ) : (
                       <button
                         className="mini-btn"
@@ -366,11 +374,13 @@ export function ManageScreen(props: {
           })}
         </ul>
         <form className="inline-form" onSubmit={submitCategory}>
-          <input
-            placeholder="Nome (ex.: Mercado)"
-            value={catName}
-            onChange={(e) => setCatName(e.target.value)}
-          />
+          <span className="field">
+            <input
+              placeholder="Nome (ex.: Mercado)"
+              value={catName}
+              onChange={(e) => setCatName(e.target.value)}
+            />
+          </span>
           <MoneyInput valueCents={catIdeal} onChange={setCatIdeal} placeholder="Ideal do mês" />
           <button className="btn primary" type="submit" disabled={busy}>
             Adicionar

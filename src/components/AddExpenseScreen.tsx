@@ -138,7 +138,7 @@ export function AddExpenseScreen(props: {
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2>Novo gasto</h2>
+        <h2 className="h2-gold">Novo gasto</h2>
         <span className="muted">{monthLabel(currentMonth)}</span>
       </header>
 
@@ -165,11 +165,13 @@ export function AddExpenseScreen(props: {
 
         {showNewCategory && (
           <div className="new-category">
-            <input
-              placeholder="Nome da categoria"
-              value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-            />
+            <span className="field">
+              <input
+                placeholder="Nome da categoria"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+              />
+            </span>
             <MoneyInput
               valueCents={newCatIdeal}
               onChange={setNewCatIdeal}
@@ -183,12 +185,13 @@ export function AddExpenseScreen(props: {
 
         <MoneyInput valueCents={cents} onChange={setCents} big autoFocus />
         <div className="desc-row">
-          <input
-            className="desc-input"
-            placeholder="Descrição (opcional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
+          <span className="field">
+            <input
+              placeholder="Descrição (opcional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </span>
           {/* O input nativo fica invisível por cima do botão: o toque real
               abre o calendário do sistema, sem campos extras na tela. */}
           <div className={`btn icon date-btn${isToday ? '' : ' custom'}`}>
@@ -235,7 +238,7 @@ export function AddExpenseScreen(props: {
       {selected && (
         <section className="info card">
           <h3>
-            {selected.name} · semana {currentWeek}
+            {selected.name} <span className="week">· semana {currentWeek}</span>
           </h3>
           {info.ideal > 0 ? (
             <>

@@ -30,18 +30,20 @@ function StatusSelect(props: {
   onChange: (s: EntryStatus) => void;
 }) {
   return (
-    <select
-      className={`status-select ${STATUS_CLASS[props.value] ?? ''}`}
-      value={props.value}
-      disabled={props.disabled}
-      onChange={(e) => props.onChange(e.target.value as EntryStatus)}
-    >
-      {ENTRY_STATUSES.map((s) => (
-        <option key={s} value={s}>
-          {s}
-        </option>
-      ))}
-    </select>
+    <span className={`status-frame ${STATUS_CLASS[props.value] ?? ''}`}>
+      <select
+        className="status-select"
+        value={props.value}
+        disabled={props.disabled}
+        onChange={(e) => props.onChange(e.target.value as EntryStatus)}
+      >
+        {ENTRY_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }
 
@@ -122,7 +124,7 @@ export function MonthScreen(props: {
           <ChevronLeft size={18} aria-hidden />
         </button>
         <div className="month-title">
-          <h2>{monthLabel(viewMonth)}</h2>
+          <h2 className="h2-gold">{monthLabel(viewMonth)}</h2>
           {data.month?.status === 'closed' && <span className="badge closed">Fechado</span>}
           {editable && <span className="badge open">Em aberto</span>}
         </div>

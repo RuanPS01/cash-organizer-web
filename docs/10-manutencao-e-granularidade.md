@@ -6,7 +6,7 @@ Referência de agosto de 2026 (linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 1015 |
+| `styles.css` | 1520 |
 | `components/MonthScreen.tsx` | 476 |
 | `components/ManageScreen.tsx` | 414 |
 | `services/months.ts` | 317 |
@@ -16,7 +16,7 @@ Referência de agosto de 2026 (linhas):
 | `App.tsx` | 142 |
 | demais | menos de 130 cada |
 
-O projeto inteiro tem cerca de 4 mil linhas. Esse tamanho é uma vantagem: dá para
+O projeto inteiro tem cerca de 4,5 mil linhas. Esse tamanho é uma vantagem: dá para
 ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 ## 10.2 Quando criar um arquivo novo

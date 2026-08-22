@@ -110,15 +110,16 @@ Estas valem sempre, sem precisar pedir:
 2. **Dinheiro é sempre inteiro em centavos.** Nunca use float nem `toFixed`.
    Formate com `formatBRL` e leia digitação com `digitsToCents`, ambos em
    [`src/utils/money.ts`](../src/utils/money.ts).
-3. **Nunca use cor hardcoded.** Use as variáveis CSS (`var(--primary)`,
-   `var(--muted)`, `var(--danger)`, `var(--warn)`, `var(--ok)`). Ver
+3. **Nunca use cor hardcoded.** Use as variáveis CSS (`var(--gold)`,
+   `var(--gold-soft)`, `var(--text)`, `var(--muted)`, `var(--danger)`). Ver
    [03-identidade-visual.md](03-identidade-visual.md).
 4. **Todo estilo novo vai para `src/styles.css`**, com classe semântica em
    kebab-case. Nada de estilo inline (exceto valor dinâmico, como a largura da
    barra de progresso), nada de CSS-in-JS, nada de Tailwind.
-5. **Sempre suporte tema claro e escuro.** Os tokens já cobrem os dois; se
-   precisar de uma cor nova, declare o par no `:root` e no bloco
-   `@media (prefers-color-scheme: dark)`.
+5. **O tema é único e escuro.** A identidade é ouro sobre preto puro; não
+   existe versão clara e não se deve criar uma. Peça nova com moldura entra no
+   sistema `.frame` (regra agrupada no topo do `styles.css`), com chanfro por
+   `clip-path` e preenchimento sempre opaco.
 6. **Mobile é requisito, não polimento.** Toda tela precisa funcionar em 360px de
    largura sem scroll horizontal da página. Ver
    [08-responsividade-mobile.md](08-responsividade-mobile.md).
@@ -156,7 +157,7 @@ Antes de dizer que terminou:
 - [ ] `npm run typecheck` passa sem erro.
 - [ ] Nenhum travessão nem caractere de seta no que eu escrevi
       (`LC_ALL=C.UTF-8 grep -rnP "[\x{2014}\x{2013}\x{2192}\x{2190}]" <arquivos alterados>`).
-- [ ] Nenhuma cor hardcoded; tema claro e escuro conferidos.
+- [ ] Nenhuma cor hardcoded; peça nova usa o sistema `.frame` e o chanfro `--c`.
 - [ ] Valores monetários em centavos, formatados com `formatBRL`.
 - [ ] Nenhum acesso a `firebase/firestore` fora de `src/services/`.
 - [ ] Testei (no navegador ou mentalmente) em 360px de largura, sem scroll

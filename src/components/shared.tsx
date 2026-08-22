@@ -45,16 +45,21 @@ export function MoneyInput(props: {
   autoFocus?: boolean;
   id?: string;
 }) {
+  // A moldura chanfrada vem do invólucro .field: input não aceita
+  // pseudo-elemento, e é o ::before que desenha o miolo escuro por dentro da
+  // moldura em ouro. Com "big" o invólucro vira a placa de valor.
   return (
-    <input
-      id={props.id}
-      className={props.big ? 'money-input big' : 'money-input'}
-      inputMode="numeric"
-      autoFocus={props.autoFocus}
-      placeholder={props.placeholder ?? 'R$ 0,00'}
-      value={props.valueCents > 0 ? formatBRL(props.valueCents) : ''}
-      onChange={(e) => props.onChange(digitsToCents(e.target.value))}
-    />
+    <span className={props.big ? 'field plate' : 'field'}>
+      <input
+        id={props.id}
+        className={props.big ? 'money-input big' : 'money-input'}
+        inputMode="numeric"
+        autoFocus={props.autoFocus}
+        placeholder={props.placeholder ?? 'R$ 0,00'}
+        value={props.valueCents > 0 ? formatBRL(props.valueCents) : ''}
+        onChange={(e) => props.onChange(digitsToCents(e.target.value))}
+      />
+    </span>
   );
 }
 
@@ -98,19 +103,21 @@ export function EditableMoney(props: {
   };
 
   return (
-    <input
-      ref={inputRef}
-      className="money-cell-input"
-      inputMode="numeric"
-      value={cents > 0 ? formatBRL(cents) : ''}
-      placeholder="R$ 0,00"
-      onChange={(e) => setCents(digitsToCents(e.target.value))}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') commit();
-        if (e.key === 'Escape') setEditing(false);
-      }}
-    />
+    <span className="field inline">
+      <input
+        ref={inputRef}
+        className="money-cell-input"
+        inputMode="numeric"
+        value={cents > 0 ? formatBRL(cents) : ''}
+        placeholder="R$ 0,00"
+        onChange={(e) => setCents(digitsToCents(e.target.value))}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    </span>
   );
 }
 
@@ -154,17 +161,19 @@ export function EditableText(props: {
   };
 
   return (
-    <input
-      ref={inputRef}
-      className="money-cell-input text-cell-input"
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') commit();
-        if (e.key === 'Escape') setEditing(false);
-      }}
-    />
+    <span className="field inline">
+      <input
+        ref={inputRef}
+        className="money-cell-input text-cell-input"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    </span>
   );
 }
 

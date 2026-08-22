@@ -83,6 +83,6 @@ horizontal.**
 - [ ] Texto longo (nome de categoria, descrição de lançamento) quebra em vez de
       esticar a linha.
 - [ ] Conteúdo não fica escondido atrás da navbar fixa.
-- [ ] Conferi tema claro e escuro.
+- [ ] Molduras chanfradas inteiras, sem canto sem ouro nem miolo vazando.
 - [ ] Conferi a partir de 720px, com a navbar no topo.
 - [ ] Se mexi em tabela, conferi os dois lados do breakpoint de 560px.
