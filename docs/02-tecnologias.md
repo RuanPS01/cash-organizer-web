@@ -11,6 +11,7 @@
 | Ícones | lucide-react 1.x | única fonte de ícones do projeto |
 | PWA | vite-plugin-pwa 1.3 | manifest, ícones e service worker |
 | Estilo | CSS puro em arquivo único | `src/styles.css`, sem framework |
+| Fontes | Chakra Petch e Oxanium (Google Fonts) | carregadas no `index.html`, cacheadas pelo service worker |
 | Deploy | GitHub Actions e GitHub Pages | `.github/workflows/deploy.yml` |
 
 Não usamos: framework de CSS, biblioteca de componentes, router, gerenciador de
@@ -103,11 +104,14 @@ Configurado em [`vite.config.ts`](../vite.config.ts) com `VitePWA`:
 - `registerType: 'autoUpdate'` mais `registerSW({ immediate: true })` no
   `main.tsx`: cada deploy novo é aplicado sozinho.
 - Manifest em pt-BR, `display: standalone`, `orientation: portrait`,
-  `theme_color: #0f766e`, `background_color: #0b1220`.
+  `theme_color: #000000`, `background_color: #000000`.
 - Ícones em `public/icons/` (192, 512, 512 maskable e apple-touch).
 - Workbox faz precache do app shell (`js`, `css`, `html`, `svg`, `png`, `ico`,
   `webmanifest`). As chamadas ao Firestore não são interceptadas: o offline dos
   dados é responsabilidade do cache do próprio SDK em IndexedDB.
+- `runtimeCaching` guarda as fontes do Google (`fonts.googleapis.com` e
+  `fonts.gstatic.com`) em CacheFirst: sem isso a identidade cairia na fonte do
+  sistema quando o app abrisse offline.
 
 Ao mexer em PWA, rode `npm run build` e confira o `dist/sw.js` gerado. Só o
 `typecheck` não pega erro de configuração de plugin.

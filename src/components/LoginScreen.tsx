@@ -67,31 +67,37 @@ export function LoginScreen(props: { onEnter: (compartment: Compartment) => void
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <div className="login-logo">
-          <Wallet size={40} aria-hidden />
+          <span className="brand-mark big" aria-hidden>
+            <Wallet size={34} />
+          </span>
         </div>
-        <h1>Cash Organizer</h1>
+        <h1 className="h2-gold">Cash Organizer</h1>
         <p className="login-hint">
           Entre em um <strong>compartimento financeiro</strong>, a subdivisão onde ficam suas
           contas e gastos. Se ele ainda não existir, você poderá criá-lo.
         </p>
         <label>
           Nome do compartimento
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="ex.: casa, pessoal, viagem…"
-            autoComplete="username"
-          />
+          <span className="field">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="ex.: casa, pessoal, viagem…"
+              autoComplete="username"
+            />
+          </span>
         </label>
         <label>
           Senha
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Senha do compartimento"
-            autoComplete="current-password"
-          />
+          <span className="field">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Senha do compartimento"
+              autoComplete="current-password"
+            />
+          </span>
         </label>
         {error && <p className="form-error">{error}</p>}
         <button className="btn primary block" type="submit" disabled={busy}>

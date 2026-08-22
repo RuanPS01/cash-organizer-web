@@ -85,6 +85,14 @@ setas, "tornar padrão" e remoção). Mostra totais de cadastro por seção.
 Esses componentes não conhecem domínio: recebem valores e devolvem eventos.
 Mantenha assim.
 
+**Campo com moldura.** `input` e `select` não aceitam pseudo-elemento, e é o
+`::before` que desenha o miolo escuro dentro da moldura de ouro. Por isso todo
+campo vai dentro de um invólucro: `<span className="field"><input …/></span>`
+(com `plate` na placa de valor e `inline` na edição em tabela), e o status usa
+`<span className="status-frame st-…"><select …/></span>`. Ao criar um campo
+novo, use o invólucro em vez de estilizar o controle direto. Ver
+[03-identidade-visual.md](03-identidade-visual.md), seção 3.5.
+
 ### `components/MonthlyComparisonCard.tsx`
 
 `props: { compartmentId, viewMonth, data }`

@@ -11,7 +11,7 @@ precisar reconstruir o contexto lendo o código inteiro.
 | [00-regras-para-ia.md](00-regras-para-ia.md) | Regras obrigatórias para agentes de IA. Leia primeiro. |
 | [01-arquitetura.md](01-arquitetura.md) | Camadas, pastas, fluxo de dados, boot do app. |
 | [02-tecnologias.md](02-tecnologias.md) | Dependências, versões, scripts, build, deploy, PWA. |
-| [03-identidade-visual.md](03-identidade-visual.md) | Tokens de cor, tema claro/escuro, tipografia, padrões de UI. |
+| [03-identidade-visual.md](03-identidade-visual.md) | Identidade Ouro sobre preto: tokens, chanfros, molduras, tipografia, UI. |
 | [04-componentes-e-telas.md](04-componentes-e-telas.md) | Inventário de telas, componentes reutilizáveis e hooks. |
 | [05-padroes-de-codigo.md](05-padroes-de-codigo.md) | Nomenclatura, estilo de código, TypeScript, commits. |
 | [06-banco-de-dados.md](06-banco-de-dados.md) | Modelo do Firestore, formato dos dados, ciclo de vida do mês. |
