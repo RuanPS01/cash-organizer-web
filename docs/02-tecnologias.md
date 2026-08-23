@@ -105,7 +105,9 @@ Configurado em [`vite.config.ts`](../vite.config.ts) com `VitePWA`:
   `main.tsx`: cada deploy novo é aplicado sozinho.
 - Manifest em pt-BR, `display: standalone`, `orientation: portrait`,
   `theme_color: #000000`, `background_color: #000000`.
-- Ícones em `public/icons/` (192, 512, 512 maskable e apple-touch).
+- Ícones em `public/icons/` (192, 512, 512 maskable e apple-touch), em preto
+  com a carteira em ouro. Ver [03-identidade-visual.md](03-identidade-visual.md),
+  seção 3.9.
 - Workbox faz precache do app shell (`js`, `css`, `html`, `svg`, `png`, `ico`,
   `webmanifest`). As chamadas ao Firestore não são interceptadas: o offline dos
   dados é responsabilidade do cache do próprio SDK em IndexedDB.

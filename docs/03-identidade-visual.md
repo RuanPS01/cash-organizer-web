@@ -235,7 +235,29 @@ contando no orçamento.
 - **Foco visível**: campo em foco troca a moldura para ouro pleno e ganha
   brilho.
 
-## 3.9 Ícones
+## 3.9 Ícone do app (PWA)
+
+Os PNGs em [`public/icons/`](../public/icons) são a cara do app instalado e
+seguem a mesma identidade: **fundo preto sangrando**, glifo da carteira em
+gradiente de ouro (`#fff8dc`, `#e7c95f`, `#b78f24`, `#f2e0a2`, de cima para
+baixo) e um brilho radial suave de ouro no topo.
+
+| Arquivo | Lado | Particularidade |
+|---|---|---|
+| `icon-192.png` | 192 | moldura chanfrada de ouro, glifo em 52% do lado |
+| `icon-512.png` | 512 | idem |
+| `icon-maskable-512.png` | 512 | sem moldura e glifo em 42%: a máscara do Android corta até 20% da borda, então tudo fica na zona segura |
+| `apple-touch-icon.png` | 180 | sem moldura: o iOS aplica a máscara arredondada dele |
+
+Ao trocar o ícone, gere os quatro juntos e mantenha os nomes. Vale lembrar que
+o sistema operacional guarda o ícone escolhido na instalação: no celular, ver o
+ícone novo exige **reinstalar o app** (remover da tela inicial e adicionar de
+novo), mesmo com o deploy publicado.
+
+O favicon do navegador é um SVG embutido no [`index.html`](../index.html), com
+o mesmo glifo em `--gold` sólido.
+
+## 3.10 Ícones da interface
 
 Todos do `lucide-react`, tamanho 14 a 20 conforme o contexto (14 a 16 em linhas
 e chips, 18 em botões de ícone, 20 na navegação, 34 na marca grande do login).
