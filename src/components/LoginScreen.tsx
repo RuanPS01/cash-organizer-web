@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Wallet } from 'lucide-react';
 import { createCompartment, openCompartment, slugify } from '../services/compartments';
 import { saveSession } from '../services/session';
 import { ensureMonth } from '../services/months';
-import { ConfirmModal } from './shared';
+import { BrandMark, ConfirmModal } from './shared';
 import type { Compartment } from '../types';
 
 export function LoginScreen(props: { onEnter: (compartment: Compartment) => void }) {
@@ -67,9 +66,7 @@ export function LoginScreen(props: { onEnter: (compartment: Compartment) => void
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <div className="login-logo">
-          <span className="brand-mark big" aria-hidden>
-            <Wallet size={34} />
-          </span>
+          <BrandMark big />
         </div>
         <h1 className="h2-gold">Cash Organizer</h1>
         <p className="login-hint">

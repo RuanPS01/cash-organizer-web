@@ -173,7 +173,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Chip de categoria | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada) |
 | Card | `.card` | `.table-card`, `.totals-card`, `.info` |
 | Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored` |
-| Marca | `.brand-mark` | `.big` (login) |
+| Marca | `.brand-mark` (via `BrandMark`) | `.big` (login e abertura) |
 | Barra de progresso | `.progress` mais `.progress-fill` | `.over` troca para o gradiente terracota |
 | Valor editável | `.money-cell` | `.muted`, `.text-cell` |
 | Status | `.status-frame` mais `.status-select` | classes `.st-*` da tabela abaixo |
@@ -189,8 +189,11 @@ Detalhes de acabamento que fazem parte da identidade:
 
 - a **placa de valor** (`.field.plate`) tem rebites: quatro pontos claros nos
   cantos, desenhados no `::after` com quatro `radial-gradient`;
-- a **marca** (`.brand-mark`) é um ladrilho de ouro com dois cantos cortados e
-  o símbolo da carteira vazado em preto;
+- a **marca** (`.brand-mark`, componente `BrandMark`) é o mesmo desenho do
+  ícone do PWA instalado: ladrilho preto com moldura chanfrada de ouro e a
+  carteira em gradiente de ouro. Ela aparece na topbar, no login e na tela de
+  abertura do compartimento, sempre pelo mesmo componente, para que app e
+  ícone nunca divirjam;
 - a **aba ativa** no desktop ganha moldura chanfrada e brilho;
 - a **barra de rolagem** horizontal dos chips e das tabelas é fina, com trilho
   escuro e polegar em gradiente de ouro.
