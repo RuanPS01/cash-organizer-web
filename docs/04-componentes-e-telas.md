@@ -81,6 +81,7 @@ setas, "tornar padrão" e remoção). Mostra totais de cadastro por seção.
 | `EditableMoney` | `{ valueCents, onSave, disabled?, muted? }` | valor que vira input ao toque e salva no blur ou Enter |
 | `EditableText` | `{ value, onSave, disabled? }` | texto que vira input ao toque; vazio cancela |
 | `ProgressBar` | `{ ratio, danger? }` | barra de progresso; passa de 1 fica com a classe `over` |
+| `BrandMark` | `{ big? }` | marca do app, igual ao ícone do PWA. Use sempre este componente em vez de desenhar a marca de novo |
 
 Esses componentes não conhecem domínio: recebem valores e devolvem eventos.
 Mantenha assim.

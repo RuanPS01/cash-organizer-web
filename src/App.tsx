@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Banknote, BarChart3, Plus, Settings, Wallet } from 'lucide-react';
+import { Banknote, BarChart3, Plus, Settings } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
 import { AddExpenseScreen } from './components/AddExpenseScreen';
 import { MonthScreen } from './components/MonthScreen';
 import { ManageScreen } from './components/ManageScreen';
+import { BrandMark } from './components/shared';
 import { clearSession, restoreSession } from './services/session';
 import { ensureMonth } from './services/months';
 import { useConfig, useMonthData } from './hooks/useMonthData';
@@ -21,9 +22,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
     <div className="shell">
       <header className="topbar">
         <span className="brand">
-          <span className="brand-mark" aria-hidden>
-            <Wallet size={16} />
-          </span>
+          <BrandMark />
           <span className="brand-name">Cash Organizer</span>
         </span>
         <span className="compartment">
@@ -120,9 +119,7 @@ export default function App() {
       <div className="login-wrap">
         <div className="login-card center">
           <div className="login-logo">
-            <span className="brand-mark big" aria-hidden>
-              <Wallet size={34} />
-            </span>
+            <BrandMark big />
           </div>
           <p className="muted">Abrindo seu compartimento…</p>
         </div>

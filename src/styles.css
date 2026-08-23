@@ -89,6 +89,7 @@
    -------------------------------------------------------------------------- */
 
 .frame,
+.brand-mark,
 .btn,
 .mini-btn,
 .chip,
@@ -116,6 +117,7 @@
 }
 
 .frame::before,
+.brand-mark::before,
 .btn::before,
 .mini-btn::before,
 .chip::before,
@@ -424,27 +426,28 @@ label .field { margin-top: 0.35rem; }
   margin: 0 0 1.25rem;
 }
 
-/* Marca: ladrilho chanfrado em ouro com o símbolo vazado */
+/* Marca: o mesmo ladrilho do ícone do PWA instalado (fundo preto, moldura
+   chanfrada de ouro e a carteira em gradiente). Entra no sistema .frame, então
+   o miolo escuro vem do ::before. */
 .brand-mark {
-  --c: 6px;
+  --c: 5px;
+  --frame-w: 1.5px;
+  --frame-fill: radial-gradient(70% 60% at 50% 22%, #171205, #000 70%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   flex: 0 0 auto;
-  background: linear-gradient(145deg, #fff4c6, #d4af37 45%, #8a6a1f);
-  color: var(--gold-ink);
-  clip-path: polygon(
-    var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c)
-  );
   box-shadow: 0 0 16px rgba(212, 175, 55, 0.25);
 }
 
 .brand-mark.big {
-  --c: 12px;
+  --c: 9px;
+  --frame-w: 2px;
   width: 64px;
   height: 64px;
+  box-shadow: 0 0 26px rgba(212, 175, 55, 0.3);
 }
 
 /* --------------------------------------------------------------------------
