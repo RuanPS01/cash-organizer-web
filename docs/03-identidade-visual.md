@@ -119,7 +119,11 @@ Escala e tratamento:
   em caixa alta, 0.62rem a 0.75rem, com `letter-spacing` de 0.12em a 0.16em.
 - Botões em caixa alta, `letter-spacing` de 0.12em a 0.14em.
 - O valor grande (`.money-input.big`) é 2.1rem, peso 800, vazado em ouro, com
-  `caret-color` sólido para o cursor não sumir.
+  `caret-color` sólido para o cursor não sumir. Com o campo vazio, a regra
+  `:placeholder-shown` desliga o gradiente e usa ouro sólido a 30%: como
+  `background-clip: text` pinta o gradiente atrás de qualquer texto do
+  elemento, inclusive do placeholder, uma cor translúcida sozinha não o
+  esconderia e o campo pareceria preenchido.
 
 ## 3.4 Chanfro
 
