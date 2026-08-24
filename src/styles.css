@@ -754,9 +754,20 @@ label .field { margin-top: 0.35rem; }
   caret-color: var(--gold);
 }
 
+/* Com o campo vazio o gradiente precisa sair de cena: background-clip: text
+   pinta o gradiente atrás de qualquer texto do elemento, inclusive do
+   placeholder, e uma cor translúcida por cima não o esconde. O resultado era
+   um "R$ 0,00" com a mesma cara de valor preenchido. Vazio, o texto volta a
+   ser ouro sólido com opacidade de placeholder. */
+.money-input.big:placeholder-shown {
+  background: none;
+  color: rgba(212, 175, 55, 0.3);
+  -webkit-text-fill-color: rgba(212, 175, 55, 0.3);
+}
+
 .money-input.big::placeholder {
-  color: rgba(212, 175, 55, 0.35);
-  -webkit-text-fill-color: rgba(212, 175, 55, 0.35);
+  color: rgba(212, 175, 55, 0.3);
+  -webkit-text-fill-color: rgba(212, 175, 55, 0.3);
 }
 
 /* Descrição mais os botões de data (ícone) lado a lado */
