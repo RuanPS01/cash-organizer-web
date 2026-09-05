@@ -55,6 +55,11 @@ export function MonthScreen(props: {
   const isCurrent = viewMonth === currentMonth;
   const editable = isCurrent && data.month?.status === 'open';
 
+  // Um mês de onde tudo já foi movido continua com o documento, mas vazio: é o
+  // conteúdo, e não a existência do mês, que decide se há algo a substituir.
+  const targetHasData =
+    data.fixedEntries.length + data.categoryEntries.length + data.expenses.length > 0;
+
   const totals = useMemo(
     () => computeTotals(data.fixedEntries, data.categoryEntries, data.expenses),
     [data],
@@ -88,11 +93,11 @@ export function MonthScreen(props: {
     }
   };
 
-  const doSetOpenMonth = async (reinitialize: boolean) => {
+  const doSetOpenMonth = async (replaceTarget: boolean) => {
     setBusy(true);
     setError(null);
     try {
-      await setOpenMonth(compartmentId, viewMonth, reinitialize);
+      await setOpenMonth(compartmentId, currentMonth, viewMonth, replaceTarget);
       props.onCurrentMonthChange(viewMonth);
       setOpenStep(0);
     } catch (err) {
@@ -129,7 +134,7 @@ export function MonthScreen(props: {
 
       {!isCurrent && !data.loading && (
         <button className="btn ghost small center-self" onClick={() => setOpenStep(1)}>
-          Definir {monthLabel(viewMonth)} como mês em aberto
+          Mover o mês atual para {monthLabel(viewMonth)}
         </button>
       )}
 
@@ -409,28 +414,29 @@ export function MonthScreen(props: {
         </ConfirmModal>
       )}
 
-      {openStep === 1 && !data.month && (
+      {openStep === 1 && !targetHasData && (
         <ConfirmModal
-          title="Definir mês em aberto?"
-          confirmLabel="Definir como mês em aberto"
+          title="Mover o mês para cá?"
+          confirmLabel="Mover e abrir o mês"
           busy={busy}
           onConfirm={() => doSetOpenMonth(false)}
           onCancel={() => setOpenStep(0)}
         >
           <p>
-            <strong>{monthLabel(viewMonth)}</strong> será iniciado com os gastos fixos e categorias
-            do cadastro e passará a ser o mês em aberto, recebendo os novos lançamentos.
+            Todo o conteúdo de <strong>{monthLabel(currentMonth)}</strong> (gastos fixos com valor
+            e status, categorias e lançamentos) será movido para{' '}
+            <strong>{monthLabel(viewMonth)}</strong>, que passa a ser o mês em aberto.
           </p>
           <p className="muted small">
-            O mês em aberto atual ({monthLabel(currentMonth)}) deixa de receber lançamentos, mas
-            os dados dele são mantidos.
+            Os cadastros de gastos fixos, categorias e origens não mudam: eles valem para qualquer
+            mês. {monthLabel(currentMonth)} fica vazio.
           </p>
         </ConfirmModal>
       )}
 
-      {openStep === 1 && data.month && (
+      {openStep === 1 && targetHasData && (
         <ConfirmModal
-          title="Definir mês em aberto?"
+          title="Mover o mês para cá?"
           confirmLabel="Continuar"
           busy={busy}
           onConfirm={() => setOpenStep(2)}
@@ -443,7 +449,7 @@ export function MonthScreen(props: {
           </p>
           <p>
             Para defini-lo como mês em aberto, essas informações serão <strong>substituídas</strong>{' '}
-            pelos cadastros atuais de gastos fixos e categorias.
+            pelo conteúdo de {monthLabel(currentMonth)}, que será movido para cá.
           </p>
         </ConfirmModal>
       )}
@@ -451,15 +457,15 @@ export function MonthScreen(props: {
       {openStep === 2 && (
         <ConfirmModal
           title="Tem certeza?"
-          confirmLabel="Substituir e abrir mês"
+          confirmLabel="Substituir e mover o mês"
           busy={busy}
           onConfirm={() => doSetOpenMonth(true)}
           onCancel={() => setOpenStep(0)}
         >
           <p>
             Os dados existentes de <strong>{monthLabel(viewMonth)}</strong>, incluindo os{' '}
-            {data.expenses.length} lançamento(s), serão apagados e o mês será reiniciado.{' '}
-            <strong>Esta ação não pode ser desfeita.</strong>
+            {data.expenses.length} lançamento(s), serão apagados e substituídos pelo conteúdo de{' '}
+            {monthLabel(currentMonth)}. <strong>Esta ação não pode ser desfeita.</strong>
           </p>
         </ConfirmModal>
       )}

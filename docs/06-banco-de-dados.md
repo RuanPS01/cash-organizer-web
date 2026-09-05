@@ -208,7 +208,24 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 | `computeTotals` | a cada render das telas com dados do mês | soma ideais e gastos, ignorando linhas com status `Ignorar` no gasto |
 | `closeMonth` | botão "Virar mês" | recusa se houver `Pendente`, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
 | `advanceInstallments` | dentro de `closeMonth` | incrementa `installmentCurrent`; quem estava na última parcela é desativado |
-| `setOpenMonth` | ação "Definir como mês em aberto" | sem reinicializar, garante o mês e troca o `currentMonth`. Com reinicialização, apaga linhas e lançamentos e recria a partir dos cadastros |
+| `setOpenMonth` | ação "Mover o mês atual para..." | move o conteúdo do mês em aberto (linhas de fixos, linhas de categorias e lançamentos, com o mesmo id) para o mês escolhido, esvazia a origem, troca o `currentMonth` e reconcilia o destino com os cadastros. Com `replaceTarget`, apaga antes o que já existia no destino |
+
+### Mover o mês de referência
+
+`setOpenMonth(compartmentId, fromYm, toYm, replaceTarget)` grava em três fases,
+cada uma em lotes de até 400 operações: prepara o destino (apaga o conteúdo
+antigo quando pedido e grava `{ status: 'open' }`, o que limpa `closedAt` e
+`totals` de um mês que já foi fechado), copia o conteúdo da origem e só então
+apaga a origem. A ordem é proposital: se a rede cair no meio, o pior caso é o
+conteúdo aparecer nos dois meses, e nada se perde.
+
+Os cadastros (`fixedExpenses`, `categories` e `origins`) pertencem ao
+compartimento, não ao mês, então não são copiados: já valem para qualquer mês.
+O `syncMonthEntries` do fim completa o destino com cadastro ativo que ainda não
+tinha linha.
+
+O documento do mês de origem permanece, vazio: as regras não permitem apagar
+`months`, e um mês sem `totals` não aparece no comparativo mensal.
 
 ## 6.10 Escritas em lote
 

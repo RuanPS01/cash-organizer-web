@@ -70,6 +70,7 @@ linha `Pendente`.
 | Cor só no ícone da origem | o usuário precisa distinguir dois cartões de relance, e a identidade continua ouro sobre preto porque moldura e preenchimento não mudam |
 | Histórico do mês na aba Adicionar | é onde o usuário está depois de lançar; conferir e corrigir o gasto recém-incluído não deveria exigir trocar de tela |
 | Data do lançamento livre, mas sempre dentro do mês em aberto | o mês do app é a referência da fatura, não o calendário |
+| Trocar o mês de referência move o conteúdo junto | quem percebe no meio do mês que estava lançando na referência errada quer corrigir, não recomeçar; os cadastros não se movem porque já valem para todos os meses |
 | Status `Ignorar` tira do gasto, mas não do ideal | serve para gasto que não deve entrar na conta do mês (reembolso, pagamento de terceiro) sem mexer no orçamento planejado |
 | Tema segue o sistema, sem botão de troca | menos configuração, e o app é usado no celular onde o tema já é uma preferência do sistema |
 
