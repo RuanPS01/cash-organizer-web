@@ -167,6 +167,11 @@ O gasto real da categoria não fica aqui: é a soma dos lançamentos.
 | `originId` | string ou null | id da origem escolhida; `null` quando não havia origem cadastrada |
 | `originName` | string | denormalizado, mantém o histórico legível se a origem for renomeada ou removida |
 
+O histórico do mês pode corrigir `amount` e `description` e reclassificar
+`categoryId`, `categoryName`, `originId` e `originName`, uma linha por vez ou em
+lote. `createdAt` e `week` nunca mudam: o mês do lançamento é a referência da
+fatura, e as regras do Firestore recusam a alteração dos dois.
+
 Ao lançar em data passada, `createdAt` e `week` seguem a data escolhida, mas o
 lançamento continua no mês em aberto: o mês do app é a referência da fatura, não
 o calendário.

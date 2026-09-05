@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Check, ListChecks, Search, SlidersHorizontal, X } from 'lucide-react';
 import {
   deleteVariableExpense,
   removeFixedExpense,
   updateFixedEntry,
   updateVariableExpense,
+  updateVariableExpenses,
 } from '../services/expenses';
+import type { ExpenseClassification } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { dateFromDayKey, dayLabel } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
@@ -33,13 +35,126 @@ function foldText(text: string): string {
     .toLowerCase();
 }
 
-/** Selo da origem do lançamento, com o glifo no tom escolhido no cadastro. */
-function OriginBadge(props: { origin?: Origin; name: string }) {
+/**
+ * Selo da classificação do lançamento (categoria ou origem). Com o mês em
+ * aberto ele vira botão e abre a reclassificação: o próprio selo é o alvo mais
+ * óbvio para trocar o que ele mostra.
+ */
+function ClassBadge(props: {
+  kind: 'cat' | 'origin';
+  label: string;
+  origin?: Origin;
+  empty?: boolean;
+  onEdit?: () => void;
+}) {
+  const conteudo = (
+    <>
+      {props.kind === 'origin' && (
+        <OriginIcon icon={props.origin?.icon} color={props.origin?.color} />
+      )}
+      {props.label}
+    </>
+  );
+  const classe = `badge ${props.kind}${props.empty ? ' empty' : ''}`;
+  if (!props.onEdit) return <span className={classe}>{conteudo}</span>;
   return (
-    <span className="badge origin">
-      <OriginIcon icon={props.origin?.icon} color={props.origin?.color} />
-      {props.origin?.name ?? props.name}
-    </span>
+    <button
+      type="button"
+      className={`${classe} editable`}
+      title={props.kind === 'cat' ? 'Trocar a categoria' : 'Trocar a origem'}
+      onClick={props.onEdit}
+    >
+      {conteudo}
+    </button>
+  );
+}
+
+/**
+ * Escolha da nova categoria e da nova origem, para um lançamento ou para a
+ * seleção inteira. Cada campo tem a opção de manter o que está lá, então dá
+ * para trocar só um dos dois sem tocar no outro.
+ */
+function ReclassifyModal(props: {
+  count: number;
+  categories: Category[];
+  origins: Origin[];
+  busy: boolean;
+  saveError: string | null;
+  onConfirm: (patch: ExpenseClassification) => void;
+  onCancel: () => void;
+}) {
+  const [categoryId, setCategoryId] = useState('keep');
+  const [originId, setOriginId] = useState('keep');
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = () => {
+    setError(null);
+    const patch: ExpenseClassification = {};
+    if (categoryId !== 'keep') {
+      const cat = props.categories.find((c) => c.id === categoryId);
+      if (!cat) return;
+      patch.categoryId = cat.id;
+      patch.categoryName = cat.name;
+    }
+    if (originId === 'none') {
+      patch.originId = null;
+      patch.originName = '';
+    } else if (originId !== 'keep') {
+      const origin = props.origins.find((o) => o.id === originId);
+      if (!origin) return;
+      patch.originId = origin.id;
+      patch.originName = origin.name;
+    }
+    if (Object.keys(patch).length === 0) {
+      setError('Escolha a categoria ou a origem para aplicar.');
+      return;
+    }
+    props.onConfirm(patch);
+  };
+
+  return (
+    <ConfirmModal
+      title={props.count === 1 ? 'Reclassificar lançamento' : `Reclassificar ${props.count} lançamentos`}
+      confirmLabel="Aplicar"
+      busy={props.busy}
+      onConfirm={submit}
+      onCancel={props.onCancel}
+    >
+      <div className="modal-form">
+        <label>
+          Categoria
+          <span className="field">
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="keep">Manter a atual</option>
+              {props.categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </span>
+        </label>
+        <label>
+          Origem
+          <span className="field">
+            <select value={originId} onChange={(e) => setOriginId(e.target.value)}>
+              <option value="keep">Manter a atual</option>
+              {props.origins.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+              <option value="none">Sem origem</option>
+            </select>
+          </span>
+        </label>
+        <p className="card-hint">
+          Valor, descrição e data não mudam. A soma por categoria da aba Pagamento acompanha a
+          troca sozinha.
+        </p>
+        {(error ?? props.saveError) && <p className="form-error">{error ?? props.saveError}</p>}
+      </div>
+    </ConfirmModal>
   );
 }
 
@@ -66,6 +181,9 @@ export function ExpenseHistory(props: {
   const [to, setTo] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [reclassifyIds, setReclassifyIds] = useState<string[] | null>(null);
   const [removeTarget, setRemoveTarget] = useState<
     { kind: 'expense'; item: VariableExpense } | { kind: 'fixed'; item: FixedEntry } | null
   >(null);
@@ -118,6 +236,51 @@ export function ExpenseHistory(props: {
       : fixedEntries
           .filter((f) => f.status !== IGNORED_STATUS)
           .reduce((s, f) => s + f.amount, 0);
+
+  // Só o que está visível entra na conta: sem isso, filtrar depois de marcar
+  // aplicaria a troca em lançamentos que sumiram da tela.
+  const selectedIds = useMemo(
+    () => expenses.filter((e) => selected.has(e.id)).map((e) => e.id),
+    [expenses, selected],
+  );
+  const allSelected = expenses.length > 0 && selectedIds.length === expenses.length;
+
+  const toggleSelected = (id: string) => {
+    setSelected((atual) => {
+      const proximo = new Set(atual);
+      if (!proximo.delete(id)) proximo.add(id);
+      return proximo;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(expenses.map((e) => e.id)));
+  };
+
+  const leaveSelection = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const openReclassify = (ids: string[]) => {
+    setError(null);
+    setReclassifyIds(ids);
+  };
+
+  const confirmReclassify = async (patch: ExpenseClassification) => {
+    if (!reclassifyIds) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updateVariableExpenses(compartmentId, ym, reclassifyIds, patch);
+      setReclassifyIds(null);
+      leaveSelection();
+    } catch (err) {
+      setError(writeErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const clearFilters = () => {
     setCategoryFilter('all');
@@ -195,6 +358,18 @@ export function ExpenseHistory(props: {
               <SlidersHorizontal size={18} aria-hidden />
             </button>
           )}
+          {tab === 'variable' && editable && (
+            <button
+              type="button"
+              className={`btn icon${selecting ? ' custom' : ''}`}
+              title="Selecionar lançamentos para trocar categoria ou origem em lote"
+              aria-label="Selecionar lançamentos para trocar categoria ou origem em lote"
+              aria-pressed={selecting}
+              onClick={() => (selecting ? leaveSelection() : setSelecting(true))}
+            >
+              <ListChecks size={18} aria-hidden />
+            </button>
+          )}
         </div>
 
         {tab === 'variable' && showFilters && (
@@ -249,6 +424,25 @@ export function ExpenseHistory(props: {
           </div>
         )}
 
+        {tab === 'variable' && selecting && (
+          <div className="bulk-bar">
+            <button type="button" className="mini-btn" onClick={toggleAll}>
+              {allSelected ? 'Limpar seleção' : 'Selecionar todos'}
+            </button>
+            <span className="muted small">
+              {selectedIds.length} de {expenses.length} selecionado(s)
+            </span>
+            <button
+              type="button"
+              className="btn small primary"
+              disabled={selectedIds.length === 0}
+              onClick={() => openReclassify(selectedIds)}
+            >
+              Reclassificar
+            </button>
+          </div>
+        )}
+
         <p className="history-summary">
           <span className="muted">
             {tab === 'variable'
@@ -259,9 +453,21 @@ export function ExpenseHistory(props: {
         </p>
 
         {tab === 'variable' ? (
-          <ul className="history-list">
+          <ul className={`history-list${selecting ? ' selecting' : ''}`}>
             {expenses.map((e) => (
-              <li key={e.id}>
+              <li key={e.id} className={selected.has(e.id) ? 'row-selected' : ''}>
+                {selecting && (
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={selected.has(e.id)}
+                    className={`check-box${selected.has(e.id) ? ' checked' : ''}`}
+                    aria-label={`Selecionar lançamento de ${formatBRL(e.amount)}`}
+                    onClick={() => toggleSelected(e.id)}
+                  >
+                    {selected.has(e.id) && <Check size={12} aria-hidden />}
+                  </button>
+                )}
                 <span className="history-desc">
                   <EditableText
                     value={e.description}
@@ -277,12 +483,28 @@ export function ExpenseHistory(props: {
                   <span className="when">
                     {dayLabel(e.createdAt)} · sem {e.week}
                   </span>
-                  <span className="badge cat">{e.categoryName}</span>
-                  {(e.originId || e.originName) && (
-                    <OriginBadge
+                  <ClassBadge
+                    kind="cat"
+                    label={e.categoryName}
+                    onEdit={editable && !selecting ? () => openReclassify([e.id]) : undefined}
+                  />
+                  {e.originId || e.originName ? (
+                    <ClassBadge
+                      kind="origin"
+                      label={originById.get(e.originId ?? '')?.name ?? e.originName ?? ''}
                       origin={e.originId ? originById.get(e.originId) : undefined}
-                      name={e.originName ?? ''}
+                      onEdit={editable && !selecting ? () => openReclassify([e.id]) : undefined}
                     />
+                  ) : (
+                    editable &&
+                    !selecting && (
+                      <ClassBadge
+                        kind="origin"
+                        label="sem origem"
+                        empty
+                        onEdit={() => openReclassify([e.id])}
+                      />
+                    )
                   )}
                 </span>
                 <span className="history-value">
@@ -373,6 +595,18 @@ export function ExpenseHistory(props: {
         )}
         {error && <p className="form-error">{error}</p>}
       </section>
+
+      {reclassifyIds && (
+        <ReclassifyModal
+          count={reclassifyIds.length}
+          categories={categories}
+          origins={origins}
+          busy={busy}
+          saveError={error}
+          onConfirm={confirmReclassify}
+          onCancel={() => setReclassifyIds(null)}
+        />
+      )}
 
       {removeTarget && (
         <ConfirmModal

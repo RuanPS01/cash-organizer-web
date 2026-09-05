@@ -196,6 +196,8 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Elemento | Classe base | Variantes |
 |---|---|---|
 | Subaba de card | `.subtab` | `.active` (moldura de ouro e brilho) |
+| Caixa de marcação | `.check-box` | `.checked` (ouro preenchido com o ícone Check) |
+| Barra de ação em lote | `.bulk-bar` | |
 | Escolha de ícone | `.icon-option` | `.selected` |
 | Escolha de tom | `.color-swatch` | `.selected` |
 | Botão | `.btn` | `.primary` (ouro preenchido), `.ghost`, `.block`, `.small`, `.icon`, `.icon.danger` |
@@ -204,7 +206,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Campo | `.field` | `.plate` (placa de valor), `.inline` (edição em tabela) |
 | Chip de categoria | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada) |
 | Card | `.card` | `.table-card`, `.totals-card`, `.info` |
-| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status` |
+| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status`, `.editable` (selo que abre a reclassificação), `.empty` (sem origem) |
 | Glifo de origem | `.origin-icon` | tons `.oc-*` |
 | Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-meta`, `.history-value`, `.history-filters`, `.history-summary` |
 | Marca | `.brand-mark` (via `BrandMark`) | `.big` (login e abertura) |
@@ -300,7 +302,8 @@ Todos do `lucide-react`, tamanho 14 a 20 conforme o contexto (14 a 16 em linhas
 e chips, 18 em botões de ícone, 20 na navegação, 34 na marca grande do login).
 Em uso hoje: `Wallet`, `Plus`, `BarChart3`, `Banknote`, `Settings`,
 `CalendarDays`, `Eraser`, `Pencil`, `X`, `ChevronLeft`, `ChevronRight`,
-`ChevronUp`, `ChevronDown`, `Search`, `SlidersHorizontal`, e os glifos de
+`ChevronUp`, `ChevronDown`, `Search`, `SlidersHorizontal`, `ListChecks`,
+`Check`, e os glifos de
 origem `QrCode` (Pix), `ArrowLeftRight` (transferência), `CreditCard` (cartão),
 `Banknote` (dinheiro), `TrendingUp` (investimento), `CalendarSync` (débito
 automático) e `Barcode` (boleto).

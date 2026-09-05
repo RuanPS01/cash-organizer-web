@@ -50,14 +50,59 @@ export async function addVariableExpense(
   });
 }
 
-/** Edita valor e descrição de um lançamento já gravado (histórico do mês). */
+/**
+ * Reclassificação de um lançamento: categoria e origem. O nome vai junto do
+ * id (denormalizado, como na criação) para o histórico continuar legível se o
+ * cadastro for renomeado depois; origem vazia é `null` mais nome em branco,
+ * nunca `undefined`, que o SDK recusa.
+ */
+// Declarado com `type` e não `interface` de propósito: o SDK exige um payload
+// com assinatura de índice, e só o alias de tipo ganha a implícita.
+export type ExpenseClassification = {
+  categoryId?: string;
+  categoryName?: string;
+  originId?: string | null;
+  originName?: string;
+};
+
+/**
+ * Edita um lançamento já gravado (histórico do mês): valor, descrição e a
+ * classificação. Data e semana não mudam, porque o mês do lançamento é a
+ * referência da fatura.
+ */
 export async function updateVariableExpense(
   compartmentId: string,
   ym: string,
   expenseId: string,
-  patch: Partial<{ amount: number; description: string }>,
+  patch: Partial<{ amount: number; description: string }> & ExpenseClassification,
 ): Promise<void> {
   await updateDoc(doc(expensesCol(compartmentId, ym), expenseId), patch);
+}
+
+// O Firestore aceita no máximo 500 operações por lote; a folga evita ter que
+// pensar nisso de novo se a escrita ganhar mais campos.
+const BATCH_LIMIT = 400;
+
+/**
+ * Aplica a mesma classificação a vários lançamentos de uma vez. Cada fatia vai
+ * em um `writeBatch` (tudo ou nada dentro da fatia), o que evita deixar metade
+ * da seleção reclassificada quando a rede cai no meio.
+ */
+export async function updateVariableExpenses(
+  compartmentId: string,
+  ym: string,
+  expenseIds: string[],
+  patch: ExpenseClassification,
+): Promise<void> {
+  if (expenseIds.length === 0 || Object.keys(patch).length === 0) return;
+  const col = expensesCol(compartmentId, ym);
+  for (let i = 0; i < expenseIds.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    for (const id of expenseIds.slice(i, i + BATCH_LIMIT)) {
+      batch.update(doc(col, id), patch);
+    }
+    await batch.commit();
+  }
 }
 
 export async function deleteVariableExpense(

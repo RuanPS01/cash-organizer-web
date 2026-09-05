@@ -113,6 +113,7 @@
 .subtab,
 .icon-option,
 .color-swatch,
+.check-box,
 .modal {
   position: relative;
   isolation: isolate;
@@ -144,6 +145,7 @@
 .subtab::before,
 .icon-option::before,
 .color-swatch::before,
+.check-box::before,
 .modal::before {
   content: '';
   position: absolute;
@@ -1502,12 +1504,26 @@ tr.row-ignored td { opacity: 0.7; }
   align-items: center;
   gap: 0.3rem;
   color: var(--text-soft);
+  font-family: var(--font-ui);
   font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: none;
   padding: 0.22rem 0.5rem;
 }
+
+/* Com o mês em aberto o selo vira botão e abre a reclassificação: o alvo de
+   toque é o próprio valor que vai mudar. */
+.badge.editable { cursor: pointer; }
+
+.badge.editable:hover {
+  --frame-edge: var(--gold);
+  color: var(--gold-soft);
+}
+
+/* Lançamento sem origem: o selo aparece apagado só para dar onde tocar. */
+.badge.origin.empty { color: var(--muted-dim); }
+.badge.origin.empty .origin-icon { color: var(--muted-dim); }
 
 /* Selo de status no histórico: a cor vem das classes .st-*, então aqui só o
    preenchimento neutro e o tamanho (sem cor, para não vencer o estado). */
@@ -1783,6 +1799,53 @@ tr.row-ignored td { opacity: 0.7; }
 }
 
 .history-list .btn.icon { grid-area: delete; }
+
+/* Modo de seleção: entra uma coluna à esquerda com a caixa de marcação, que
+   ocupa as duas linhas do item. Valor e excluir continuam à direita. */
+.history-list.selecting li {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'check desc value delete'
+    'check meta value delete';
+}
+
+.check-box {
+  --c: 4px;
+  --frame-edge: var(--line-strong);
+  --frame-w: 1px;
+  --frame-fill: var(--surface-2);
+  grid-area: check;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--gold-ink);
+  cursor: pointer;
+}
+
+.check-box.checked {
+  --frame-edge: var(--gold-edge-bright);
+  --frame-w: 1.5px;
+  --frame-fill: var(--gold-fill-soft);
+}
+
+.history-list li.row-selected {
+  background: linear-gradient(90deg, var(--gold-tint), transparent 60%);
+}
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  padding: 0.65rem 0;
+  margin-bottom: 0.2rem;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+}
+
+.bulk-bar .btn { margin-left: auto; }
 
 /* Linha ignorada no histórico segue a regra da tabela do mês: valor riscado,
    porque ele está fora da soma do gasto. */
