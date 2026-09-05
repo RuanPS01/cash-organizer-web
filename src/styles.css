@@ -1388,6 +1388,15 @@ tr.row-ignored td { opacity: 0.7; }
   color: var(--gold-soft);
 }
 
+/* Grupo de botões de ação da linha: mantém os quatro juntos quando a linha
+   quebra em telas estreitas (usado na lista de origens). */
+.manage-list .row-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
 .btn-placeholder {
   width: 2.3rem;
   flex: 0 0 auto;
@@ -1521,9 +1530,10 @@ tr.row-ignored td { opacity: 0.7; }
 
 .icon-grid {
   display: grid;
-  /* Duas colunas em 360px e três no modal do desktop: com colunas mais
-     estreitas o rótulo "Transferência" não cabe e vaza da peça. */
-  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
+  /* A coluna só se divide em três quando cada peça tem largura para o maior
+     rótulo ("Transferência"); mais estreita que isso, a palavra quebraria no
+     meio. No celular ficam duas colunas, no modal do desktop, três. */
+  grid-template-columns: repeat(auto-fill, minmax(6.8rem, 1fr));
   gap: 0.5rem;
 }
 
@@ -1545,6 +1555,7 @@ tr.row-ignored td { opacity: 0.7; }
   letter-spacing: 0.06em;
   text-align: center;
   text-transform: uppercase;
+  hyphens: auto;
   overflow-wrap: anywhere;
   cursor: pointer;
 }

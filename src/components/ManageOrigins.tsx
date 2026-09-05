@@ -177,32 +177,36 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
                   )}
                 </span>
               </div>
-              <button className="btn icon" title="Editar origem" onClick={() => setModal(o)}>
-                <Pencil size={15} aria-hidden />
-              </button>
-              <button
-                className="btn icon"
-                title="Mover para cima"
-                disabled={i === 0}
-                onClick={() => moveOrigin(compartmentId, origins, o.id, 'up')}
-              >
-                <ChevronUp size={15} aria-hidden />
-              </button>
-              <button
-                className="btn icon"
-                title="Mover para baixo"
-                disabled={i === origins.length - 1}
-                onClick={() => moveOrigin(compartmentId, origins, o.id, 'down')}
-              >
-                <ChevronDown size={15} aria-hidden />
-              </button>
-              <button
-                className="btn icon danger"
-                title="Remover origem"
-                onClick={() => setRemoveTarget(o)}
-              >
-                <X size={16} aria-hidden />
-              </button>
+              {/* Os quatro botões vão num grupo só: em telas estreitas eles
+                  descem juntos para a linha de baixo, sem quebrar no meio. */}
+              <span className="row-actions">
+                <button className="btn icon" title="Editar origem" onClick={() => setModal(o)}>
+                  <Pencil size={15} aria-hidden />
+                </button>
+                <button
+                  className="btn icon"
+                  title="Mover para cima"
+                  disabled={i === 0}
+                  onClick={() => moveOrigin(compartmentId, origins, o.id, 'up')}
+                >
+                  <ChevronUp size={15} aria-hidden />
+                </button>
+                <button
+                  className="btn icon"
+                  title="Mover para baixo"
+                  disabled={i === origins.length - 1}
+                  onClick={() => moveOrigin(compartmentId, origins, o.id, 'down')}
+                >
+                  <ChevronDown size={15} aria-hidden />
+                </button>
+                <button
+                  className="btn icon danger"
+                  title="Remover origem"
+                  onClick={() => setRemoveTarget(o)}
+                >
+                  <X size={16} aria-hidden />
+                </button>
+              </span>
             </li>
           ))}
           {origins.length === 0 && (
