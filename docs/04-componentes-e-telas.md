@@ -116,7 +116,19 @@ aba Estatísticas: se precisar dele em outro lugar, reutilize em vez de copiar.
 Histórico do mês exibido na aba Adicionar, com duas subabas: **Variáveis**
 (padrão, do lançamento mais recente para o mais antigo) e **Fixos**. Tem barra
 de busca (sem acento e sem caixa) e, na aba de variáveis, filtros de categoria,
-origem e faixa de data. Valor e descrição são editáveis no lugar
+origem e faixa de data.
+
+**Reclassificação.** O selo de categoria e o de origem viram botões com o mês em
+aberto e abrem o `ReclassifyModal` (privado do arquivo), que troca categoria,
+origem ou as duas, com a opção "Manter a atual" em cada campo. Lançamento sem
+origem mostra um selo apagado "sem origem", só para dar onde tocar. O botão de
+seleção na barra de busca liga o modo de lote: cada item ganha uma caixa de
+marcação (`.check-box`), a barra `.bulk-bar` mostra o contador com "Selecionar
+todos" e o mesmo modal aplica a troca a todos os marcados de uma vez. A seleção
+considera apenas o que está visível: filtrar depois de marcar não deixa um
+lançamento fora da tela ser alterado sem querer.
+
+Valor e descrição são editáveis no lugar
 (`EditableMoney` e `EditableText`) e a remoção passa por `ConfirmModal`:
 lançamento variável é excluído de verdade, gasto fixo usa `removeFixedExpense`
 (sai do mês e dos próximos, porque uma linha apagada sozinha voltaria na
@@ -199,7 +211,9 @@ gravado no lançamento).
 ### `services/expenses.ts`
 
 Lançamentos: `addVariableExpense` (aceita `originId` e `originName`),
-`updateVariableExpense` (valor e descrição), `deleteVariableExpense`.
+`updateVariableExpense` (valor, descrição e classificação),
+`updateVariableExpenses` (mesma classificação em vários lançamentos, em
+`writeBatch` de até 400 por vez), `deleteVariableExpense`.
 Gastos fixos: `addFixedExpense`, `saveFixedExpense`, `updateFixedExpense`,
 `removeFixedExpense`.
 Categorias: `addCategory`, `updateCategory`, `renameCategory`,
@@ -220,5 +234,6 @@ Linhas do mês: `updateFixedEntry`, `updateCategoryEntry`.
 | `dateFromDayKey(key, time?)` | `utils/dates.ts` | `YYYY-MM-DD` para `Date` local, com a hora do relógio |
 | `dayLabel(ms)`, `dayKeyLabel(key)` | `utils/dates.ts` | "21/08" |
 | `dayKeyFullLabel(key)` | `utils/dates.ts` | "21/08/2026" |
+| `writeErrorMessage(err)` | `utils/errors.ts` | mensagem legível para falha de gravação no Firestore (trata `permission-denied` e falta de conexão) |
 | `sha256Hex`, `hashPassword` | `utils/crypto.ts` | hash da senha com o id como sal |
 | `encryptText`, `decryptText` | `utils/crypto.ts` | AES-GCM com a chave do dispositivo |

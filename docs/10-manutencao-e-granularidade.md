@@ -55,6 +55,11 @@ Erros já cometidos aqui que valem lembrar:
 - renderizar um modal dentro de um `.card`: o `clip-path` do card recorta até
   descendente `position: fixed`, e o modal aparece cortado. O modal vai como
   irmão do card;
+- criar coleção nova no Firestore sem abrir a regra correspondente em
+  `cash-organizer-functions`: o banco nega por padrão e a tela falha calada;
+- escrever um `try/finally` sem `catch` em volta de uma gravação: o estado
+  `busy` volta ao normal e o usuário não recebe aviso nenhum. Toda ação de
+  escrita mostra o erro com `writeErrorMessage`;
 - somar totais na mão em uma tela em vez de usar `computeTotals` (foi exatamente
   o que deixou a aba Adicionar somando linhas ignoradas);
 - criar um segundo componente de valor editável em vez de usar `EditableMoney`;

@@ -63,6 +63,16 @@ histórico do mês em duas subabas:
 - **Fixos**: as linhas de gasto fixo do mês, com selo de status, ideal e busca
   por nome ou descrição.
 
+Falha de gravação (recusa do banco ou falta de rede) aparece na tela: no modal,
+quando existe um, e no rodapé do card na edição no lugar, que não tem botão de
+confirmar.
+
+Na subaba de variáveis, tocar no selo de categoria ou de origem abre a
+reclassificação, que troca um dos dois ou os dois de uma vez. O botão de seleção
+liga o modo de lote: marque os lançamentos, use "Reclassificar" e a mesma troca
+vale para todos os marcados. Só o que está visível na lista entra na conta, então
+mudar o filtro depois de marcar não altera nada fora da tela.
+
 Nas duas subabas, valor e descrição são editáveis no lugar e a remoção passa por
 confirmação. Excluir um lançamento variável apaga o documento; remover um gasto
 fixo usa o mesmo caminho da tela Gerenciar (sai do mês em aberto e dos próximos

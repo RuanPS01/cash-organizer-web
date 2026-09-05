@@ -69,7 +69,8 @@ excluir, que nunca quebram de linha.
 
 A coluna de texto é `minmax(0, 1fr)`, e os selos de categoria e origem ficam em
 um flex com `flex-wrap`, então nome longo de categoria desce de linha em vez de
-esticar a lista. Os filtros são uma coluna até 560px e duas acima disso.
+esticar a lista. No modo de seleção em lote entra uma quarta coluna à esquerda
+(`.history-list.selecting`), com a caixa de marcação ocupando as duas linhas. Os filtros são uma coluna até 560px e duas acima disso.
 
 Na tela Gerenciar, a lista de origens tem quatro botões de ação por linha. Abaixo
 de 560px, `.manage-list li` ganha `flex-wrap` e `.row-main` uma largura mínima de

@@ -98,6 +98,13 @@ A chave de ícone é gravada, não o desenho: trocar o glifo do lucide-react em
 dado. Compartimento nasce sem origem nenhuma; a primeira criada vira a padrão.
 Remover é desativar, e os lançamentos antigos seguem com `originName`.
 
+> **Coleção nova exige regra nova.** O Firestore nega tudo que não está
+> explicitamente liberado, e as regras vivem em `cash-organizer-functions`. Sem
+> o bloco `match /origins/{originId}`, o app não lista nem grava origem, e a
+> falha chega como `permission-denied`. O mesmo vale para operação nova em
+> coleção existente: a edição de valor e descrição no histórico só funciona
+> porque `expenses` passou a permitir `update` desses dois campos.
+
 ## 6.6 `months/{YYYY-MM}`
 
 | Campo | Tipo | Notas |
@@ -159,6 +166,11 @@ O gasto real da categoria não fica aqui: é a soma dos lançamentos.
 | `week` | number | 1 a 4, calculado por `weekOfMonth` sobre a data do lançamento |
 | `originId` | string ou null | id da origem escolhida; `null` quando não havia origem cadastrada |
 | `originName` | string | denormalizado, mantém o histórico legível se a origem for renomeada ou removida |
+
+O histórico do mês pode corrigir `amount` e `description` e reclassificar
+`categoryId`, `categoryName`, `originId` e `originName`, uma linha por vez ou em
+lote. `createdAt` e `week` nunca mudam: o mês do lançamento é a referência da
+fatura, e as regras do Firestore recusam a alteração dos dois.
 
 Ao lançar em data passada, `createdAt` e `week` seguem a data escolhida, mas o
 lançamento continua no mês em aberto: o mês do app é a referência da fatura, não
