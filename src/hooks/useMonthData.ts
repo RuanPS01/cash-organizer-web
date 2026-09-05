@@ -7,12 +7,14 @@ import {
   fixedEntriesCol,
   monthRef,
 } from '../services/months';
+import { originsCol } from '../services/origins';
 import type {
   Category,
   CategoryEntry,
   FixedEntry,
   FixedExpense,
   MonthDoc,
+  Origin,
   VariableExpense,
 } from '../types';
 
@@ -66,10 +68,11 @@ export function useMonthData(compartmentId: string, ym: string): MonthData {
   return { loading: !monthLoaded, month, fixedEntries, categoryEntries, expenses };
 }
 
-/** Assina os cadastros de gastos fixos e categorias do compartimento. */
+/** Assina os cadastros de gastos fixos, categorias e origens do compartimento. */
 export function useConfig(compartmentId: string) {
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [origins, setOrigins] = useState<Origin[]>([]);
 
   useEffect(() => {
     const unsubs = [
@@ -94,9 +97,17 @@ export function useConfig(compartmentId: string) {
           );
         },
       ),
+      onSnapshot(query(originsCol(compartmentId), orderBy('createdAt')), (snap) => {
+        setOrigins(
+          snap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as Omit<Origin, 'id'>) }))
+            .filter((o) => o.active)
+            .sort((a, b) => (a.sortOrder ?? a.createdAt) - (b.sortOrder ?? b.createdAt)),
+        );
+      }),
     ];
     return () => unsubs.forEach((u) => u());
   }, [compartmentId]);
 
-  return { fixedExpenses, categories };
+  return { fixedExpenses, categories, origins };
 }

@@ -15,7 +15,7 @@ type View = 'add' | 'stats' | 'payment' | 'manage';
 function Shell(props: { compartment: Compartment; onLogout: () => void }) {
   const [view, setView] = useState<View>('add');
   const [currentMonth, setCurrentMonth] = useState(props.compartment.currentMonth);
-  const { categories, fixedExpenses } = useConfig(props.compartment.id);
+  const { categories, fixedExpenses, origins } = useConfig(props.compartment.id);
   const monthData = useMonthData(props.compartment.id, currentMonth);
 
   return (
@@ -39,6 +39,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             compartmentId={props.compartment.id}
             currentMonth={currentMonth}
             categories={categories}
+            origins={origins}
             data={monthData}
           />
         )}
@@ -64,6 +65,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             currentMonth={currentMonth}
             fixedExpenses={fixedExpenses}
             categories={categories}
+            origins={origins}
             monthData={monthData}
           />
         )}

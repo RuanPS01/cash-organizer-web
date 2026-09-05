@@ -56,6 +56,17 @@
   --danger-bar: linear-gradient(90deg, #6d2413, #c74a2a 45%, #e2603f);
   --danger-line: rgba(226, 96, 63, 0.5);
 
+  /* Tons do glifo de origem: única exceção ao ouro na identidade, restrita ao
+     ícone (nunca à moldura nem ao preenchimento), para diferenciar cartões e
+     formas de pagamento entre si. */
+  --oc-gold: #e2c86a;
+  --oc-silver: #cfd4dc;
+  --oc-graphite: #8d93a0;
+  --oc-copper: #cf8f52;
+  --oc-violet: #ab8ee0;
+  --oc-teal: #5fb6ab;
+  --oc-terracota: #e2603f;
+
   /* Tons de ouro já compostos sobre o preto (ver nota do sistema .frame) */
   --gold-tint: #1e1908;
   --gold-tint-strong: #231d0b;
@@ -99,6 +110,9 @@
 .status-frame,
 .form-error,
 .section-totals,
+.subtab,
+.icon-option,
+.color-swatch,
 .modal {
   position: relative;
   isolation: isolate;
@@ -127,6 +141,9 @@
 .status-frame::before,
 .form-error::before,
 .section-totals::before,
+.subtab::before,
+.icon-option::before,
+.color-swatch::before,
 .modal::before {
   content: '';
   position: absolute;
@@ -208,6 +225,8 @@ td.num,
 .info-totals strong,
 .section-totals strong,
 .stat-head strong,
+.history-summary strong,
+.history-meta .when,
 .badge.installment {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
@@ -366,6 +385,50 @@ label {
 }
 
 label .field { margin-top: 0.35rem; }
+
+/* --------------------------------------------------------------------------
+   Listas de seleção (select)
+
+   O popup do sistema vinha branco no desktop: sem cor de fundo declarada, o
+   navegador desenha a lista com o tema claro dele, mesmo com color-scheme
+   escuro. As cores vão no <option>, que é o elemento que o navegador usa para
+   pintar cada linha da lista. A seta nativa também destoava do chanfro, então
+   ela sai (appearance: none) e o chevron é desenhado no invólucro da moldura,
+   herdando a cor do campo (no status, a cor do próprio estado).
+   -------------------------------------------------------------------------- */
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  color-scheme: dark;
+}
+
+.field > select,
+.status-select { padding-right: 1.7rem; }
+
+select option,
+select optgroup {
+  background-color: var(--surface-2);
+  color: var(--text);
+}
+
+select option:checked { color: var(--gold-soft); }
+
+.status-frame::after,
+.field:has(> select)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.75;
+  pointer-events: none;
+}
 
 .form-error {
   --c: 6px;
@@ -1255,12 +1318,16 @@ tr.row-ignored td { opacity: 0.7; }
   gap: 0.3rem 0.9rem;
 }
 
+/* O selo "padrão" e o botão "tornar padrão" descem para a linha de baixo
+   quando o nome ocupa a largura toda: sem o wrap eles vazavam por cima dos
+   botões de ação em telas estreitas. */
 .manage-list .name {
   font-weight: 600;
   color: var(--text);
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.45rem;
   min-width: 0;
   overflow-wrap: break-word;
 }
@@ -1380,6 +1447,338 @@ tr.row-ignored td { opacity: 0.7; }
 }
 
 /* --------------------------------------------------------------------------
+   Origem do gasto
+
+   O glifo é a única peça colorida da identidade: moldura e preenchimento
+   seguem em ouro sobre preto, e o tom serve só para distinguir um cartão do
+   outro na lista. Por isso a cor vive no ícone, nunca no fundo.
+   -------------------------------------------------------------------------- */
+
+.origin-icon {
+  flex: 0 0 auto;
+  color: var(--oc-gold);
+}
+
+.oc-gold { color: var(--oc-gold); }
+.oc-silver { color: var(--oc-silver); }
+.oc-graphite { color: var(--oc-graphite); }
+.oc-copper { color: var(--oc-copper); }
+.oc-violet { color: var(--oc-violet); }
+.oc-teal { color: var(--oc-teal); }
+.oc-terracota { color: var(--oc-terracota); }
+
+/* Chip selecionado é ouro preenchido: o glifo colorido perderia contraste, e
+   por isso passa a usar a mesma tinta escura do texto do chip. */
+.chip.selected .origin-icon { color: var(--gold-ink); }
+
+.origin-picker { margin-bottom: 0.85rem; }
+
+.origin-label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.origin-picker .chip-row { margin-bottom: 0; }
+
+.badge.origin,
+.badge.cat {
+  --frame-edge: var(--line-soft);
+  --frame-fill: var(--surface-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-soft);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  padding: 0.22rem 0.5rem;
+}
+
+/* Selo de status no histórico: a cor vem das classes .st-*, então aqui só o
+   preenchimento neutro e o tamanho (sem cor, para não vencer o estado). */
+.badge.status {
+  --frame-fill: var(--surface-2);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  padding: 0.22rem 0.5rem;
+}
+
+.origin-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.icon-grid {
+  display: grid;
+  /* Duas colunas em 360px e três no modal do desktop: com colunas mais
+     estreitas o rótulo "Transferência" não cabe e vaza da peça. */
+  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
+  gap: 0.5rem;
+}
+
+.icon-option {
+  --c: 7px;
+  --frame-edge: var(--line-soft);
+  --frame-w: 1px;
+  --frame-fill: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0.3rem;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.icon-option.selected,
+.color-swatch.selected {
+  --frame-edge: var(--gold-edge-bright);
+  --frame-w: 1.5px;
+  --frame-fill: var(--gold-tint);
+  color: var(--gold-soft);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.24);
+}
+
+.color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.color-swatch {
+  --c: 6px;
+  --frame-edge: var(--line-soft);
+  --frame-w: 1px;
+  --frame-fill: var(--surface-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Histórico do mês (aba Adicionar)
+   -------------------------------------------------------------------------- */
+
+.subtabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.subtab {
+  --c: 8px;
+  --frame-edge: var(--line-soft);
+  --frame-w: 1px;
+  --frame-fill: var(--surface-2);
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.subtab.active {
+  --frame-edge: var(--gold-edge-bright);
+  --frame-w: 1.5px;
+  --frame-fill: var(--gold-tint);
+  color: var(--gold-soft);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.22);
+}
+
+.subtab .count {
+  font-family: var(--font-num);
+  font-size: 0.7rem;
+  color: var(--muted-dim);
+}
+
+.subtab.active .count { color: var(--gold-soft); }
+
+.history-search {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.history-search .field { flex: 1 1 auto; min-width: 0; }
+
+/* Campo de busca: a lupa entra como irmã do input dentro da moldura, então o
+   invólucro vira flex e o input perde o recuo à esquerda. */
+.field.search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0.75rem;
+}
+
+.field.search > svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.field.search > input { padding-left: 0; }
+
+.history-search .btn.icon { flex: 0 0 auto; width: 3rem; }
+
+/* Botão de filtro ativo usa o mesmo sinal do botão de data personalizada:
+   cheio de ouro contra vazado. */
+.history-search .btn.icon.custom {
+  --frame-edge: var(--gold-edge-bright);
+  --frame-fill: var(--gold-fill-soft);
+  color: var(--gold-ink);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.32);
+}
+
+.history-filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem 0.75rem;
+  padding: 0.85rem 0;
+  margin-bottom: 0.4rem;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+}
+
+.history-filters label { margin-bottom: 0; }
+.history-filters .btn { justify-self: start; grid-column: 1 / -1; }
+
+@media (min-width: 560px) {
+  .history-filters { grid-template-columns: 1fr 1fr; }
+}
+
+.history-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.history-summary strong { color: var(--gold-soft); font-size: 0.95rem; }
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Duas linhas de texto à esquerda (descrição e selos), com valor e excluir
+   fixos à direita: o mesmo desenho da lista de lançamentos da aba Pagamento,
+   que já provou caber em 360px. */
+.history-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'desc value delete'
+    'meta value delete';
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 0.15rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.history-list li:last-child { border-bottom: none; }
+
+.history-list li.history-empty {
+  display: block;
+  padding: 0.9rem 0;
+  font-size: 0.84rem;
+}
+
+.history-desc {
+  grid-area: desc;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.5rem;
+  min-width: 0;
+}
+
+.history-desc .money-cell {
+  max-width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+/* Na aba de fixos o nome é o rótulo principal, então a descrição editável
+   recua para texto de apoio (na aba de variáveis ela é o próprio rótulo). */
+.history-list li.fixed-row .history-desc .money-cell {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-soft);
+}
+
+.history-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.history-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.45rem;
+  min-width: 0;
+}
+
+.history-meta .when {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.history-value {
+  grid-area: value;
+  white-space: nowrap;
+}
+
+.history-list .btn.icon { grid-area: delete; }
+
+/* Linha ignorada no histórico segue a regra da tabela do mês: valor riscado,
+   porque ele está fora da soma do gasto. */
+.history-list li.row-ignored { opacity: 0.7; }
+.history-list li.row-ignored .history-value .money-cell { text-decoration: line-through; }
+
+/* --------------------------------------------------------------------------
    Modal
    -------------------------------------------------------------------------- */
 
@@ -1393,12 +1792,18 @@ tr.row-ignored td { opacity: 0.7; }
   z-index: 50;
 }
 
+/* O modal cresce com o conteúdo (a grade de ícones da origem é alta): ele
+   para na altura da tela e quem rola é o corpo, para que o título e os botões
+   de ação continuem sempre visíveis no celular. */
 .modal {
   --c: 14px;
   --frame-edge: linear-gradient(160deg, rgba(212, 175, 55, 0.6), rgba(138, 106, 31, 0.3) 45%, rgba(226, 200, 106, 0.55));
   --frame-fill: var(--surface-card);
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 420px;
+  max-height: calc(100dvh - 2rem);
   padding: 1.3rem;
   box-shadow: 0 0 60px rgb(0 0 0 / 0.8);
 }
@@ -1408,6 +1813,10 @@ tr.row-ignored td { opacity: 0.7; }
 .modal-body {
   font-size: 0.88rem;
   color: var(--text-soft);
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .modal-body p { margin: 0.45rem 0; }
@@ -1512,6 +1921,19 @@ tr.row-ignored td { opacity: 0.7; }
 
   .section-totals { gap: 1.25rem; }
   .money-input.big { font-size: 1.9rem; }
+
+  /* Histórico e escolha de ícone em 360px: as peças encolhem, mas a grade de
+     três colunas do item continua valendo (valor e excluir nunca quebram). */
+  /* Quatro botões de ação na linha (origens) não cabem ao lado do nome em
+     360px: abaixo da largura mínima do conteúdo eles descem para a linha
+     seguinte, alinhados à direita, em vez de espremer o nome em três linhas. */
+  .manage-list li { flex-wrap: wrap; justify-content: flex-end; }
+  .manage-list .row-main { min-width: 11rem; }
+
+  .subtab { font-size: 0.66rem; padding: 0.5rem 0.4rem; letter-spacing: 0.06em; }
+  .history-list li { column-gap: 0.4rem; }
+  .history-name { font-size: 0.82rem; }
+  .color-swatch { width: 2.2rem; height: 2.2rem; }
 
   /* Em 360px o nome do mês em caixa alta quebrava em duas linhas e empurrava
      o selo para baixo, desalinhando as setas de navegação. */

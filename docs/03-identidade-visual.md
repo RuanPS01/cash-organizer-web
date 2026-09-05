@@ -83,6 +83,25 @@ bloco dourado. **Preenchimento de moldura tem que ser opaco.**
 | `--danger-line` | `rgba(226,96,63,.5)` | moldura de pendência e de erro |
 | `--danger-tint` | `#150a07` | miolo da caixa de erro |
 
+### Tons da origem do gasto
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--oc-gold` | `#e2c86a` | ouro (padrão do glifo de origem) |
+| `--oc-silver` | `#cfd4dc` | prata |
+| `--oc-graphite` | `#8d93a0` | grafite |
+| `--oc-copper` | `#cf8f52` | cobre |
+| `--oc-violet` | `#ab8ee0` | violeta |
+| `--oc-teal` | `#5fb6ab` | turquesa |
+| `--oc-terracota` | `#e2603f` | terracota |
+
+Esta é a **única exceção ao ouro** na identidade e existe por uma razão de
+produto: o usuário precisa distinguir "Cartão C6" de "Cartão Nu" de relance na
+lista. A cor vive só no glifo (classes `.oc-*`, aplicadas pelo componente
+`OriginIcon`), nunca na moldura nem no preenchimento, então a peça continua
+sendo ouro sobre preto. Dentro do chip selecionado o glifo troca para
+`--gold-ink`, porque sobre ouro preenchido o tom perderia contraste.
+
 **Não existe verde nesta identidade.** O positivo é o próprio ouro: "Pago" é
 ouro, o valor dentro do ideal é ouro, a barra saudável é ouro.
 
@@ -151,7 +170,13 @@ nas diagonais do chanfro. A moldura é feita assim:
 
 Quem participa do sistema está na regra agrupada no topo do `styles.css`:
 `.frame`, `.btn`, `.mini-btn`, `.chip`, `.card`, `.field`, `.badge`,
-`.status-frame`, `.form-error`, `.section-totals` e `.modal`. Para criar uma
+`.status-frame`, `.form-error`, `.section-totals`, `.subtab`, `.icon-option`,
+`.color-swatch` e `.modal`.
+
+`clip-path` também recorta **descendente `position: fixed`**. Por isso um modal
+nunca pode ser renderizado dentro de um `.card`: ele apareceria cortado pelos
+limites do card (e sem receber clique fora dele). Renderize o modal como irmão
+do card, com um fragmento, como fazem `ManageOrigins` e `ExpenseHistory`. Para criar uma
 peça nova com moldura, **acrescente o seletor nos dois grupos** (elemento e
 `::before`) em vez de repetir o código, e ajuste só as variáveis:
 
@@ -170,13 +195,18 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 
 | Elemento | Classe base | Variantes |
 |---|---|---|
+| Subaba de card | `.subtab` | `.active` (moldura de ouro e brilho) |
+| Escolha de ícone | `.icon-option` | `.selected` |
+| Escolha de tom | `.color-swatch` | `.selected` |
 | Botão | `.btn` | `.primary` (ouro preenchido), `.ghost`, `.block`, `.small`, `.icon`, `.icon.danger` |
 | Botão de texto discreto | `.mini-btn` | usado em "tornar padrão" |
 | Botão sem moldura em tabela | `.link-btn` | expandir categoria |
 | Campo | `.field` | `.plate` (placa de valor), `.inline` (edição em tabela) |
 | Chip de categoria | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada) |
 | Card | `.card` | `.table-card`, `.totals-card`, `.info` |
-| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored` |
+| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status` |
+| Glifo de origem | `.origin-icon` | tons `.oc-*` |
+| Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-meta`, `.history-value`, `.history-filters`, `.history-summary` |
 | Marca | `.brand-mark` (via `BrandMark`) | `.big` (login e abertura) |
 | Barra de progresso | `.progress` mais `.progress-fill` | `.over` troca para o gradiente terracota |
 | Valor editável | `.money-cell` | `.muted`, `.text-cell` |
@@ -204,9 +234,9 @@ Detalhes de acabamento que fazem parte da identidade:
 
 ## 3.7 Cores de status
 
-Aplicadas pelo mapa `STATUS_CLASS` em
-[`MonthScreen.tsx`](../src/components/MonthScreen.tsx), no invólucro
-`.status-frame`:
+Aplicadas pelo mapa `STATUS_CLASS` de [`types.ts`](../src/types.ts), no
+invólucro `.status-frame` (aba Pagamento) e no selo `.badge.status` (histórico
+do mês):
 
 | Status | Classe | Aparência |
 |---|---|---|
@@ -270,4 +300,22 @@ Todos do `lucide-react`, tamanho 14 a 20 conforme o contexto (14 a 16 em linhas
 e chips, 18 em botões de ícone, 20 na navegação, 34 na marca grande do login).
 Em uso hoje: `Wallet`, `Plus`, `BarChart3`, `Banknote`, `Settings`,
 `CalendarDays`, `Eraser`, `Pencil`, `X`, `ChevronLeft`, `ChevronRight`,
-`ChevronUp`, `ChevronDown`.
+`ChevronUp`, `ChevronDown`, `Search`, `SlidersHorizontal`, e os glifos de
+origem `QrCode` (Pix), `ArrowLeftRight` (transferência), `CreditCard` (cartão),
+`Banknote` (dinheiro), `TrendingUp` (investimento), `CalendarSync` (débito
+automático) e `Barcode` (boleto).
+
+## 3.11 Listas de seleção (select)
+
+O popup do `select` é desenhado pelo navegador, e sem cor declarada ele vinha
+branco no desktop, mesmo com `color-scheme: dark`. A regra da seção "Listas de
+seleção" do `styles.css` resolve em três partes:
+
+1. cor de fundo e de texto no `option` (é ele que o navegador usa para pintar
+   cada linha da lista) mais `option:checked` em ouro;
+2. `appearance: none` no `select`, tirando a seta do sistema;
+3. um chevron desenhado com bordas no `::after` do invólucro (`.status-frame` e
+   `.field:has(> select)`), que herda `currentColor` e portanto vem na cor do
+   status na aba Pagamento e em cinza nos filtros.
+
+Campo novo com `select` não precisa de nada: basta ficar dentro de `.field`.

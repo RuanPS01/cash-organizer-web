@@ -35,6 +35,12 @@ Tem um gasto ideal do mês, e o ideal da semana é esse valor dividido por 4. To
 compartimento nasce com a categoria "Avulso", que é a padrão até o usuário
 transferir esse papel para outra.
 
+**Origem do gasto.** De onde o dinheiro saiu: "Cartão C6 (Crédito)", "Pix ou
+Transf.", "Cartão Nu", "Dinheiro". É um segundo eixo de classificação do
+lançamento variável, independente da categoria (a categoria diz no que se
+gastou, a origem diz por onde se pagou). Cada origem tem um ícone e um tom, e
+uma delas é a padrão, pré-selecionada ao adicionar gasto.
+
 **Gasto ideal.** O planejado, não o limite rígido. Nada impede o usuário de
 gastar acima: a interface apenas mostra o excesso em vermelho.
 
@@ -60,6 +66,9 @@ linha `Pendente`.
 | Totais gravados ao fechar o mês | estatísticas baratas, sem reler o histórico inteiro |
 | Remoção é desativação | o histórico dos meses fechados não pode mudar |
 | `categoryName` copiado no lançamento | renomear ou remover a categoria não deixa o histórico ilegível |
+| Origem em coleção própria, sem linha de mês e fora dos totais | ela classifica o lançamento, não é orçamento: não tem ideal, não tem status e não muda nenhuma soma |
+| Cor só no ícone da origem | o usuário precisa distinguir dois cartões de relance, e a identidade continua ouro sobre preto porque moldura e preenchimento não mudam |
+| Histórico do mês na aba Adicionar | é onde o usuário está depois de lançar; conferir e corrigir o gasto recém-incluído não deveria exigir trocar de tela |
 | Data do lançamento livre, mas sempre dentro do mês em aberto | o mês do app é a referência da fatura, não o calendário |
 | Status `Ignorar` tira do gasto, mas não do ideal | serve para gasto que não deve entrar na conta do mês (reembolso, pagamento de terceiro) sem mexer no orçamento planejado |
 | Tema segue o sistema, sem botão de troca | menos configuração, e o app é usado no celular onde o tema já é uma preferência do sistema |
@@ -83,6 +92,7 @@ linha `Pendente`.
 | Categoria (cadastro) | `Category`, coleção `categories` |
 | Categoria (linha do mês) | `CategoryEntry`, subcoleção `categoryEntries` |
 | Lançamento | `VariableExpense`, subcoleção `expenses` |
+| Origem do gasto | `Origin`, coleção `origins` |
 | Gasto ideal | `idealAmount` |
 | Valor | `amount` |
 | Mês em aberto | `compartment.currentMonth` com `month.status === 'open'` |

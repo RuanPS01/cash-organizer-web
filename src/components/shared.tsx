@@ -168,6 +168,10 @@ export function EditableText(props: {
   value: string;
   onSave: (value: string) => void;
   disabled?: boolean;
+  /** Texto exibido quando o valor está vazio (ex.: "Sem descrição"). */
+  placeholder?: string;
+  /** Aceita salvar vazio; sem isto, campo vazio cancela a edição. */
+  allowEmpty?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(props.value);
@@ -180,7 +184,7 @@ export function EditableText(props: {
   if (!editing) {
     return (
       <button
-        className="money-cell text-cell"
+        className={`money-cell text-cell${props.value ? '' : ' muted'}`}
         disabled={props.disabled}
         onClick={() => {
           setText(props.value);
@@ -188,7 +192,7 @@ export function EditableText(props: {
         }}
         title={props.disabled ? undefined : 'Toque para editar'}
       >
-        {props.value}
+        {props.value || props.placeholder || ''}
       </button>
     );
   }
@@ -196,7 +200,8 @@ export function EditableText(props: {
   const commit = () => {
     setEditing(false);
     const trimmed = text.trim();
-    if (trimmed && trimmed !== props.value) props.onSave(trimmed);
+    if (!trimmed && !props.allowEmpty) return;
+    if (trimmed !== props.value) props.onSave(trimmed);
   };
 
   return (
@@ -205,6 +210,7 @@ export function EditableText(props: {
         ref={inputRef}
         className="money-cell-input text-cell-input"
         value={text}
+        placeholder={props.placeholder}
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {

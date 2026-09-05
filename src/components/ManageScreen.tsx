@@ -15,8 +15,9 @@ import {
 import type { FixedExpenseInput } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { EditableMoney, EditableText, MoneyInput, ConfirmModal } from './shared';
+import { ManageOrigins } from './ManageOrigins';
 import type { MonthData } from '../hooks/useMonthData';
-import type { Category, FixedExpense } from '../types';
+import type { Category, FixedExpense, Origin } from '../types';
 
 function parsePositiveInt(text: string): number | null {
   const n = Number.parseInt(text.trim(), 10);
@@ -142,9 +143,10 @@ export function ManageScreen(props: {
   currentMonth: string;
   fixedExpenses: FixedExpense[];
   categories: Category[];
+  origins: Origin[];
   monthData: MonthData;
 }) {
-  const { compartmentId, currentMonth, fixedExpenses, categories, monthData } = props;
+  const { compartmentId, currentMonth, fixedExpenses, categories, origins, monthData } = props;
 
   const totals = useMemo(
     () => ({
@@ -387,6 +389,8 @@ export function ManageScreen(props: {
           </button>
         </form>
       </section>
+
+      <ManageOrigins compartmentId={compartmentId} origins={origins} />
 
       {fixedModal !== 'closed' && (
         <FixedExpenseModal

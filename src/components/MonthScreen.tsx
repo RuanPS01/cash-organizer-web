@@ -11,18 +11,8 @@ import { dayLabel, monthLabel, nextMonthKey, prevMonthKey } from '../utils/dates
 import { useMonthData } from '../hooks/useMonthData';
 import { ConfirmModal, EditableMoney } from './shared';
 import { StatsView } from './StatsView';
-import { ENTRY_STATUSES, IGNORED_STATUS } from '../types';
+import { ENTRY_STATUSES, IGNORED_STATUS, STATUS_CLASS } from '../types';
 import type { EntryStatus } from '../types';
-
-const STATUS_CLASS: Record<EntryStatus, string> = {
-  Pendente: 'st-pending',
-  'Parcialmente pago': 'st-partial',
-  'Agendado/Automático': 'st-scheduled',
-  Pago: 'st-paid',
-  'Sem gasto': 'st-none',
-  'Não disponível ainda': 'st-unavailable',
-  Ignorar: 'st-ignored',
-};
 
 function StatusSelect(props: {
   value: EntryStatus;
