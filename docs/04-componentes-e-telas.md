@@ -23,7 +23,7 @@ sessão, garante o mês corrente e chama `onEnter`.
 
 ### `AddExpenseScreen` (aba Adicionar)
 
-`props: { compartmentId, currentMonth, categories, data }`
+`props: { compartmentId, currentMonth, categories, origins, data }`
 
 Tela principal. Contém:
 
@@ -33,9 +33,13 @@ Tela principal. Contém:
 - linha de descrição com o botão de calendário e o botão de borracha;
 - linha "Data:" logo abaixo, em cinza quando é hoje e em laranja quando é outra
   data;
+- linha de chips de **origem** (de onde o dinheiro saiu), com o glifo colorido
+  de cada origem e a origem padrão pré-selecionada; a linha inteira some quando
+  não há origem cadastrada;
 - card de informe da categoria selecionada (restante da semana, restante do mês,
   barras de progresso, totais de fixos e variáveis do mês);
-- `MonthlyComparisonCard` no rodapé.
+- `MonthlyComparisonCard`;
+- `ExpenseHistory` no rodapé, com o histórico do mês.
 
 O botão de calendário é um `div` com aparência de botão e um `input[type=date]`
 invisível por cima (`.date-native`): no celular o toque cai no input e abre o
@@ -64,11 +68,12 @@ Edição só é permitida quando o mês visualizado é o corrente e está aberto
 
 ### `ManageScreen` (aba Gerenciar)
 
-`props: { compartmentId, currentMonth, fixedExpenses, categories, monthData }`
+`props: { compartmentId, currentMonth, fixedExpenses, categories, origins, monthData }`
 
 Cadastro de gastos fixos (com modal completo: nome, descrição, valor, ideal e
 parcela) e de categorias (nome editável, ideal editável, reordenação com as
-setas, "tornar padrão" e remoção). Mostra totais de cadastro por seção.
+setas, "tornar padrão" e remoção). Mostra totais de cadastro por seção. A
+terceira seção, de origens do gasto, é delegada ao `ManageOrigins`.
 
 ## 4.2 Componentes reutilizáveis
 
@@ -79,7 +84,7 @@ setas, "tornar padrão" e remoção). Mostra totais de cadastro por seção.
 | `ConfirmModal` | `{ title, children, confirmLabel, cancelLabel?, busy?, onConfirm, onCancel }` | qualquer confirmação ou formulário em modal. É a base do `FixedExpenseModal` |
 | `MoneyInput` | `{ valueCents, onChange, placeholder?, big?, autoFocus?, id? }` | entrada de valor em centavos, sempre formatada enquanto digita |
 | `EditableMoney` | `{ valueCents, onSave, disabled?, muted? }` | valor que vira input ao toque e salva no blur ou Enter |
-| `EditableText` | `{ value, onSave, disabled? }` | texto que vira input ao toque; vazio cancela |
+| `EditableText` | `{ value, onSave, disabled?, placeholder?, allowEmpty? }` | texto que vira input ao toque; vazio cancela, a menos que `allowEmpty` (usado na descrição do lançamento, que pode ser apagada). `placeholder` é o texto exibido quando o valor está vazio |
 | `ProgressBar` | `{ ratio, danger? }` | barra de progresso; passa de 1 fica com a classe `over` |
 | `BrandMark` | `{ big? }` | marca do app, igual ao ícone do PWA. Use sempre este componente em vez de desenhar a marca de novo |
 
@@ -104,6 +109,39 @@ linha mostra gasto, ideal, percentual, barra e a descrição com fixos, variáve
 o restante (ou o excedido, em vermelho). Reutilizado pela aba Adicionar e pela
 aba Estatísticas: se precisar dele em outro lugar, reutilize em vez de copiar.
 
+### `components/ExpenseHistory.tsx`
+
+`props: { compartmentId, ym, data, categories, origins }`
+
+Histórico do mês exibido na aba Adicionar, com duas subabas: **Variáveis**
+(padrão, do lançamento mais recente para o mais antigo) e **Fixos**. Tem barra
+de busca (sem acento e sem caixa) e, na aba de variáveis, filtros de categoria,
+origem e faixa de data. Valor e descrição são editáveis no lugar
+(`EditableMoney` e `EditableText`) e a remoção passa por `ConfirmModal`:
+lançamento variável é excluído de verdade, gasto fixo usa `removeFixedExpense`
+(sai do mês e dos próximos, porque uma linha apagada sozinha voltaria na
+próxima reconciliação de `ensureMonth`). Edição só é liberada com o mês em
+aberto.
+
+### `components/ManageOrigins.tsx`
+
+`props: { compartmentId, origins }`
+
+Seção "Origens do gasto" da tela Gerenciar mais o modal de criação e edição
+(nome, grade de ícones e fileira de tons, com prévia). A primeira origem criada
+já nasce como padrão. Modais ficam fora do `.card` de propósito: `clip-path`
+recorta até descendente `position: fixed`.
+
+### `components/OriginIcon.tsx`
+
+`props: { icon?, color?, size? }`
+
+Glifo da origem no tom escolhido, mais os catálogos `ORIGIN_ICON_LABELS`,
+`ORIGIN_COLOR_LABELS`, `ORIGIN_ICON_OPTIONS` e `ORIGIN_COLOR_OPTIONS`. As
+chaves ficam em `types.ts` e o desenho do lucide-react correspondente fica aqui,
+então trocar um ícone não mexe em dado gravado. Sem ícone conhecido (origem
+removida do cadastro), cai na carteira em ouro.
+
 ### `components/StatsView.tsx`
 
 `props: { compartmentId, viewMonth, data }`
@@ -115,8 +153,10 @@ comparação das quatro semanas com o mês anterior.
 ### `StatusSelect` (interno do `MonthScreen`)
 
 Select em formato de pílula com as opções de `ENTRY_STATUSES` e a classe de cor
-correspondente. Não é exportado. Se um dia outra tela precisar dele, mova para
-`shared.tsx` em vez de duplicar.
+correspondente, lida do mapa `STATUS_CLASS` de `types.ts`. O componente não é
+exportado; se outra tela precisar dele, mova para `shared.tsx` em vez de
+duplicar. Quem só precisa da cor (como o selo de status do `ExpenseHistory`)
+usa o `STATUS_CLASS` direto.
 
 ## 4.3 Hooks
 
@@ -125,10 +165,10 @@ Ambos em [`src/hooks/useMonthData.ts`](../src/hooks/useMonthData.ts).
 | Hook | Retorno | O que assina |
 |---|---|---|
 | `useMonthData(compartmentId, ym)` | `{ loading, month, fixedEntries, categoryEntries, expenses }` | documento do mês e as três subcoleções, em tempo real |
-| `useConfig(compartmentId)` | `{ fixedExpenses, categories }` | cadastros do compartimento, já filtrados por `active` e ordenados |
+| `useConfig(compartmentId)` | `{ fixedExpenses, categories, origins }` | cadastros do compartimento, já filtrados por `active` e ordenados |
 
-`useConfig` ordena categorias por `sortOrder ?? createdAt`, que é a ordem exibida
-nos chips e na tela Gerenciar. Fixos vêm ordenados por nome.
+`useConfig` ordena categorias e origens por `sortOrder ?? createdAt`, que é a
+ordem exibida nos chips e na tela Gerenciar. Fixos vêm ordenados por nome.
 
 ## 4.4 Serviços disponíveis
 
@@ -150,9 +190,16 @@ padrão "Avulso").
 `ensureMonth`, `setOpenMonth`, `computeTotals`, `closeMonth`, `listMonths`,
 `fetchExpenses`.
 
+### `services/origins.ts`
+
+`originsCol`, `addOrigin`, `saveOrigin`, `updateOrigin`, `moveOrigin`,
+`setDefaultOrigin`, `removeOrigin` (desativa; o histórico segue com o nome
+gravado no lançamento).
+
 ### `services/expenses.ts`
 
-Lançamentos: `addVariableExpense`, `deleteVariableExpense`.
+Lançamentos: `addVariableExpense` (aceita `originId` e `originName`),
+`updateVariableExpense` (valor e descrição), `deleteVariableExpense`.
 Gastos fixos: `addFixedExpense`, `saveFixedExpense`, `updateFixedExpense`,
 `removeFixedExpense`.
 Categorias: `addCategory`, `updateCategory`, `renameCategory`,

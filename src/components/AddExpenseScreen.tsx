@@ -14,20 +14,27 @@ import {
 } from '../utils/dates';
 import { MoneyInput, ProgressBar } from './shared';
 import { MonthlyComparisonCard } from './MonthlyComparisonCard';
+import { ExpenseHistory } from './ExpenseHistory';
+import { OriginIcon } from './OriginIcon';
 import type { MonthData } from '../hooks/useMonthData';
-import type { Category } from '../types';
+import type { Category, Origin } from '../types';
 
 export function AddExpenseScreen(props: {
   compartmentId: string;
   currentMonth: string;
   categories: Category[];
+  origins: Origin[];
   data: MonthData;
 }) {
-  const { compartmentId, currentMonth, categories, data } = props;
+  const { compartmentId, currentMonth, categories, origins, data } = props;
   // Pré-seleção: a categoria padrão do compartimento (Avulso, até o usuário
   // transferir o papel para outra); por segurança, cai na primeira da lista.
   const defaultCategory = categories.find((c) => c.isDefault) ?? categories[0];
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  // Mesma regra da categoria para a origem do gasto: a padrão vem
+  // pré-selecionada e, sem padrão definida, vale a primeira da lista.
+  const defaultOrigin = origins.find((o) => o.isDefault) ?? origins[0];
+  const [originId, setOriginId] = useState<string | null>(null);
   const [cents, setCents] = useState(0);
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
@@ -64,6 +71,7 @@ export function AddExpenseScreen(props: {
 
   const selected =
     categories.find((c) => c.id === categoryId) ?? defaultCategory ?? null;
+  const selectedOrigin = origins.find((o) => o.id === originId) ?? defaultOrigin ?? null;
 
   const currentWeek = weekOfMonth();
 
@@ -102,6 +110,8 @@ export function AddExpenseScreen(props: {
         amount: cents,
         description,
         date: isToday ? undefined : dateFromDayKey(date),
+        originId: selectedOrigin?.id ?? null,
+        originName: selectedOrigin?.name,
       });
       setFlash(
         `${formatBRL(cents)} em "${selected.name}" adicionado${
@@ -229,6 +239,26 @@ export function AddExpenseScreen(props: {
           Data:{' '}
           <strong>{isToday ? `hoje (${dayKeyLabel(date)})` : dayKeyFullLabel(date)}</strong>
         </p>
+
+        {origins.length > 0 && (
+          <div className="origin-picker">
+            <span className="origin-label">Origem</span>
+            <div className="chip-row" role="radiogroup" aria-label="Origem do gasto">
+              {origins.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`chip${selectedOrigin?.id === o.id ? ' selected' : ''}`}
+                  onClick={() => setOriginId(o.id)}
+                >
+                  <OriginIcon icon={o.icon} color={o.color} />
+                  {o.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button className="btn primary block" type="submit" disabled={busy || cents <= 0}>
           {busy ? 'Salvando…' : `Adicionar em "${selected?.name ?? '…'}"`}
         </button>
@@ -284,6 +314,14 @@ export function AddExpenseScreen(props: {
         compartmentId={compartmentId}
         viewMonth={currentMonth}
         data={data}
+      />
+
+      <ExpenseHistory
+        compartmentId={compartmentId}
+        ym={currentMonth}
+        data={data}
+        categories={categories}
+        origins={origins}
       />
     </div>
   );

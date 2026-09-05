@@ -13,6 +13,21 @@ export type EntryStatus = (typeof ENTRY_STATUSES)[number];
 /** Status que tira a linha da soma do gasto do mês (o ideal continua valendo). */
 export const IGNORED_STATUS: EntryStatus = 'Ignorar';
 
+/**
+ * Classe de cor de cada status. Fica junto de ENTRY_STATUSES para que status
+ * novo e cor andem no mesmo lugar: a aba Pagamento e o histórico do mês leem
+ * daqui, e as classes `.st-*` estão no `styles.css`.
+ */
+export const STATUS_CLASS: Record<EntryStatus, string> = {
+  Pendente: 'st-pending',
+  'Parcialmente pago': 'st-partial',
+  'Agendado/Automático': 'st-scheduled',
+  Pago: 'st-paid',
+  'Sem gasto': 'st-none',
+  'Não disponível ainda': 'st-unavailable',
+  Ignorar: 'st-ignored',
+};
+
 /** Todos os valores monetários são armazenados em centavos (inteiro). */
 export interface Compartment {
   id: string;
@@ -53,6 +68,58 @@ export interface Category {
    * "Avulso" nasce como padrão, mas o usuário pode transferir o papel para
    * outra categoria (só existe uma padrão por compartimento).
    */
+  isDefault: boolean;
+  /** Posição na listagem/chips (menor primeiro; ausente usa createdAt). */
+  sortOrder?: number;
+  active: boolean;
+  createdAt: number;
+}
+
+/**
+ * Ícones disponíveis para a origem do gasto. A chave é gravada no Firestore;
+ * o desenho correspondente do lucide-react fica em `components/OriginIcon`,
+ * para que trocar o desenho não exija migrar dado gravado.
+ */
+export const ORIGIN_ICONS = [
+  'pix',
+  'transfer',
+  'card',
+  'cash',
+  'investment',
+  'autodebit',
+  'boleto',
+] as const;
+
+export type OriginIconKey = (typeof ORIGIN_ICONS)[number];
+
+/**
+ * Tons do glifo da origem. São a única exceção ao ouro na identidade e
+ * existem para diferenciar cartões de bancos diferentes; a cor real de cada
+ * chave está no `styles.css` (classes `.oc-*`).
+ */
+export const ORIGIN_COLORS = [
+  'gold',
+  'silver',
+  'graphite',
+  'copper',
+  'violet',
+  'teal',
+  'terracota',
+] as const;
+
+export type OriginColorKey = (typeof ORIGIN_COLORS)[number];
+
+/**
+ * Origem do gasto (forma de pagamento): o segundo eixo de classificação do
+ * lançamento, ao lado da categoria. Exemplos: "Cartão C6 (Crédito)",
+ * "Pix ou Transf.", "Cartão Nu".
+ */
+export interface Origin {
+  id: string;
+  name: string;
+  icon: OriginIconKey;
+  color: OriginColorKey;
+  /** Origem padrão: pré-selecionada ao adicionar gasto (só uma por compartimento). */
   isDefault: boolean;
   /** Posição na listagem/chips (menor primeiro; ausente usa createdAt). */
   sortOrder?: number;
@@ -113,6 +180,10 @@ export interface VariableExpense {
   createdAt: number;
   /** Semana do mês, 1 a 4 (dias 29+ contam como semana 4). */
   week: number;
+  /** Origem escolhida no lançamento; null quando não havia origem cadastrada. */
+  originId?: string | null;
+  /** Denormalizado, mantém o histórico legível se a origem for renomeada. */
+  originName?: string;
 }
 
 export interface Session {

@@ -40,12 +40,35 @@ sessão e cai no login. Enquanto isso, a tela mostra "Abrindo seu compartimento�
 4. Data: por padrão hoje. O botão de calendário abre o seletor nativo; com outra
    data escolhida, o botão fica com borda laranja e a linha "Data:" mostra a data
    escolhida em laranja. O botão de borracha volta para hoje.
-5. "Adicionar em ..." grava o lançamento com `createdAt` e `week` derivados da
+5. Origem: os chips de origem ficam logo acima do botão de adicionar, com a
+   origem padrão pré-selecionada. Sem origem cadastrada, a linha não aparece e o
+   lançamento é gravado com `originId: null`.
+6. "Adicionar em ..." grava o lançamento com `createdAt` e `week` derivados da
    data escolhida, e mostra o flash de confirmação por 2,5 segundos.
 
 O card de informe abaixo do formulário atualiza sozinho (dados em tempo real) e
 mostra quanto resta na semana e no mês da categoria, além dos totais de fixos e
 variáveis do mês.
+
+## 7.3.1 Histórico do mês (aba Adicionar)
+
+No rodapé da aba Adicionar, abaixo dos dois cards de estatística, fica o
+histórico do mês em duas subabas:
+
+- **Variáveis** (padrão): todos os lançamentos do mês, do mais recente para o
+  mais antigo, com data, semana, categoria e o selo da origem (glifo colorido
+  mais nome). Busca por texto (sem acento e sem caixa, cobrindo descrição,
+  categoria e origem) e filtros de categoria, origem ("Sem origem" inclusive) e
+  faixa de data.
+- **Fixos**: as linhas de gasto fixo do mês, com selo de status, ideal e busca
+  por nome ou descrição.
+
+Nas duas subabas, valor e descrição são editáveis no lugar e a remoção passa por
+confirmação. Excluir um lançamento variável apaga o documento; remover um gasto
+fixo usa o mesmo caminho da tela Gerenciar (sai do mês em aberto e dos próximos
+meses), porque apagar só a linha do mês faria o gasto voltar na próxima
+reconciliação. Meses fechados não são alterados, e a edição só é liberada com o
+mês em aberto.
 
 ## 7.4 Gerenciar cadastros
 
@@ -57,6 +80,12 @@ direto na lista.
 Categoria: nome e ideal editáveis no lugar, setas para reordenar (a ordem vale
 para os chips da tela de novo gasto), "tornar padrão" para transferir o papel da
 categoria pré-selecionada e X para remover.
+
+Origem do gasto: modal com nome, grade de ícones (Pix, transferência, cartão,
+dinheiro, investimento, débito automático e boleto) e fileira de tons, que mostra
+o ícone escolhido em cada cor. A lista tem "tornar padrão", setas de ordem e
+remoção. A primeira origem criada já vira a padrão. Remover desativa: os
+lançamentos que já usaram a origem seguem com o nome dela no histórico.
 
 Remoção é sempre desativação (`active: false`), com efeito no mês em aberto:
 

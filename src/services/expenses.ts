@@ -31,16 +31,33 @@ export async function addVariableExpense(
     description: string;
     /** Data do lançamento; sem ela, o momento atual. */
     date?: Date;
+    /** Origem do gasto; sem origem cadastrada, fica null. */
+    originId?: string | null;
+    originName?: string;
   },
 ): Promise<void> {
-  const { date, description, ...rest } = input;
+  const { date, description, originId, originName, ...rest } = input;
   const when = date ?? new Date();
   await addDoc(expensesCol(compartmentId, ym), {
     ...rest,
     description: description.trim(),
     createdAt: when.getTime(),
     week: weekOfMonth(when),
+    // Sempre gravados (null/vazio quando não há origem): undefined faz o SDK
+    // recusar o documento inteiro.
+    originId: originId ?? null,
+    originName: originName ?? '',
   });
+}
+
+/** Edita valor e descrição de um lançamento já gravado (histórico do mês). */
+export async function updateVariableExpense(
+  compartmentId: string,
+  ym: string,
+  expenseId: string,
+  patch: Partial<{ amount: number; description: string }>,
+): Promise<void> {
+  await updateDoc(doc(expensesCol(compartmentId, ym), expenseId), patch);
 }
 
 export async function deleteVariableExpense(
@@ -290,7 +307,13 @@ export async function updateFixedEntry(
   compartmentId: string,
   ym: string,
   entryId: string,
-  patch: Partial<{ amount: number; idealAmount: number; status: EntryStatus }>,
+  patch: Partial<{
+    amount: number;
+    idealAmount: number;
+    status: EntryStatus;
+    /** Só a linha do mês muda; o cadastro segue com a descrição original. */
+    description: string;
+  }>,
 ): Promise<void> {
   await updateDoc(doc(fixedEntriesCol(compartmentId, ym), entryId), patch);
 }

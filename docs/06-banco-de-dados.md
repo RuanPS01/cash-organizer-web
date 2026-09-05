@@ -22,6 +22,7 @@ ficam no repositório `cash-organizer-functions`, não aqui.
 compartments/{compartmentId}
   fixedExpenses/{fixedExpenseId}
   categories/{categoryId}
+  origins/{originId}
   months/{YYYY-MM}
     fixedEntries/{fixedExpenseId}
     categoryEntries/{categoryId}
@@ -75,6 +76,27 @@ quando não há `installmentTotal`.
 
 Todo compartimento nasce com a categoria "Avulso" como padrão. O papel de padrão
 pode ser transferido para outra categoria com `setDefaultCategory`.
+
+## 6.5.1 `origins/{id}` (cadastro de origem do gasto)
+
+A origem é o segundo eixo de classificação do lançamento variável, ao lado da
+categoria: diz de onde o dinheiro saiu ("Cartão C6 (Crédito)", "Pix ou Transf.",
+"Cartão Nu"). Não gera linha de mês e não entra em `computeTotals`.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `name` | string | com trim |
+| `icon` | `OriginIconKey` | chave do catálogo em [`types.ts`](../src/types.ts): `pix`, `transfer`, `card`, `cash`, `investment`, `autodebit`, `boleto` |
+| `color` | `OriginColorKey` | tom do glifo: `gold`, `silver`, `graphite`, `copper`, `violet`, `teal`, `terracota` |
+| `isDefault` | boolean | só uma por compartimento; é a pré-selecionada no novo gasto |
+| `sortOrder` | number | posição nos chips e na lista; ausente usa `createdAt` |
+| `active` | boolean | `false` some do seletor e dos filtros |
+| `createdAt` | number | ms |
+
+A chave de ícone é gravada, não o desenho: trocar o glifo do lucide-react em
+[`components/OriginIcon.tsx`](../src/components/OriginIcon.tsx) não exige migrar
+dado. Compartimento nasce sem origem nenhuma; a primeira criada vira a padrão.
+Remover é desativar, e os lançamentos antigos seguem com `originName`.
 
 ## 6.6 `months/{YYYY-MM}`
 
@@ -135,6 +157,8 @@ O gasto real da categoria não fica aqui: é a soma dos lançamentos.
 | `description` | string | com trim, pode ser `''` |
 | `createdAt` | number | ms da data escolhida (com a hora do relógio, para manter a ordem de inclusão do mesmo dia) |
 | `week` | number | 1 a 4, calculado por `weekOfMonth` sobre a data do lançamento |
+| `originId` | string ou null | id da origem escolhida; `null` quando não havia origem cadastrada |
+| `originName` | string | denormalizado, mantém o histórico legível se a origem for renomeada ou removida |
 
 Ao lançar em data passada, `createdAt` e `week` seguem a data escolhida, mas o
 lançamento continua no mês em aberto: o mês do app é a referência da fatura, não
@@ -155,11 +179,12 @@ Ordem e significado, definidos em [`src/types.ts`](../src/types.ts):
 | `Ignorar` | deve ficar fora do custo somado | **não conta** no gasto; o ideal continua contando |
 
 `IGNORED_STATUS` exporta a constante `'Ignorar'`. Use a constante nos cálculos em
-vez da string solta.
+vez da string solta. `STATUS_CLASS`, o mapa de status para classe de cor, também
+fica em `types.ts` (a aba Pagamento e o histórico do mês leem os dois de lá).
 
 Ao adicionar um status novo: inclua em `ENTRY_STATUSES`, adicione a entrada em
-`STATUS_CLASS` no `MonthScreen`, crie a classe `.st-*` no `styles.css`, decida o
-efeito em `computeTotals` e atualize esta tabela.
+`STATUS_CLASS` (ambos em `types.ts`), crie a classe `.st-*` no `styles.css`,
+decida o efeito em `computeTotals` e atualize esta tabela.
 
 ## 6.9 Ciclo de vida do mês
 
@@ -181,6 +206,9 @@ com a categoria padrão, seed do mês, reordenação de categorias (troca de
 reinicialização de mês.
 
 ## 6.11 Índices e consultas
+
+O cadastro de origens é lido inteiro por `onSnapshot` (`useConfig`), sem filtro
+composto: o volume é de poucas dezenas de documentos.
 
 As consultas são simples de propósito. A única com filtro composto é a de
 `removeCategory` (`where('categoryId', '==', id)` mais `limit(1)` dentro de

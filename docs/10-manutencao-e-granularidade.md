@@ -2,21 +2,24 @@
 
 ## 10.1 Tamanho atual dos arquivos
 
-Referência de agosto de 2026 (linhas):
+Referência de setembro de 2026 (linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 1520 |
-| `components/MonthScreen.tsx` | 476 |
-| `components/ManageScreen.tsx` | 414 |
+| `styles.css` | 1942 |
+| `components/MonthScreen.tsx` | 468 |
+| `components/ManageScreen.tsx` | 428 |
+| `components/ExpenseHistory.tsx` | 394 |
+| `services/expenses.ts` | 328 |
+| `components/AddExpenseScreen.tsx` | 328 |
 | `services/months.ts` | 317 |
-| `services/expenses.ts` | 305 |
-| `components/AddExpenseScreen.tsx` | 287 |
-| `components/shared.tsx` | 186 |
-| `App.tsx` | 142 |
-| demais | menos de 130 cada |
+| `components/ManageOrigins.tsx` | 244 |
+| `components/shared.tsx` | 240 |
+| `types.ts` | 192 |
+| `App.tsx` | 145 |
+| demais | menos de 125 cada |
 
-O projeto inteiro tem cerca de 4,5 mil linhas. Esse tamanho é uma vantagem: dá para
+O projeto inteiro tem cerca de 5,8 mil linhas. Esse tamanho é uma vantagem: dá para
 ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 ## 10.2 Quando criar um arquivo novo
@@ -49,6 +52,9 @@ grep -rn "nome-provavel" src/
 Erros já cometidos aqui que valem lembrar:
 
 - reimplementar formatação de moeda em vez de usar `formatBRL`;
+- renderizar um modal dentro de um `.card`: o `clip-path` do card recorta até
+  descendente `position: fixed`, e o modal aparece cortado. O modal vai como
+  irmão do card;
 - somar totais na mão em uma tela em vez de usar `computeTotals` (foi exatamente
   o que deixou a aba Adicionar somando linhas ignoradas);
 - criar um segundo componente de valor editável em vez de usar `EditableMoney`;
@@ -90,11 +96,21 @@ truque levam comentário na seção.
 5. Exibição na aba Pagamento, se fizer sentido.
 6. Atualizar [06-banco-de-dados.md](06-banco-de-dados.md).
 
+### Adicionar uma origem ao catálogo de ícones
+
+1. Nova chave em `ORIGIN_ICONS` ([`types.ts`](../src/types.ts)); a chave é o que
+   fica gravado no Firestore.
+2. Desenho do lucide-react em `ORIGIN_GLYPHS` e rótulo em `ORIGIN_ICON_LABELS`
+   ([`components/OriginIcon.tsx`](../src/components/OriginIcon.tsx)).
+3. Nada mais: a grade do modal e os filtros leem do catálogo. Tom novo segue o
+   mesmo caminho por `ORIGIN_COLORS` mais a classe `.oc-*` no `styles.css`.
+4. Atualizar [06-banco-de-dados.md](06-banco-de-dados.md).
+
 ### Adicionar um status de linha
 
 1. Incluir em `ENTRY_STATUSES` ([`types.ts`](../src/types.ts)), escolhendo a
    posição na lista do select.
-2. Entrada no mapa `STATUS_CLASS` do `MonthScreen`.
+2. Entrada no mapa `STATUS_CLASS`, logo abaixo, no mesmo arquivo.
 3. Classe `.st-*` no `styles.css`.
 4. Decidir o efeito em `computeTotals` e no bloqueio da virada de mês.
 5. Atualizar a tabela de status em [06-banco-de-dados.md](06-banco-de-dados.md).

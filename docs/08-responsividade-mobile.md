@@ -56,6 +56,30 @@ A descrição fica em `minmax(0, 1fr)` com `overflow-wrap: anywhere`, para quebr
 texto longo em vez de empurrar a tabela para fora da tela. O botão de excluir
 nunca quebra de linha.
 
+## 8.4.1 Lista do histórico do mês
+
+O item do histórico usa a mesma ideia em qualquer largura: uma grade de três
+colunas com duas linhas de texto à esquerda e, à direita, o valor e o botão de
+excluir, que nunca quebram de linha.
+
+```
+'desc  value delete'
+'meta  value delete'
+```
+
+A coluna de texto é `minmax(0, 1fr)`, e os selos de categoria e origem ficam em
+um flex com `flex-wrap`, então nome longo de categoria desce de linha em vez de
+esticar a lista. Os filtros são uma coluna até 560px e duas acima disso.
+
+Na tela Gerenciar, a lista de origens tem quatro botões de ação por linha. Abaixo
+de 560px, `.manage-list li` ganha `flex-wrap` e `.row-main` uma largura mínima de
+11rem: quando o nome não cabe ao lado dos botões, eles descem para a linha
+seguinte, alinhados à direita, em vez de espremer o nome em três linhas.
+
+O modal tem `max-height: calc(100dvh - 2rem)` e quem rola é o `.modal-body`, para
+que o título e os botões de ação continuem visíveis: o modal da origem, com a
+grade de ícones, é mais alto que a tela de um celular.
+
 ## 8.5 Rolagem horizontal permitida
 
 Só dois contêineres rolam na horizontal, e de propósito:
