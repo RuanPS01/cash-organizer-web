@@ -63,6 +63,10 @@ histórico do mês em duas subabas:
 - **Fixos**: as linhas de gasto fixo do mês, com selo de status, ideal e busca
   por nome ou descrição.
 
+Falha de gravação (recusa do banco ou falta de rede) aparece na tela: no modal,
+quando existe um, e no rodapé do card na edição no lugar, que não tem botão de
+confirmar.
+
 Nas duas subabas, valor e descrição são editáveis no lugar e a remoção passa por
 confirmação. Excluir um lançamento variável apaga o documento; remover um gasto
 fixo usa o mesmo caminho da tela Gerenciar (sai do mês em aberto e dos próximos

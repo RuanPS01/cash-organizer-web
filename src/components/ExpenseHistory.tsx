@@ -8,6 +8,7 @@ import {
 } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { dateFromDayKey, dayLabel } from '../utils/dates';
+import { writeErrorMessage } from '../utils/errors';
 import { ConfirmModal, EditableMoney, EditableText } from './shared';
 import { OriginIcon } from './OriginIcon';
 import { IGNORED_STATUS, STATUS_CLASS } from '../types';
@@ -64,9 +65,17 @@ export function ExpenseHistory(props: {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<
     { kind: 'expense'; item: VariableExpense } | { kind: 'fixed'; item: FixedEntry } | null
   >(null);
+
+  // A edição no lugar não tem botão de confirmar: sem este catch, uma gravação
+  // recusada faria o valor voltar ao anterior na tela sem explicar por quê.
+  const run = (promise: Promise<void>) => {
+    setError(null);
+    promise.catch((err) => setError(writeErrorMessage(err)));
+  };
 
   const editable = data.month?.status === 'open';
   const originById = useMemo(() => new Map(origins.map((o) => [o.id, o])), [origins]);
@@ -120,12 +129,16 @@ export function ExpenseHistory(props: {
   const confirmRemove = async () => {
     if (!removeTarget) return;
     setBusy(true);
+    setError(null);
     try {
       if (removeTarget.kind === 'expense') {
         await deleteVariableExpense(compartmentId, ym, removeTarget.item.id);
       } else {
         await removeFixedExpense(compartmentId, ym, removeTarget.item.id);
       }
+      setRemoveTarget(null);
+    } catch (err) {
+      setError(writeErrorMessage(err));
       setRemoveTarget(null);
     } finally {
       setBusy(false);
@@ -256,7 +269,7 @@ export function ExpenseHistory(props: {
                     allowEmpty
                     disabled={!editable}
                     onSave={(description) =>
-                      updateVariableExpense(compartmentId, ym, e.id, { description })
+                      run(updateVariableExpense(compartmentId, ym, e.id, { description }))
                     }
                   />
                 </span>
@@ -276,7 +289,9 @@ export function ExpenseHistory(props: {
                   <EditableMoney
                     valueCents={e.amount}
                     disabled={!editable}
-                    onSave={(amount) => updateVariableExpense(compartmentId, ym, e.id, { amount })}
+                    onSave={(amount) =>
+                      run(updateVariableExpense(compartmentId, ym, e.id, { amount }))
+                    }
                   />
                 </span>
                 {editable && (
@@ -319,7 +334,7 @@ export function ExpenseHistory(props: {
                     allowEmpty
                     disabled={!editable}
                     onSave={(description) =>
-                      updateFixedEntry(compartmentId, ym, f.id, { description })
+                      run(updateFixedEntry(compartmentId, ym, f.id, { description }))
                     }
                   />
                 </span>
@@ -331,7 +346,7 @@ export function ExpenseHistory(props: {
                   <EditableMoney
                     valueCents={f.amount}
                     disabled={!editable}
-                    onSave={(amount) => updateFixedEntry(compartmentId, ym, f.id, { amount })}
+                    onSave={(amount) => run(updateFixedEntry(compartmentId, ym, f.id, { amount }))}
                   />
                 </span>
                 {editable && (
@@ -356,6 +371,7 @@ export function ExpenseHistory(props: {
             )}
           </ul>
         )}
+        {error && <p className="form-error">{error}</p>}
       </section>
 
       {removeTarget && (

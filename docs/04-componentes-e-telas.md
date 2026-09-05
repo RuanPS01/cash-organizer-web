@@ -220,5 +220,6 @@ Linhas do mês: `updateFixedEntry`, `updateCategoryEntry`.
 | `dateFromDayKey(key, time?)` | `utils/dates.ts` | `YYYY-MM-DD` para `Date` local, com a hora do relógio |
 | `dayLabel(ms)`, `dayKeyLabel(key)` | `utils/dates.ts` | "21/08" |
 | `dayKeyFullLabel(key)` | `utils/dates.ts` | "21/08/2026" |
+| `writeErrorMessage(err)` | `utils/errors.ts` | mensagem legível para falha de gravação no Firestore (trata `permission-denied` e falta de conexão) |
 | `sha256Hex`, `hashPassword` | `utils/crypto.ts` | hash da senha com o id como sal |
 | `encryptText`, `decryptText` | `utils/crypto.ts` | AES-GCM com a chave do dispositivo |

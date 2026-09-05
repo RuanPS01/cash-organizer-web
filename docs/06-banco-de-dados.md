@@ -98,6 +98,13 @@ A chave de ícone é gravada, não o desenho: trocar o glifo do lucide-react em
 dado. Compartimento nasce sem origem nenhuma; a primeira criada vira a padrão.
 Remover é desativar, e os lançamentos antigos seguem com `originName`.
 
+> **Coleção nova exige regra nova.** O Firestore nega tudo que não está
+> explicitamente liberado, e as regras vivem em `cash-organizer-functions`. Sem
+> o bloco `match /origins/{originId}`, o app não lista nem grava origem, e a
+> falha chega como `permission-denied`. O mesmo vale para operação nova em
+> coleção existente: a edição de valor e descrição no histórico só funciona
+> porque `expenses` passou a permitir `update` desses dois campos.
+
 ## 6.6 `months/{YYYY-MM}`
 
 | Campo | Tipo | Notas |

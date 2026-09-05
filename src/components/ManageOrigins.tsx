@@ -9,6 +9,7 @@ import {
 } from '../services/origins';
 import type { OriginInput } from '../services/origins';
 import { ConfirmModal } from './shared';
+import { writeErrorMessage } from '../utils/errors';
 import {
   ORIGIN_COLOR_LABELS,
   ORIGIN_COLOR_OPTIONS,
@@ -27,6 +28,8 @@ import type { Origin, OriginColorKey, OriginIconKey } from '../types';
 function OriginModal(props: {
   initial: Origin | null;
   busy: boolean;
+  /** Falha vinda da gravação; o modal segue aberto para não perder o que foi digitado. */
+  saveError: string | null;
   onSave: (input: OriginInput) => void;
   onCancel: () => void;
 }) {
@@ -103,7 +106,9 @@ function OriginModal(props: {
           ))}
         </div>
 
-        {error && <p className="form-error">{error}</p>}
+        {(error ?? props.saveError) && (
+          <p className="form-error">{error ?? props.saveError}</p>
+        )}
       </div>
     </ConfirmModal>
   );
@@ -119,9 +124,14 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
   const [modal, setModal] = useState<'closed' | 'new' | Origin>('closed');
   const [removeTarget, setRemoveTarget] = useState<Origin | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Sem este catch a gravação recusada (regra do Firestore que ainda não
+  // libera a coleção, por exemplo) apagava o "Aguarde…" e deixava o modal
+  // aberto sem dizer nada, como se o botão não tivesse funcionado.
   const save = async (input: OriginInput) => {
     setBusy(true);
+    setError(null);
     try {
       if (modal === 'new') {
         await addOrigin(compartmentId, { ...input, isDefault: origins.length === 0 });
@@ -129,6 +139,8 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
         await saveOrigin(compartmentId, modal.id, input);
       }
       setModal('closed');
+    } catch (err) {
+      setError(writeErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -137,12 +149,20 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
   const confirmRemove = async () => {
     if (!removeTarget) return;
     setBusy(true);
+    setError(null);
     try {
       await removeOrigin(compartmentId, removeTarget.id);
       setRemoveTarget(null);
+    } catch (err) {
+      setError(writeErrorMessage(err));
     } finally {
       setBusy(false);
     }
+  };
+
+  const openModal = (target: 'new' | Origin) => {
+    setError(null);
+    setModal(target);
   };
 
   return (
@@ -180,7 +200,7 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
               {/* Os quatro botões vão num grupo só: em telas estreitas eles
                   descem juntos para a linha de baixo, sem quebrar no meio. */}
               <span className="row-actions">
-                <button className="btn icon" title="Editar origem" onClick={() => setModal(o)}>
+                <button className="btn icon" title="Editar origem" onClick={() => openModal(o)}>
                   <Pencil size={15} aria-hidden />
                 </button>
                 <button
@@ -215,15 +235,17 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
             </li>
           )}
         </ul>
-        <button className="btn primary" onClick={() => setModal('new')}>
+        <button className="btn primary" onClick={() => openModal('new')}>
           <Plus size={16} aria-hidden /> Nova origem
         </button>
+        {modal === 'closed' && !removeTarget && error && <p className="form-error">{error}</p>}
       </section>
 
       {modal !== 'closed' && (
         <OriginModal
           initial={modal === 'new' ? null : modal}
           busy={busy}
+          saveError={error}
           onSave={save}
           onCancel={() => setModal('closed')}
         />
@@ -241,6 +263,7 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
             <strong>{removeTarget.name}</strong> não estará mais disponível para novos gastos. Os
             lançamentos que já usaram essa origem continuam com o nome dela no histórico.
           </p>
+          {error && <p className="form-error">{error}</p>}
         </ConfirmModal>
       )}
     </>
