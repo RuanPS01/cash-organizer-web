@@ -163,36 +163,93 @@ export async function ensureMonth(compartmentId: string, ym: string): Promise<vo
   await batch.commit();
 }
 
+// O Firestore aceita no máximo 500 operações por lote; a folga evita ter que
+// recontar quando uma escrita ganha mais um passo.
+const BATCH_LIMIT = 400;
+
+type BatchOp = (batch: WriteBatch) => void;
+
+/** Aplica as operações em lotes de até BATCH_LIMIT, na ordem recebida. */
+async function commitInChunks(ops: BatchOp[]): Promise<void> {
+  for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    for (const op of ops.slice(i, i + BATCH_LIMIT)) op(batch);
+    await batch.commit();
+  }
+}
+
 /**
- * Define ym como o mês em aberto do compartimento (anterior ou posterior).
- * Com reinitialize=true, apaga as linhas e lançamentos existentes do mês e
- * o reinicia a partir dos cadastros atuais (fluxo de dupla confirmação).
+ * Troca o mês de referência: `toYm` passa a ser o mês em aberto e leva junto
+ * todo o conteúdo do mês que estava aberto (linhas de gastos fixos com valor e
+ * status, linhas de categorias e lançamentos), cada documento com o mesmo id.
+ * O mês de origem fica vazio.
+ *
+ * Os cadastros (gastos fixos, categorias e origens) pertencem ao compartimento
+ * e não ao mês, então continuam valendo sem cópia nenhuma; o `syncMonthEntries`
+ * do fim só completa o destino com cadastro ativo que ainda não tinha linha.
+ *
+ * Com `replaceTarget`, o que já existia no destino é apagado antes (é o fluxo
+ * de dupla confirmação da tela).
+ *
+ * A ordem importa: copiar, depois apagar a origem, depois trocar o
+ * `currentMonth`. Se a rede cair no meio, o pior caso é o conteúdo aparecer
+ * nos dois meses, e nada se perde.
  */
 export async function setOpenMonth(
   compartmentId: string,
-  ym: string,
-  reinitialize: boolean,
+  fromYm: string,
+  toYm: string,
+  replaceTarget: boolean,
 ): Promise<void> {
-  if (!reinitialize) {
-    await ensureMonth(compartmentId, ym);
-    await updateDoc(doc(db, 'compartments', compartmentId), { currentMonth: ym });
+  if (fromYm === toYm) {
+    await ensureMonth(compartmentId, toYm);
+    await updateDoc(doc(db, 'compartments', compartmentId), { currentMonth: toYm });
     return;
   }
 
-  const [fe, ce, ex] = await Promise.all([
-    getDocs(fixedEntriesCol(compartmentId, ym)),
-    getDocs(categoryEntriesCol(compartmentId, ym)),
-    getDocs(expensesCol(compartmentId, ym)),
+  const [fromFixed, fromCats, fromExpenses, toFixed, toCats, toExpenses] = await Promise.all([
+    getDocs(fixedEntriesCol(compartmentId, fromYm)),
+    getDocs(categoryEntriesCol(compartmentId, fromYm)),
+    getDocs(expensesCol(compartmentId, fromYm)),
+    getDocs(fixedEntriesCol(compartmentId, toYm)),
+    getDocs(categoryEntriesCol(compartmentId, toYm)),
+    getDocs(expensesCol(compartmentId, toYm)),
   ]);
-  const batch = writeBatch(db);
-  for (const d of [...fe.docs, ...ce.docs, ...ex.docs]) {
-    batch.delete(d.ref);
+
+  const prepara: BatchOp[] = [];
+  if (replaceTarget) {
+    for (const d of [...toFixed.docs, ...toCats.docs, ...toExpenses.docs]) {
+      prepara.push((b) => b.delete(d.ref));
+    }
   }
-  // set sem merge sobrescreve o doc do mês, limpando closedAt/totals
-  batch.set(monthRef(compartmentId, ym), { status: 'open' } satisfies Omit<MonthDoc, 'id'>);
-  batch.update(doc(db, 'compartments', compartmentId), { currentMonth: ym });
-  await seedMonthEntries(compartmentId, ym, batch);
-  await batch.commit();
+  // set sem merge sobrescreve o doc do mês, limpando closedAt e totals de um
+  // mês que já tinha sido fechado.
+  prepara.push((b) =>
+    b.set(monthRef(compartmentId, toYm), { status: 'open' } satisfies Omit<MonthDoc, 'id'>),
+  );
+  await commitInChunks(prepara);
+
+  const copia: BatchOp[] = [
+    ...fromFixed.docs.map(
+      (d): BatchOp => (b) => b.set(doc(fixedEntriesCol(compartmentId, toYm), d.id), d.data()),
+    ),
+    ...fromCats.docs.map(
+      (d): BatchOp => (b) => b.set(doc(categoryEntriesCol(compartmentId, toYm), d.id), d.data()),
+    ),
+    ...fromExpenses.docs.map(
+      (d): BatchOp => (b) => b.set(doc(expensesCol(compartmentId, toYm), d.id), d.data()),
+    ),
+  ];
+  await commitInChunks(copia);
+
+  await commitInChunks(
+    [...fromFixed.docs, ...fromCats.docs, ...fromExpenses.docs].map(
+      (d): BatchOp => (b) => b.delete(d.ref),
+    ),
+  );
+
+  await updateDoc(doc(db, 'compartments', compartmentId), { currentMonth: toYm });
+  await syncMonthEntries(compartmentId, toYm);
 }
 
 /**
