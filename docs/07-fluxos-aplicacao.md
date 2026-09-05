@@ -140,18 +140,28 @@ flowchart TD
 `advanceInstallments` incrementa a parcela atual dos gastos parcelados; quem
 estava na última parcela é desativado e não aparece no mês seguinte.
 
-## 7.7 Definir outro mês como o mês em aberto
+## 7.7 Mover o mês de referência
 
-Ao navegar para outro mês, aparece o botão "Definir ... como mês em aberto".
+Ao navegar para outro mês, aparece o botão "Mover o mês atual para ...". A ação
+leva **todo o conteúdo do mês em aberto** para o mês escolhido: linhas de gastos
+fixos (com o valor e o status como estavam), linhas de categorias e lançamentos,
+cada documento com o mesmo id. É a correção para quem trabalhou o mês inteiro na
+referência errada.
 
-- Mês ainda sem dados: uma confirmação. Ele é criado a partir dos cadastros e
-  passa a receber os lançamentos.
-- Mês com dados: duas confirmações, porque os dados existentes (incluindo os
-  lançamentos) são apagados e o mês é reiniciado a partir dos cadastros atuais.
-  Ação sem desfazer.
+- Mês de destino sem conteúdo: uma confirmação.
+- Mês de destino com conteúdo: duas confirmações, porque o que está lá é apagado
+  e substituído pelo conteúdo que vem. Ação sem desfazer.
 
-O mês que era o aberto continua com todos os dados, apenas deixa de receber
-novos lançamentos.
+O mês de origem fica vazio e deixa de ser o mês em aberto. Ele continua
+existindo na navegação, mas some do comparativo mensal, que só mostra mês com
+totais.
+
+Os cadastros de gastos fixos, categorias e origens **não são movidos e nem
+precisam**: eles pertencem ao compartimento e valem para qualquer mês. Depois de
+mover, o destino é reconciliado com eles, então cadastro ativo que ainda não
+tinha linha no mês ganha uma, com status `Pendente`.
+
+Parcelas não avançam: mover a referência é uma correção, não uma virada de mês.
 
 ## 7.8 Estatísticas
 

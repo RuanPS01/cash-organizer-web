@@ -199,7 +199,8 @@ padrão "Avulso").
 ### `services/months.ts`
 
 `monthRef`, `fixedEntriesCol`, `categoryEntriesCol`, `expensesCol`,
-`ensureMonth`, `setOpenMonth`, `computeTotals`, `closeMonth`, `listMonths`,
+`ensureMonth`, `setOpenMonth` (move o conteúdo do mês em aberto para outro mês e
+troca a referência), `computeTotals`, `closeMonth`, `listMonths`,
 `fetchExpenses`.
 
 ### `services/origins.ts`
