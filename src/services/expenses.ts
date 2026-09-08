@@ -122,6 +122,9 @@ export interface FixedExpenseInput {
   amount: number;
   idealAmount?: number;
   description?: string;
+  /** Origem do gasto (de onde o dinheiro sai); sem origem escolhida, fica null. */
+  originId?: string | null;
+  originName?: string;
   installmentCurrent?: number | null;
   installmentTotal?: number | null;
 }
@@ -132,6 +135,11 @@ function normalizeFixedInput(input: FixedExpenseInput) {
     amount: input.amount,
     idealAmount: input.idealAmount || input.amount,
     description: input.description?.trim() ?? '',
+    // O nome vai junto do id (denormalizado, como no lançamento variável) para
+    // a listagem continuar legível se a origem for renomeada ou removida.
+    // Sempre gravados: undefined faz o SDK recusar o documento inteiro.
+    originId: input.originId ?? null,
+    originName: input.originName?.trim() ?? '',
     installmentCurrent: input.installmentTotal ? (input.installmentCurrent ?? 1) : null,
     installmentTotal: input.installmentTotal ?? null,
   };
@@ -158,8 +166,8 @@ export async function addFixedExpense(
 }
 
 /**
- * Salva a edição completa de um gasto fixo (nome, descrição, valores e
- * parcela) e reflete os campos na linha do mês corrente em aberto.
+ * Salva a edição completa de um gasto fixo (nome, descrição, valores, origem
+ * e parcela) e reflete os campos na linha do mês corrente em aberto.
  */
 export async function saveFixedExpense(
   compartmentId: string,

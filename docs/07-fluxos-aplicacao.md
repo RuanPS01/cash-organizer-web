@@ -60,8 +60,10 @@ histórico do mês em duas subabas:
   mais nome). Busca por texto (sem acento e sem caixa, cobrindo descrição,
   categoria e origem) e filtros de categoria, origem ("Sem origem" inclusive) e
   faixa de data.
-- **Fixos**: as linhas de gasto fixo do mês, com selo de status, ideal e busca
-  por nome ou descrição.
+- **Fixos**: as linhas de gasto fixo do mês, com selo de status, selo da origem
+  (quando o cadastro tem uma), ideal e busca por nome, descrição ou origem. O
+  selo da origem aqui não abre troca: ela vem do cadastro e muda na aba
+  Gerenciar.
 
 Falha de gravação (recusa do banco ou falta de rede) aparece na tela: no modal,
 quando existe um, e no rodapé do card na edição no lugar, que não tem botão de
@@ -82,10 +84,14 @@ mês em aberto.
 
 ## 7.4 Gerenciar cadastros
 
-Gasto fixo: modal com nome, descrição, valor, ideal e parcela ("2 de 4"). Ao
-salvar, o cadastro é atualizado e o mês corrente em aberto recebe o reflexo (a
-linha é criada se ainda não existir). Valor e ideal também podem ser editados
-direto na lista.
+Gasto fixo: modal com nome, descrição, valor, ideal, origem e parcela ("2 de 4").
+A origem usa a mesma fileira de chips do novo gasto, com a origem padrão já
+escolhida em um cadastro novo e o chip "Sem origem" para deixar o gasto sem uma.
+Na edição vale o que está gravado, e origem que foi removida do cadastro continua
+na fileira para não ser apagada sem querer. Ao salvar, o cadastro é atualizado e o
+mês corrente em aberto recebe o reflexo (a linha é criada se ainda não existir).
+Valor e ideal também podem ser editados direto na lista, que mostra o selo da
+origem ao lado do nome.
 
 Categoria: nome e ideal editáveis no lugar, setas para reordenar (a ordem vale
 para os chips da tela de novo gasto), "tornar padrão" para transferir o papel da
@@ -108,7 +114,8 @@ Meses fechados nunca são alterados por mudança de cadastro.
 ## 7.5 Aba Pagamento
 
 Para cada linha (fixo ou categoria) o usuário ajusta o status e, nos fixos, o
-valor efetivo. Só o mês corrente em aberto é editável; meses anteriores são
+valor efetivo. A linha do gasto fixo mostra o selo da origem copiada do cadastro,
+só para leitura. Só o mês corrente em aberto é editável; meses anteriores são
 consultáveis, em modo leitura.
 
 Efeitos por status estão em [06-banco-de-dados.md](06-banco-de-dados.md). O que

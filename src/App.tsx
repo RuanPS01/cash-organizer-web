@@ -48,6 +48,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             compartmentId={props.compartment.id}
             currentMonth={currentMonth}
             mode="stats"
+            origins={origins}
             onCurrentMonthChange={setCurrentMonth}
           />
         )}
@@ -56,6 +57,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             compartmentId={props.compartment.id}
             currentMonth={currentMonth}
             mode="payment"
+            origins={origins}
             onCurrentMonthChange={setCurrentMonth}
           />
         )}

@@ -49,14 +49,15 @@ calendário.
 
 ### `MonthScreen` (abas Pagamento e Estatísticas)
 
-`props: { compartmentId, currentMonth, mode: 'payment' | 'stats', onCurrentMonthChange }`
+`props: { compartmentId, currentMonth, mode: 'payment' | 'stats', origins, onCurrentMonthChange }`
 
 O mesmo componente serve às duas abas. Cabeçalho com navegação de mês
 (anterior e próximo) e selo de aberto ou fechado. Com `mode="stats"` delega para
 `StatsView`. Com `mode="payment"` mostra:
 
 - tabela de gastos fixos (nome, ideal, valor, status), com ideal e valor
-  editáveis no lugar;
+  editáveis no lugar e o selo da origem ao lado do nome (o glifo e o tom vêm do
+  cadastro recebido em `origins`; a linha do mês guarda só o id e o nome);
 - tabela de categorias com a soma dos lançamentos, expansível para listar e
   excluir lançamentos;
 - card de totais (ideal, atual, fixos, variáveis) e o botão "Virar mês", liberado
@@ -70,10 +71,11 @@ Edição só é permitida quando o mês visualizado é o corrente e está aberto
 
 `props: { compartmentId, currentMonth, fixedExpenses, categories, origins, monthData }`
 
-Cadastro de gastos fixos (com modal completo: nome, descrição, valor, ideal e
-parcela) e de categorias (nome editável, ideal editável, reordenação com as
-setas, "tornar padrão" e remoção). Mostra totais de cadastro por seção. A
-terceira seção, de origens do gasto, é delegada ao `ManageOrigins`.
+Cadastro de gastos fixos (com modal completo: nome, descrição, valor, ideal,
+origem e parcela; a lista mostra o selo da origem ao lado do nome) e de
+categorias (nome editável, ideal editável, reordenação com as setas, "tornar
+padrão" e remoção). Mostra totais de cadastro por seção. A terceira seção, de
+origens do gasto, é delegada ao `ManageOrigins`.
 
 ## 4.2 Componentes reutilizáveis
 
@@ -115,8 +117,10 @@ aba Estatísticas: se precisar dele em outro lugar, reutilize em vez de copiar.
 
 Histórico do mês exibido na aba Adicionar, com duas subabas: **Variáveis**
 (padrão, do lançamento mais recente para o mais antigo) e **Fixos**. Tem barra
-de busca (sem acento e sem caixa) e, na aba de variáveis, filtros de categoria,
-origem e faixa de data.
+de busca (sem acento e sem caixa, cobrindo também o nome da origem nas duas
+subabas) e, na aba de variáveis, filtros de categoria, origem e faixa de data.
+Na subaba de fixos o selo da origem aparece ao lado do status, sem botão de
+troca: a origem do gasto fixo vem do cadastro e muda na aba Gerenciar.
 
 **Reclassificação.** O selo de categoria e o de origem viram botões com o mês em
 aberto e abrem o `ReclassifyModal` (privado do arquivo), que troca categoria,
@@ -215,7 +219,8 @@ Lançamentos: `addVariableExpense` (aceita `originId` e `originName`),
 `updateVariableExpense` (valor, descrição e classificação),
 `updateVariableExpenses` (mesma classificação em vários lançamentos, em
 `writeBatch` de até 400 por vez), `deleteVariableExpense`.
-Gastos fixos: `addFixedExpense`, `saveFixedExpense`, `updateFixedExpense`,
+Gastos fixos: `addFixedExpense` e `saveFixedExpense` (gravam o cadastro completo,
+origem inclusive, e refletem na linha do mês em aberto), `updateFixedExpense`,
 `removeFixedExpense`.
 Categorias: `addCategory`, `updateCategory`, `renameCategory`,
 `saveCategoryIdeal`, `moveCategory`, `setDefaultCategory`, `removeCategory`.

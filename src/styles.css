@@ -1496,6 +1496,20 @@ tr.row-ignored td { opacity: 0.7; }
 
 .origin-picker .chip-row { margin-bottom: 0; }
 
+/* Dentro do modal quem separa os campos é o gap do .modal-form: a margem
+   própria do seletor abriria um buraco entre a origem e a linha da parcela. */
+.modal-form .origin-picker { margin-bottom: 0; }
+
+/* No modal os chips quebram em vez de rolar. A largura do modal é decidida
+   pelo conteúdo (ele é item de grade do .modal-backdrop), e uma fileira que
+   rola no eixo horizontal empurraria essa medida para além da tela em 360px,
+   cortando o modal inteiro pela direita. */
+.modal-form .chip-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 0;
+}
+
 .badge.origin,
 .badge.cat {
   --frame-edge: var(--line-soft);
@@ -1511,6 +1525,10 @@ tr.row-ignored td { opacity: 0.7; }
   text-transform: none;
   padding: 0.22rem 0.5rem;
 }
+
+/* Na tabela da aba Pagamento o nome do gasto vem colado no selo, porque a
+   célula é texto corrido e não um contêiner flex com gap. */
+td .badge.origin { margin-left: 0.4rem; }
 
 /* Com o mês em aberto o selo vira botão e abre a reclassificação: o alvo de
    toque é o próprio valor que vai mudar. */

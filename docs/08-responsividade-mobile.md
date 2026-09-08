@@ -85,8 +85,14 @@ grade de ícones, é mais alto que a tela de um celular.
 
 Só dois contêineres rolam na horizontal, e de propósito:
 
-- `.chip-row`, a fileira de categorias na tela de novo gasto;
+- `.chip-row`, a fileira de categorias e a de origens na tela de novo gasto;
 - `.table-scroll`, o embrulho das tabelas do mês.
+
+Dentro de modal a fileira de chips quebra em vez de rolar
+(`.modal-form .chip-row`): a largura do modal é decidida pelo conteúdo (ele é
+item de grade do `.modal-backdrop`), e uma fileira que rola na horizontal
+empurraria essa medida para além da tela em 360px, cortando o modal inteiro pela
+direita.
 
 Ambos usam barra fina no tema do site (`scrollbar-width: thin` mais o bloco
 `-webkit-scrollbar` para o Safari). **A página em si nunca pode rolar na

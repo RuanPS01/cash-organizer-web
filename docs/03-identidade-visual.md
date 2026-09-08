@@ -204,7 +204,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Botão de texto discreto | `.mini-btn` | usado em "tornar padrão" |
 | Botão sem moldura em tabela | `.link-btn` | expandir categoria |
 | Campo | `.field` | `.plate` (placa de valor), `.inline` (edição em tabela) |
-| Chip de categoria | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada) |
+| Chip de categoria ou de origem | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada); em modal a fileira quebra de linha em vez de rolar |
 | Card | `.card` | `.table-card`, `.totals-card`, `.info` |
 | Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status`, `.editable` (selo que abre a reclassificação), `.empty` (sem origem) |
 | Glifo de origem | `.origin-icon` | tons `.oc-*` |

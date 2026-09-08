@@ -225,10 +225,13 @@ export function ExpenseHistory(props: {
   const fixedEntries = useMemo(() => {
     const term = foldText(search.trim());
     if (!term) return data.fixedEntries;
-    return data.fixedEntries.filter((f) =>
-      foldText(`${f.name} ${f.description ?? ''}`).includes(term),
-    );
-  }, [data.fixedEntries, search]);
+    return data.fixedEntries.filter((f) => {
+      const originName = f.originId ? (originById.get(f.originId)?.name ?? f.originName) : '';
+      return foldText(
+        `${f.name} ${f.description ?? ''} ${originName ?? ''} ${f.originName ?? ''}`,
+      ).includes(term);
+    });
+  }, [data.fixedEntries, search, originById]);
 
   const shownTotal =
     tab === 'variable'
@@ -562,6 +565,15 @@ export function ExpenseHistory(props: {
                 </span>
                 <span className="history-meta">
                   <span className={`badge status ${STATUS_CLASS[f.status]}`}>{f.status}</span>
+                  {/* Sem botão de troca: a origem do gasto fixo vem do cadastro,
+                      e é lá (aba Gerenciar) que ela muda para os próximos meses. */}
+                  {f.originId || f.originName ? (
+                    <ClassBadge
+                      kind="origin"
+                      label={originById.get(f.originId ?? '')?.name ?? f.originName ?? ''}
+                      origin={f.originId ? originById.get(f.originId) : undefined}
+                    />
+                  ) : null}
                   <span className="when">ideal {formatBRL(f.idealAmount)}</span>
                 </span>
                 <span className="history-value">

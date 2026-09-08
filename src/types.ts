@@ -48,6 +48,13 @@ export interface FixedExpense {
   /** Comentário/descrição livre. */
   description?: string;
   /**
+   * Origem do gasto (de onde o dinheiro sai), do mesmo cadastro usado pelos
+   * lançamentos variáveis. `null` quando o gasto fixo não tem origem.
+   */
+  originId?: string | null;
+  /** Denormalizado, mantém a listagem legível se a origem for renomeada. */
+  originName?: string;
+  /**
    * Parcelamento opcional ("2 de 4"): a parcela atual incrementa a cada
    * virada de mês; ao passar da última, o gasto é desativado e sai dos
    * próximos meses.
@@ -159,6 +166,9 @@ export interface FixedEntry {
   amount: number;
   status: EntryStatus;
   description?: string;
+  /** Origem copiada do cadastro; null quando o gasto fixo não tem origem. */
+  originId?: string | null;
+  originName?: string;
   installmentCurrent?: number | null;
   installmentTotal?: number | null;
 }

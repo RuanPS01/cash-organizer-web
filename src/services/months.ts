@@ -88,6 +88,8 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
       idealAmount: f.idealAmount || f.amount,
       status: 'Pendente',
       description: f.description ?? '',
+      originId: f.originId ?? null,
+      originName: f.originName ?? '',
       installmentCurrent: f.installmentCurrent ?? null,
       installmentTotal: f.installmentTotal ?? null,
     } satisfies Omit<FixedEntry, 'id'>);
@@ -109,7 +111,7 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
 
 /**
  * Adiciona ao batch as linhas do mês a partir dos cadastros ativos (fixos
- * com valor/ideal/descrição/parcela; categorias com o ideal).
+ * com valor/ideal/descrição/origem/parcela; categorias com o ideal).
  */
 async function seedMonthEntries(
   compartmentId: string,
@@ -128,6 +130,8 @@ async function seedMonthEntries(
       idealAmount: f.idealAmount || f.amount,
       status: 'Pendente',
       description: f.description ?? '',
+      originId: f.originId ?? null,
+      originName: f.originName ?? '',
       installmentCurrent: f.installmentCurrent ?? null,
       installmentTotal: f.installmentTotal ?? null,
     } satisfies Omit<FixedEntry, 'id'>);

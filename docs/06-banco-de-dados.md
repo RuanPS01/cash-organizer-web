@@ -54,14 +54,17 @@ mesmo texto de senha em compartimentos diferentes gera hashes diferentes.
 | `amount` | number | valor mensal em centavos |
 | `idealAmount` | number | se não informado, recebe o próprio `amount` |
 | `description` | string | comentário livre, `''` quando vazio |
+| `originId` | string ou null | origem escolhida no cadastro (coleção `origins`); `null` quando o gasto não tem origem |
+| `originName` | string | denormalizado, mantém a listagem legível se a origem for renomeada ou removida |
 | `installmentCurrent` | number ou null | parcela atual, começa em 1 |
 | `installmentTotal` | number ou null | total de parcelas; `null` significa gasto sem parcelamento |
 | `active` | boolean | `false` some dos próximos meses |
 | `createdAt` | number | ms |
 
 `normalizeFixedInput` em `services/expenses.ts` é quem garante o formato: faz
-trim, aplica o `amount` como ideal quando falta, e zera as parcelas para `null`
-quando não há `installmentTotal`.
+trim, aplica o `amount` como ideal quando falta, grava a origem como `null` mais
+nome em branco quando não há escolha, e zera as parcelas para `null` quando não
+há `installmentTotal`.
 
 ## 6.5 `categories/{id}` (cadastro de categoria variável)
 
@@ -79,9 +82,10 @@ pode ser transferido para outra categoria com `setDefaultCategory`.
 
 ## 6.5.1 `origins/{id}` (cadastro de origem do gasto)
 
-A origem é o segundo eixo de classificação do lançamento variável, ao lado da
-categoria: diz de onde o dinheiro saiu ("Cartão C6 (Crédito)", "Pix ou Transf.",
-"Cartão Nu"). Não gera linha de mês e não entra em `computeTotals`.
+A origem diz de onde o dinheiro saiu ("Cartão C6 (Crédito)", "Pix ou Transf.",
+"Cartão Nu"). No lançamento variável ela é o segundo eixo de classificação, ao
+lado da categoria; no gasto fixo ela faz parte do cadastro e é copiada para a
+linha do mês. Não gera linha de mês própria e não entra em `computeTotals`.
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -101,9 +105,11 @@ Remover é desativar, e os lançamentos antigos seguem com `originName`.
 > **Coleção nova exige regra nova.** O Firestore nega tudo que não está
 > explicitamente liberado, e as regras vivem em `cash-organizer-functions`. Sem
 > o bloco `match /origins/{originId}`, o app não lista nem grava origem, e a
-> falha chega como `permission-denied`. O mesmo vale para operação nova em
-> coleção existente: a edição de valor e descrição no histórico só funciona
-> porque `expenses` passou a permitir `update` desses dois campos.
+> falha chega como `permission-denied`. O mesmo vale para campo novo em coleção
+> existente: a edição de valor e descrição no histórico só funciona porque
+> `expenses` passou a permitir `update` desses dois campos, e a origem do gasto
+> fixo depende de `originId` e `originName` estarem liberados na escrita de
+> `fixedExpenses` e de `fixedEntries`.
 
 ## 6.6 `months/{YYYY-MM}`
 
@@ -142,7 +148,15 @@ passado.
 | `amount` | number | valor efetivo do mês, editável na aba Pagamento |
 | `idealAmount` | number | ideal do mês, editável |
 | `status` | `EntryStatus` | nasce `Pendente` |
+| `originId` | string ou null | copiado do cadastro; `null` quando o gasto não tem origem |
+| `originName` | string | denormalizado, como estava no cadastro na hora da cópia |
 | `installmentCurrent`, `installmentTotal` | number ou null | copiados do cadastro |
+
+Linha criada antes de um campo existir fica sem ele (é o caso da origem em meses
+que já estavam abertos): a linha recebe o campo quando o cadastro for salvo de
+novo, porque `saveFixedExpense` reflete no mês em aberto, ou na virada para o mês
+seguinte, que é semeado do cadastro. `syncMonthEntries` só cria linha que falta,
+nunca reescreve linha existente, para não desfazer o valor ajustado no mês.
 
 ### `categoryEntries/{categoryId}`
 

@@ -36,10 +36,11 @@ compartimento nasce com a categoria "Avulso", que é a padrão até o usuário
 transferir esse papel para outra.
 
 **Origem do gasto.** De onde o dinheiro saiu: "Cartão C6 (Crédito)", "Pix ou
-Transf.", "Cartão Nu", "Dinheiro". É um segundo eixo de classificação do
-lançamento variável, independente da categoria (a categoria diz no que se
-gastou, a origem diz por onde se pagou). Cada origem tem um ícone e um tom, e
-uma delas é a padrão, pré-selecionada ao adicionar gasto.
+Transf.", "Cartão Nu", "Dinheiro". No lançamento variável é um segundo eixo de
+classificação, independente da categoria (a categoria diz no que se gastou, a
+origem diz por onde se pagou); no gasto fixo é parte do cadastro e responde
+"de onde sai esta conta todo mês". Cada origem tem um ícone e um tom, e uma
+delas é a padrão, já escolhida ao adicionar gasto e ao cadastrar um fixo.
 
 **Gasto ideal.** O planejado, não o limite rígido. Nada impede o usuário de
 gastar acima: a interface apenas mostra o excesso em vermelho.
@@ -72,7 +73,7 @@ linha `Pendente`.
 | Data do lançamento livre, mas sempre dentro do mês em aberto | o mês do app é a referência da fatura, não o calendário |
 | Trocar o mês de referência move o conteúdo junto | quem percebe no meio do mês que estava lançando na referência errada quer corrigir, não recomeçar; os cadastros não se movem porque já valem para todos os meses |
 | Status `Ignorar` tira do gasto, mas não do ideal | serve para gasto que não deve entrar na conta do mês (reembolso, pagamento de terceiro) sem mexer no orçamento planejado |
-| Tema segue o sistema, sem botão de troca | menos configuração, e o app é usado no celular onde o tema já é uma preferência do sistema |
+| Tema único e escuro, sem botão de troca | a identidade é ouro sobre preto puro; uma versão clara exigiria uma segunda paleta e não traria nada ao uso no celular |
 
 ## 9.5 O que o produto não faz (e não deveria fazer sem decisão explícita)
 

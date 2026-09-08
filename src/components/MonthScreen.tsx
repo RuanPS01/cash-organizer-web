@@ -11,8 +11,9 @@ import { dayLabel, monthLabel, nextMonthKey, prevMonthKey } from '../utils/dates
 import { useMonthData } from '../hooks/useMonthData';
 import { ConfirmModal, EditableMoney } from './shared';
 import { StatsView } from './StatsView';
+import { OriginIcon } from './OriginIcon';
 import { ENTRY_STATUSES, IGNORED_STATUS, STATUS_CLASS } from '../types';
-import type { EntryStatus } from '../types';
+import type { EntryStatus, Origin } from '../types';
 
 function StatusSelect(props: {
   value: EntryStatus;
@@ -41,9 +42,11 @@ export function MonthScreen(props: {
   compartmentId: string;
   currentMonth: string;
   mode: 'payment' | 'stats';
+  /** Cadastro de origens: a linha do mês guarda só o id e o nome da origem. */
+  origins: Origin[];
   onCurrentMonthChange: (next: string) => void;
 }) {
-  const { compartmentId, currentMonth, mode } = props;
+  const { compartmentId, currentMonth, mode, origins } = props;
   const [viewMonth, setViewMonth] = useState(currentMonth);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -52,6 +55,7 @@ export function MonthScreen(props: {
   const [error, setError] = useState<string | null>(null);
 
   const data = useMonthData(compartmentId, viewMonth);
+  const originById = useMemo(() => new Map(origins.map((o) => [o.id, o])), [origins]);
   const isCurrent = viewMonth === currentMonth;
   const editable = isCurrent && data.month?.status === 'open';
 
@@ -159,20 +163,39 @@ export function MonthScreen(props: {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.fixedEntries.map((f) => (
-                    <tr key={f.id} className={f.status === IGNORED_STATUS ? 'row-ignored' : ''}>
-                      <td>
-                        {f.name}
-                        {f.installmentTotal ? (
-                          <span className="badge installment">
-                            {f.installmentCurrent ?? 1}/{f.installmentTotal}
+                  {data.fixedEntries.map((f) => {
+                    const origin = f.originId ? originById.get(f.originId) : undefined;
+                    return (
+                      <tr key={f.id} className={f.status === IGNORED_STATUS ? 'row-ignored' : ''}>
+                        <td>
+                          {f.name}
+                          {f.installmentTotal ? (
+                            <span className="badge installment">
+                              {f.installmentCurrent ?? 1}/{f.installmentTotal}
+                            </span>
+                          ) : null}
+                          {f.originId || f.originName ? (
+                            <span className="badge origin">
+                              <OriginIcon icon={origin?.icon} color={origin?.color} />
+                              {origin?.name ?? f.originName}
+                            </span>
+                          ) : null}
+                          {f.description && (
+                            <span className="row-desc muted small">{f.description}</span>
+                          )}
+                          <span className="cell-sub">
+                            ideal
+                            <EditableMoney
+                              valueCents={f.idealAmount}
+                              disabled={!editable}
+                              muted
+                              onSave={(v) =>
+                                updateFixedEntry(compartmentId, viewMonth, f.id, { idealAmount: v })
+                              }
+                            />
                           </span>
-                        ) : null}
-                        {f.description && (
-                          <span className="row-desc muted small">{f.description}</span>
-                        )}
-                        <span className="cell-sub">
-                          ideal
+                        </td>
+                        <td className="num hide-narrow">
                           <EditableMoney
                             valueCents={f.idealAmount}
                             disabled={!editable}
@@ -181,38 +204,28 @@ export function MonthScreen(props: {
                               updateFixedEntry(compartmentId, viewMonth, f.id, { idealAmount: v })
                             }
                           />
-                        </span>
-                      </td>
-                      <td className="num hide-narrow">
-                        <EditableMoney
-                          valueCents={f.idealAmount}
-                          disabled={!editable}
-                          muted
-                          onSave={(v) =>
-                            updateFixedEntry(compartmentId, viewMonth, f.id, { idealAmount: v })
-                          }
-                        />
-                      </td>
-                      <td className="num">
-                        <EditableMoney
-                          valueCents={f.amount}
-                          disabled={!editable}
-                          onSave={(v) =>
-                            updateFixedEntry(compartmentId, viewMonth, f.id, { amount: v })
-                          }
-                        />
-                      </td>
-                      <td>
-                        <StatusSelect
-                          value={f.status}
-                          disabled={!editable}
-                          onChange={(s) =>
-                            updateFixedEntry(compartmentId, viewMonth, f.id, { status: s })
-                          }
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="num">
+                          <EditableMoney
+                            valueCents={f.amount}
+                            disabled={!editable}
+                            onSave={(v) =>
+                              updateFixedEntry(compartmentId, viewMonth, f.id, { amount: v })
+                            }
+                          />
+                        </td>
+                        <td>
+                          <StatusSelect
+                            value={f.status}
+                            disabled={!editable}
+                            onChange={(s) =>
+                              updateFixedEntry(compartmentId, viewMonth, f.id, { status: s })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {data.fixedEntries.length === 0 && (
                     <tr>
                       <td colSpan={4} className="muted">
