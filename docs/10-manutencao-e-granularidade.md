@@ -6,22 +6,22 @@ Referência de setembro de 2026 (linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 1984 |
+| `styles.css` | 2022 |
 | `components/ExpenseHistory.tsx` | 662 |
 | `components/MonthScreen.tsx` | 521 |
 | `components/ManageScreen.tsx` | 503 |
-| `services/months.ts` | 468 |
-| `services/expenses.ts` | 419 |
-| `components/AddExpenseScreen.tsx` | 329 |
+| `services/months.ts` | 496 |
+| `components/AddExpenseScreen.tsx` | 424 |
+| `services/expenses.ts` | 423 |
 | `components/ManageOrigins.tsx` | 284 |
 | `components/shared.tsx` | 240 |
-| `types.ts` | 213 |
+| `types.ts` | 230 |
 | `services/origins.ts` | 176 |
-| `App.tsx` | 147 |
-| `components/ExpenseEditModal.tsx` | 140 |
+| `App.tsx` | 162 |
+| `components/ExpenseEditModal.tsx` | 143 |
 | demais | menos de 125 cada |
 
-O projeto inteiro tem cerca de 7 mil linhas. Esse tamanho é uma vantagem: dá para
+O projeto inteiro tem cerca de 7,2 mil linhas. Esse tamanho é uma vantagem: dá para
 ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 ## 10.2 Quando criar um arquivo novo

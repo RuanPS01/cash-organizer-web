@@ -6,6 +6,7 @@ import { MonthScreen } from './components/MonthScreen';
 import { ManageScreen } from './components/ManageScreen';
 import { BrandMark } from './components/shared';
 import { clearSession, restoreSession } from './services/session';
+import { setWeekCategory } from './services/compartments';
 import { ensureMonth } from './services/months';
 import { useConfig, useMonthData } from './hooks/useMonthData';
 import type { Compartment } from './types';
@@ -17,6 +18,18 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
   const [currentMonth, setCurrentMonth] = useState(props.compartment.currentMonth);
   const { categories, fixedExpenses, origins } = useConfig(props.compartment.id);
   const monthData = useMonthData(props.compartment.id, currentMonth);
+  // A categoria acompanhada no card da semana vive aqui para não voltar à
+  // guardada no compartimento cada vez que o usuário troca de aba.
+  const [weekCategoryId, setWeekCategoryId] = useState<string | null>(
+    props.compartment.weekCategoryId ?? null,
+  );
+
+  const changeWeekCategory = (categoryId: string) => {
+    setWeekCategoryId(categoryId);
+    // É preferência de leitura: se a gravação falhar, a tela já está mostrando
+    // a categoria escolhida e a próxima abertura volta para a anterior.
+    setWeekCategory(props.compartment.id, categoryId).catch(() => undefined);
+  };
 
   return (
     <div className="shell">
@@ -41,6 +54,8 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             categories={categories}
             origins={origins}
             data={monthData}
+            weekCategoryId={weekCategoryId}
+            onWeekCategoryChange={changeWeekCategory}
           />
         )}
         {view === 'stats' && (

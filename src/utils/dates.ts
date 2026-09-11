@@ -17,9 +17,9 @@ export function prevMonthKey(key: string): string {
   return monthKey(d);
 }
 
-/** Semana do mês de 1 a 4; dias 29, 30 e 31 contam como semana 4. */
-export function weekOfMonth(date: Date = new Date()): number {
-  return Math.min(4, Math.floor((date.getDate() - 1) / 7) + 1);
+/** Hoje é domingo? É quando o app sugere virar a semana. */
+export function isSunday(date: Date = new Date()): boolean {
+  return date.getDay() === 0;
 }
 
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', {

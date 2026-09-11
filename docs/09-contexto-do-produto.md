@@ -63,7 +63,8 @@ linha `Pendente`.
 |---|---|
 | Adicionar gasto é a tela inicial | é a ação feita várias vezes por dia; as outras são semanais ou mensais |
 | Valor em campo grande com `autoFocus` | o lançamento típico é valor mais categoria, nada mais |
-| Semana é o mês dividido em 4, com o dia 29 em diante caindo na semana 4 | manter 4 semanas fixas torna a comparação entre meses direta, mesmo com meses de tamanhos diferentes |
+| Semana virada pelo usuário, não pelo calendário | a semana de quem usa o app começa quando ele diz que começou (o mês vira no dia que ele fecha as contas, não no dia 1); quatro semanas fixas mantêm a comparação entre meses direta |
+| Aviso de domingo em vez de virada automática | lembrar é barato e reversível, virar sozinho mexeria na conta da semana sem o usuário pedir |
 | Ideal semanal é o ideal do mês dividido por 4 | mesma razão: previsibilidade acima de exatidão de calendário |
 | Virada bloqueada por linha `Pendente` | força revisar cada conta antes de fechar o mês |
 | Totais gravados ao fechar o mês | estatísticas baratas, sem reler o histórico inteiro |

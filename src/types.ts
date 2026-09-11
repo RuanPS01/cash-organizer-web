@@ -35,6 +35,12 @@ export interface Compartment {
   passwordHash: string;
   /** Mês corrente do compartimento no formato YYYY-MM (avança via "virar mês"). */
   currentMonth: string;
+  /**
+   * Categoria escolhida no card de acompanhamento da aba Adicionar. Fica no
+   * compartimento, e não no dispositivo, para a escolha valer em qualquer
+   * aparelho que abrir o mesmo compartimento.
+   */
+  weekCategoryId?: string | null;
   createdAt: number;
 }
 
@@ -154,9 +160,20 @@ export interface MonthDoc {
   id: string;
   status: 'open' | 'closed';
   closedAt?: number;
+  /**
+   * Semana corrente do mês, de 1 a 4. Quem manda é o usuário: o mês nasce na
+   * semana 1 e só avança no botão "Virar semana". Mês sem o campo (criado
+   * antes disso) vale como semana 1.
+   */
+  currentWeek?: number;
+  /** Quando a semana foi virada, para não sugerir a virada duas vezes no mesmo dia. */
+  weekChangedAt?: number;
   /** Preenchido ao fechar o mês, para estatísticas baratas. */
   totals?: MonthTotals;
 }
+
+/** Semanas de um mês: o app trabalha sempre com quatro. */
+export const MONTH_WEEKS = 4;
 
 /** Linha de gasto fixo dentro de um mês (snapshot do cadastro). */
 export interface FixedEntry {
@@ -199,7 +216,7 @@ export interface VariableExpense {
   amount: number;
   description: string;
   createdAt: number;
-  /** Semana do mês, 1 a 4 (dias 29+ contam como semana 4). */
+  /** Semana do mês (1 a 4) em que o lançamento foi feito, copiada do mês. */
   week: number;
   /** Origem escolhida no lançamento; null quando não havia origem cadastrada. */
   originId?: string | null;

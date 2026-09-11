@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { hashPassword } from '../utils/crypto';
 import { monthKey } from '../utils/dates';
@@ -38,6 +38,18 @@ export async function openCompartment(name: string, password: string): Promise<O
   const hash = await hashPassword(id, password);
   if (hash !== compartment.passwordHash) return { kind: 'wrong-password' };
   return { kind: 'ok', compartment };
+}
+
+/**
+ * Guarda a categoria que o card de acompanhamento da aba Adicionar está
+ * mostrando. Fica no compartimento, e não no dispositivo, para a escolha valer
+ * em qualquer aparelho que abrir o mesmo compartimento.
+ */
+export async function setWeekCategory(
+  compartmentId: string,
+  categoryId: string | null,
+): Promise<void> {
+  await updateDoc(compartmentRef(compartmentId), { weekCategoryId: categoryId });
 }
 
 /** Cria o compartimento junto com a categoria padrão "Avulso". */

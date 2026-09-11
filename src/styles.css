@@ -752,7 +752,11 @@ select option:checked { color: var(--gold-soft); }
   padding: 0.55rem 1rem;
   font-family: var(--font-ui);
   font-size: 0.82rem;
-  font-weight: 500;
+  /* O peso é o mesmo nos dois estados de propósito: com 500 e 700 o chip
+     selecionado ficava mais largo que o mesmo chip solto, e a fileira inteira
+     se mexia a cada toque. O selecionado se distingue pelo preenchimento de
+     ouro, pela tinta escura e pelo brilho, que não ocupam espaço. */
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -762,7 +766,6 @@ select option:checked { color: var(--gold-soft); }
   --frame-w: 1.5px;
   --frame-fill: var(--gold-fill-soft);
   color: var(--gold-ink);
-  font-weight: 700;
   box-shadow: 0 0 16px rgba(212, 175, 55, 0.28);
 }
 
@@ -902,11 +905,40 @@ select option:checked { color: var(--gold-soft); }
   text-shadow: 0 0 14px rgba(212, 175, 55, 0.4);
 }
 
-.info h3 { margin-bottom: 0.85rem; }
+.info h3 { margin-bottom: 0; }
 
-.info h3 .week {
+/* Cabeçalho do card de acompanhamento: a semana de um lado, o botão de virar
+   do outro. Em telas estreitas o botão desce para a linha de baixo, alinhado
+   à direita, em vez de espremer o título. */
+.info-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.info-head .btn.small { margin-left: auto; }
+
+/* Aviso de domingo: mesma tinta do aviso de data personalizada, porque é o
+   mesmo tipo de recado (algo mudou e vale conferir). */
+.week-hint {
+  font-size: 0.78rem;
   color: var(--gold-soft);
+  margin: 0 0 0.85rem;
+}
+
+.info-category {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.66rem;
   font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .info-row {
@@ -1030,6 +1062,12 @@ select option:checked { color: var(--gold-soft); }
   --frame-edge: transparent;
   --frame-fill: var(--gold-fill-soft);
   color: var(--gold-ink);
+}
+
+.badge.week {
+  --frame-edge: var(--gold);
+  --frame-fill: var(--gold-tint);
+  margin-left: 0.4rem;
 }
 
 .badge.ignored {
