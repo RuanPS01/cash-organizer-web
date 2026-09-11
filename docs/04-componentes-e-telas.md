@@ -38,7 +38,7 @@ Tela principal. Contém:
   não há origem cadastrada;
 - card de informe da categoria selecionada (restante da semana, restante do mês,
   barras de progresso, totais de fixos e variáveis do mês);
-- `MonthlyComparisonCard`;
+- `MonthSummaryCard`;
 - `ExpenseHistory` no rodapé, com o histórico do mês.
 
 O botão de calendário é um `div` com aparência de botão e um `input[type=date]`
@@ -55,12 +55,17 @@ O mesmo componente serve às duas abas. Cabeçalho com navegação de mês
 (anterior e próximo) e selo de aberto ou fechado. Com `mode="stats"` delega para
 `StatsView`. Com `mode="payment"` mostra, nesta ordem:
 
-- tabela de **origens** (nome com glifo, fixos, variáveis, total, status): o
-  total é a soma dos dois, que é o valor da fatura daquela origem no mês, e em
-  telas estreitas as duas parcelas descem para a sublinha `.cell-sub`. O status é
-  o pagamento da origem, e trocá-lo aplica o mesmo status aos gastos fixos dela
-  (`setOriginStatus`). Lançamento sem origem vira uma linha só de leitura, porque
-  não há onde guardar status;
+- tabela de **origens** (nome com glifo, fixos, variáveis, total, status): uma
+  linha por origem **cadastrada**, na ordem do cadastro, mais as origens que
+  saíram do cadastro e ainda têm linha no mês. A lista vem do cadastro e não das
+  linhas do mês, que são só onde o status mora: origem recém criada apareceria
+  fora da tabela se dependesse da linha, e sem linha ainda o status exibido é
+  `Pendente`, que é com o que ela nasce. O total é a soma de fixos e variáveis,
+  que é o valor da fatura daquela origem no mês, e em telas estreitas as duas
+  parcelas descem para a sublinha `.cell-sub`. Trocar o status aplica o mesmo
+  status aos gastos fixos dela e grava a linha do mês, criando-a se ainda não
+  existir (`setOriginStatus`). Lançamento sem origem vira uma linha só de
+  leitura, porque não há onde guardar status;
 - tabela de gastos fixos (nome, ideal, valor, status), com ideal e valor
   editáveis no lugar e o selo da origem ao lado do nome (o glifo e o tom vêm do
   cadastro recebido em `origins`; a linha do mês guarda só o id e o nome);
@@ -109,15 +114,15 @@ campo vai dentro de um invólucro: `<span className="field"><input …/></span>`
 novo, use o invólucro em vez de estilizar o controle direto. Ver
 [03-identidade-visual.md](03-identidade-visual.md), seção 3.5.
 
-### `components/MonthlyComparisonCard.tsx`
+### `components/MonthSummaryCard.tsx`
 
-`props: { compartmentId, viewMonth, data }`
+`props: { viewMonth, data }`
 
-Card "Comparativo mensal (total gasto x ideal)" com os últimos seis meses. Usa os
-totais gravados nos meses fechados e calcula ao vivo o mês visualizado. Cada
-linha mostra gasto, ideal, percentual, barra e a descrição com fixos, variáveis e
-o restante (ou o excedido, em vermelho). Reutilizado pela aba Adicionar e pela
-aba Estatísticas: se precisar dele em outro lugar, reutilize em vez de copiar.
+Card "Resumo do mês (total gasto x ideal)": uma linha só, a do mês visualizado,
+com gasto, ideal, percentual, barra e a descrição com fixos, variáveis e o
+restante (ou o excedido, em vermelho). Mês fechado usa os totais gravados; o mês
+em aberto é calculado ao vivo. Reutilizado pela aba Adicionar e pela aba
+Estatísticas: se precisar dele em outro lugar, reutilize em vez de copiar.
 
 ### `components/ExpenseHistory.tsx`
 
@@ -192,7 +197,7 @@ removida do cadastro), cai na carteira em ouro.
 
 `props: { compartmentId, viewMonth, data }`
 
-Subtela de estatísticas: o comparativo mensal, o uso por categoria no mês
+Subtela de estatísticas: o resumo do mês, o uso por categoria no mês
 visualizado (com selo "ignorado" quando a categoria está fora da soma) e a
 comparação das quatro semanas com o mês anterior.
 
@@ -236,7 +241,7 @@ padrão "Avulso").
 `expensesCol`, `isMonthOpen`, `ensureMonth`, `setOpenMonth` (move o conteúdo do
 mês em aberto para outro mês e troca a referência), `computeTotals` (recebe
 também as linhas de origem, porque origem ignorada tira do gasto tudo que saiu
-dela), `closeMonth`, `listMonths`, `fetchExpenses`.
+dela), `closeMonth`, `fetchExpenses`.
 
 ### `services/origins.ts`
 

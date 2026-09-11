@@ -45,7 +45,7 @@ src/
     MonthScreen.tsx         mês corrente: pagamento e estatísticas
     ManageScreen.tsx        cadastro de fixos e categorias
     StatsView.tsx           subtela de estatísticas usada pelo MonthScreen
-    MonthlyComparisonCard.tsx  card de comparativo mensal (reutilizado)
+    MonthSummaryCard.tsx    card de resumo do mês (reutilizado)
     ExpenseHistory.tsx      histórico do mês (subabas variáveis e fixos)
     ManageOrigins.tsx       cadastro de origens do gasto e modal de ícone
     OriginIcon.tsx          catálogo de ícones e tons da origem

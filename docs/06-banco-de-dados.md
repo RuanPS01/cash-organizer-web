@@ -164,11 +164,12 @@ passado.
 | `originName` | string | denormalizado, como estava no cadastro na hora da cópia |
 | `installmentCurrent`, `installmentTotal` | number ou null | copiados do cadastro |
 
-Linha criada antes de um campo existir fica sem ele (é o caso da origem em meses
-que já estavam abertos): a linha recebe o campo quando o cadastro for salvo de
-novo, porque `saveFixedExpense` reflete no mês em aberto, ou na virada para o mês
-seguinte, que é semeado do cadastro. `syncMonthEntries` só cria linha que falta,
-nunca reescreve linha existente, para não desfazer o valor ajustado no mês.
+Linha criada antes de um campo existir fica sem ele. Foi o caso da origem nos
+meses que já estavam abertos quando o gasto fixo ganhou origem: essas linhas
+caíam em "Sem origem" na aba Pagamento. Por isso o `syncMonthEntries` completa
+a linha de fixo que não tem a chave `originId`, uma vez, com o que está no
+cadastro. Fora esse preenchimento, ele só cria linha que falta e nunca reescreve
+valor ou status, que são do mês e não do cadastro.
 
 ### `categoryEntries/{categoryId}`
 
@@ -256,7 +257,7 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 |---|---|---|
 | `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês com as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
 | `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries`, `categoryEntries` e `originEntries` a partir dos cadastros ativos, tudo com status `Pendente` |
-| `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês) e cria linhas de cadastros que ainda não estão no mês |
+| `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês), cria linhas de cadastros que ainda não estão no mês e completa a linha de fixo que ainda não tem o campo de origem |
 | `computeTotals` | a cada render das telas com dados do mês | soma ideais e gastos, deixando de fora o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
 | `closeMonth` | botão "Virar mês" | recusa se houver `Pendente` em origem ou em gasto fixo, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
 | `advanceInstallments` | dentro de `closeMonth` | incrementa `installmentCurrent`; quem estava na última parcela é desativado |
@@ -298,9 +299,7 @@ As consultas são simples de propósito. As únicas com filtro são as de
 desativação: `removeCategory` (`where('categoryId', '==', id)` mais `limit(1)`
 dentro de `expenses`) e `removeOrigin` (o mesmo com `originId`, em `expenses` e
 em `fixedEntries`, para saber se a linha do mês ainda tem uso). O Firestore
-atende as três com índice de campo único. `listMonths` lê
-todos os meses e ordena no cliente, porque `orderBy('__name__', 'desc')` não é
-suportado em key scan descendente e o volume é pequeno.
+atende as três com índice de campo único.
 
 ## 6.12 Armazenamento local
 

@@ -13,7 +13,7 @@ import {
   weekOfMonth,
 } from '../utils/dates';
 import { MoneyInput, ProgressBar } from './shared';
-import { MonthlyComparisonCard } from './MonthlyComparisonCard';
+import { MonthSummaryCard } from './MonthSummaryCard';
 import { ExpenseHistory } from './ExpenseHistory';
 import { OriginIcon } from './OriginIcon';
 import type { MonthData } from '../hooks/useMonthData';
@@ -315,11 +315,7 @@ export function AddExpenseScreen(props: {
         </section>
       )}
 
-      <MonthlyComparisonCard
-        compartmentId={compartmentId}
-        viewMonth={currentMonth}
-        data={data}
-      />
+      <MonthSummaryCard viewMonth={currentMonth} data={data} />
 
       <ExpenseHistory
         compartmentId={compartmentId}
