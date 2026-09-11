@@ -123,9 +123,11 @@ Meses fechados nunca são alterados por mudança de cadastro.
 
 A aba tem dois cards, na ordem em que o mês é resolvido:
 
-1. **Origens do gasto.** Uma linha por origem, com o que saiu dela no mês (os
-   gastos fixos e a soma dos lançamentos variáveis) e o status. É a pergunta
-   "esta fatura já foi paga?".
+1. **Origens do gasto.** Uma linha por origem, com o total do mês daquela origem
+   (os gastos fixos dela mais a soma dos lançamentos variáveis, as duas parcelas
+   visíveis ao lado) e o status. O total é o valor da fatura: gasto fixo
+   debitado no cartão entra na conta do cartão. É a pergunta "esta fatura já foi
+   paga?".
 2. **Gastos fixos.** Uma linha por gasto fixo, com ideal e valor editáveis no
    lugar, o selo da origem e o status.
 

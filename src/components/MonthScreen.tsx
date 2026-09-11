@@ -86,6 +86,13 @@ export function MonthScreen(props: {
     };
     const variaveis = somarPorOrigem(data.expenses);
     const fixos = somarPorOrigem(data.fixedEntries);
+    const linha = (chave: string) => {
+      const variable = variaveis.get(chave) ?? 0;
+      const fixed = fixos.get(chave) ?? 0;
+      // O total é o que o usuário confere quando marca a origem como paga: a
+      // fatura do cartão inclui as contas fixas debitadas nele.
+      return { variable, fixed, total: variable + fixed };
+    };
     return {
       originRows: data.originEntries.map((o) => ({
         id: o.id,
@@ -93,10 +100,9 @@ export function MonthScreen(props: {
         icon: originById.get(o.id)?.icon,
         color: originById.get(o.id)?.color,
         status: o.status,
-        variable: variaveis.get(o.id) ?? 0,
-        fixed: fixos.get(o.id) ?? 0,
+        ...linha(o.id),
       })),
-      noOrigin: { variable: variaveis.get('') ?? 0, fixed: fixos.get('') ?? 0 },
+      noOrigin: linha(''),
     };
   }, [data.expenses, data.fixedEntries, data.originEntries, originById]);
 
@@ -197,9 +203,9 @@ export function MonthScreen(props: {
           <section className="card table-card">
             <h3>Origens do gasto</h3>
             <p className="card-hint">
-              O status da origem vale para tudo que saiu dela no mês. Ao trocar o status, os
-              gastos fixos daquela origem recebem o mesmo status, e cada um ainda pode ser
-              ajustado na tabela de baixo.
+              O total da origem é tudo que saiu dela no mês: os gastos fixos dela mais os
+              lançamentos variáveis. Ao trocar o status, os gastos fixos daquela origem recebem o
+              mesmo status, e cada um ainda pode ser ajustado na tabela de baixo.
             </p>
             <div className="table-scroll">
               <table>
@@ -207,7 +213,8 @@ export function MonthScreen(props: {
                   <tr>
                     <th>Origem</th>
                     <th className="num hide-narrow">Fixos</th>
-                    <th className="num">Variáveis</th>
+                    <th className="num hide-narrow">Variáveis</th>
+                    <th className="num">Total</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -220,12 +227,14 @@ export function MonthScreen(props: {
                           {o.name}
                         </span>
                         <span className="cell-sub">
-                          fixos <span className="sub-value">{formatBRL(o.fixed)}</span>
+                          fixos <span className="sub-value">{formatBRL(o.fixed)}</span> · variáveis{' '}
+                          <span className="sub-value">{formatBRL(o.variable)}</span>
                         </span>
                       </td>
                       <td className="num hide-narrow">{formatBRL(o.fixed)}</td>
+                      <td className="num hide-narrow">{formatBRL(o.variable)}</td>
                       <td className="num">
-                        <strong>{formatBRL(o.variable)}</strong>
+                        <strong>{formatBRL(o.total)}</strong>
                       </td>
                       <td>
                         <StatusSelect
@@ -240,26 +249,29 @@ export function MonthScreen(props: {
                       como linha de leitura, para o dinheiro do mês não sumir da
                       conferência. Dar uma origem a ele no histórico o traz para
                       uma das linhas de cima. */}
-                  {noOrigin.variable + noOrigin.fixed > 0 && (
+                  {noOrigin.total > 0 && (
                     <tr>
                       <td>
                         <span className="muted">Sem origem</span>
                         <span className="cell-sub">
-                          fixos <span className="sub-value">{formatBRL(noOrigin.fixed)}</span>
+                          fixos <span className="sub-value">{formatBRL(noOrigin.fixed)}</span> ·
+                          variáveis{' '}
+                          <span className="sub-value">{formatBRL(noOrigin.variable)}</span>
                         </span>
                       </td>
                       <td className="num hide-narrow">{formatBRL(noOrigin.fixed)}</td>
+                      <td className="num hide-narrow">{formatBRL(noOrigin.variable)}</td>
                       <td className="num">
-                        <strong>{formatBRL(noOrigin.variable)}</strong>
+                        <strong>{formatBRL(noOrigin.total)}</strong>
                       </td>
                       <td>
                         <span className="muted small">sem status</span>
                       </td>
                     </tr>
                   )}
-                  {originRows.length === 0 && noOrigin.variable + noOrigin.fixed === 0 && (
+                  {originRows.length === 0 && noOrigin.total === 0 && (
                     <tr>
-                      <td colSpan={4} className="muted">
+                      <td colSpan={5} className="muted">
                         Nenhuma origem cadastrada.
                       </td>
                     </tr>
