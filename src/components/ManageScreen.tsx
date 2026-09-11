@@ -460,7 +460,11 @@ export function ManageScreen(props: {
         </form>
       </section>
 
-      <ManageOrigins compartmentId={compartmentId} origins={origins} />
+      <ManageOrigins
+        compartmentId={compartmentId}
+        currentMonth={currentMonth}
+        origins={origins}
+      />
 
       {fixedModal !== 'closed' && (
         <FixedExpenseModal

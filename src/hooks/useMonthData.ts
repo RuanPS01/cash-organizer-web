@@ -6,6 +6,7 @@ import {
   expensesCol,
   fixedEntriesCol,
   monthRef,
+  originEntriesCol,
 } from '../services/months';
 import { originsCol } from '../services/origins';
 import type {
@@ -15,6 +16,7 @@ import type {
   FixedExpense,
   MonthDoc,
   Origin,
+  OriginEntry,
   VariableExpense,
 } from '../types';
 
@@ -23,15 +25,17 @@ export interface MonthData {
   month: MonthDoc | null;
   fixedEntries: FixedEntry[];
   categoryEntries: CategoryEntry[];
+  originEntries: OriginEntry[];
   expenses: VariableExpense[];
 }
 
-/** Assina (tempo real) o documento do mês e suas subcoleções. */
+/** Assina (tempo real) o documento do mês e suas quatro subcoleções. */
 export function useMonthData(compartmentId: string, ym: string): MonthData {
   const [month, setMonth] = useState<MonthDoc | null>(null);
   const [monthLoaded, setMonthLoaded] = useState(false);
   const [fixedEntries, setFixedEntries] = useState<FixedEntry[]>([]);
   const [categoryEntries, setCategoryEntries] = useState<CategoryEntry[]>([]);
+  const [originEntries, setOriginEntries] = useState<OriginEntry[]>([]);
   const [expenses, setExpenses] = useState<VariableExpense[]>([]);
 
   useEffect(() => {
@@ -39,6 +43,7 @@ export function useMonthData(compartmentId: string, ym: string): MonthData {
     setMonth(null);
     setFixedEntries([]);
     setCategoryEntries([]);
+    setOriginEntries([]);
     setExpenses([]);
 
     const unsubs = [
@@ -56,6 +61,11 @@ export function useMonthData(compartmentId: string, ym: string): MonthData {
           snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CategoryEntry, 'id'>) })),
         );
       }),
+      onSnapshot(query(originEntriesCol(compartmentId, ym), orderBy('name')), (snap) => {
+        setOriginEntries(
+          snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<OriginEntry, 'id'>) })),
+        );
+      }),
       onSnapshot(query(expensesCol(compartmentId, ym), orderBy('createdAt', 'desc')), (snap) => {
         setExpenses(
           snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<VariableExpense, 'id'>) })),
@@ -65,7 +75,7 @@ export function useMonthData(compartmentId: string, ym: string): MonthData {
     return () => unsubs.forEach((u) => u());
   }, [compartmentId, ym]);
 
-  return { loading: !monthLoaded, month, fixedEntries, categoryEntries, expenses };
+  return { loading: !monthLoaded, month, fixedEntries, categoryEntries, originEntries, expenses };
 }
 
 /** Assina os cadastros de gastos fixos, categorias e origens do compartimento. */

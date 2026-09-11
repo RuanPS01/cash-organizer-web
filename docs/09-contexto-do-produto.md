@@ -38,9 +38,11 @@ transferir esse papel para outra.
 **Origem do gasto.** De onde o dinheiro saiu: "Cartão C6 (Crédito)", "Pix ou
 Transf.", "Cartão Nu", "Dinheiro". No lançamento variável é um segundo eixo de
 classificação, independente da categoria (a categoria diz no que se gastou, a
-origem diz por onde se pagou); no gasto fixo é parte do cadastro e responde
-"de onde sai esta conta todo mês". Cada origem tem um ícone e um tom, e uma
-delas é a padrão, já escolhida ao adicionar gasto e ao cadastrar um fixo.
+origem diz por onde se pagou); no gasto fixo é parte do cadastro e responde "de
+onde sai esta conta todo mês". É também a unidade de pagamento do mês: a aba
+Pagamento pergunta, origem por origem, se aquela fatura já foi paga. Cada origem
+tem um ícone e um tom, e uma delas é a padrão, já escolhida ao adicionar gasto e
+ao cadastrar um fixo.
 
 **Gasto ideal.** O planejado, não o limite rígido. Nada impede o usuário de
 gastar acima: a interface apenas mostra o excesso em vermelho.
@@ -67,7 +69,9 @@ linha `Pendente`.
 | Totais gravados ao fechar o mês | estatísticas baratas, sem reler o histórico inteiro |
 | Remoção é desativação | o histórico dos meses fechados não pode mudar |
 | `categoryName` copiado no lançamento | renomear ou remover a categoria não deixa o histórico ilegível |
-| Origem em coleção própria, sem linha de mês e fora dos totais | ela classifica o lançamento, não é orçamento: não tem ideal, não tem status e não muda nenhuma soma |
+| Pagamento acompanhado por origem, não por categoria | quem paga paga a fatura do cartão, não a categoria "mercado"; categoria é orçamento e continua valendo nas estatísticas e no ideal |
+| Status da origem desce para os gastos fixos dela | marcar o cartão como pago e deixar as contas dele pendentes seria um estado que a própria tela mostra como meio pago; ainda assim cada fixo pode ser ajustado depois |
+| Origem com linha de mês só de status, sem valor | o valor dela é a soma do que saiu no mês, e soma calculada não precisa ser gravada |
 | Cor só no ícone da origem | o usuário precisa distinguir dois cartões de relance, e a identidade continua ouro sobre preto porque moldura e preenchimento não mudam |
 | Histórico do mês na aba Adicionar | é onde o usuário está depois de lançar; conferir e corrigir o gasto recém-incluído não deveria exigir trocar de tela |
 | Data do lançamento livre, mas sempre dentro do mês em aberto | o mês do app é a referência da fatura, não o calendário |
@@ -94,7 +98,8 @@ linha `Pendente`.
 | Categoria (cadastro) | `Category`, coleção `categories` |
 | Categoria (linha do mês) | `CategoryEntry`, subcoleção `categoryEntries` |
 | Lançamento | `VariableExpense`, subcoleção `expenses` |
-| Origem do gasto | `Origin`, coleção `origins` |
+| Origem do gasto (cadastro) | `Origin`, coleção `origins` |
+| Origem do gasto (linha do mês) | `OriginEntry`, subcoleção `originEntries` |
 | Gasto ideal | `idealAmount` |
 | Valor | `amount` |
 | Mês em aberto | `compartment.currentMonth` com `month.status === 'open'` |

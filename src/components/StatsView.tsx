@@ -50,7 +50,7 @@ export function StatsView(props: {
   const viewTotals: MonthTotals = useMemo(
     () =>
       data.month?.totals ??
-      computeTotals(data.fixedEntries, data.categoryEntries, data.expenses),
+      computeTotals(data.fixedEntries, data.categoryEntries, data.expenses, data.originEntries),
     [data],
   );
 

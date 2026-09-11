@@ -86,7 +86,12 @@ export function AddExpenseScreen(props: {
     const weeklyIdeal = Math.round(ideal / 4);
     // Totais do mês pelo mesmo cálculo da aba de pagamento (linhas com status
     // "Ignorar" ficam de fora).
-    const totals = computeTotals(data.fixedEntries, data.categoryEntries, data.expenses);
+    const totals = computeTotals(
+      data.fixedEntries,
+      data.categoryEntries,
+      data.expenses,
+      data.originEntries,
+    );
     return {
       ideal,
       weeklyIdeal,

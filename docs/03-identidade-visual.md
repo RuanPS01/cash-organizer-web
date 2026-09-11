@@ -202,13 +202,12 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Escolha de tom | `.color-swatch` | `.selected` |
 | Botão | `.btn` | `.primary` (ouro preenchido), `.ghost`, `.block`, `.small`, `.icon`, `.icon.danger` |
 | Botão de texto discreto | `.mini-btn` | usado em "tornar padrão" |
-| Botão sem moldura em tabela | `.link-btn` | expandir categoria |
 | Campo | `.field` | `.plate` (placa de valor), `.inline` (edição em tabela) |
 | Chip de categoria ou de origem | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada); em modal a fileira quebra de linha em vez de rolar |
 | Card | `.card` | `.table-card`, `.totals-card`, `.info` |
-| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status`, `.editable` (selo que abre a reclassificação), `.empty` (sem origem) |
-| Glifo de origem | `.origin-icon` | tons `.oc-*` |
-| Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-meta`, `.history-value`, `.history-filters`, `.history-summary` |
+| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status`, `.empty` (sem origem) |
+| Glifo de origem | `.origin-icon` | tons `.oc-*`; `.origin-cell` põe o glifo ao lado do nome na tabela do mês |
+| Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-text`, `.history-meta`, `.history-value`, `.history-actions` (lápis mais excluir), `.history-filters`, `.history-summary` |
 | Marca | `.brand-mark` (via `BrandMark`) | `.big` (login e abertura) |
 | Barra de progresso | `.progress` mais `.progress-fill` | `.over` troca para o gradiente terracota |
 | Valor editável | `.money-cell` | `.muted`, `.text-cell` |

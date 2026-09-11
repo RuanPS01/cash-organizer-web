@@ -173,6 +173,17 @@ export interface FixedEntry {
   installmentTotal?: number | null;
 }
 
+/**
+ * Linha de origem do gasto dentro de um mês: é por ela que a aba Pagamento
+ * acompanha o que já foi pago em cada forma de pagamento. Não tem valor
+ * próprio, porque o valor é a soma do que saiu daquela origem no mês.
+ */
+export interface OriginEntry {
+  id: string;
+  name: string;
+  status: EntryStatus;
+}
+
 /** Linha de categoria (gasto variável) dentro de um mês. */
 export interface CategoryEntry {
   id: string;

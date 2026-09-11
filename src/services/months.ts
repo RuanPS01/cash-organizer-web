@@ -10,6 +10,8 @@ import type {
   FixedExpense,
   MonthDoc,
   MonthTotals,
+  Origin,
+  OriginEntry,
   VariableExpense,
 } from '../types';
 
@@ -25,6 +27,10 @@ export function categoryEntriesCol(compartmentId: string, ym: string) {
   return collection(db, 'compartments', compartmentId, 'months', ym, 'categoryEntries');
 }
 
+export function originEntriesCol(compartmentId: string, ym: string) {
+  return collection(db, 'compartments', compartmentId, 'months', ym, 'originEntries');
+}
+
 export function expensesCol(compartmentId: string, ym: string) {
   return collection(db, 'compartments', compartmentId, 'months', ym, 'expenses');
 }
@@ -38,20 +44,23 @@ async function fetchActive<T>(compartmentId: string, colName: string): Promise<(
 
 /**
  * Reconcilia o mês em aberto com os cadastros, nos dois sentidos:
- * - remove linhas cujos cadastros foram removidos (fixos desativados e
- *   categorias desativadas sem lançamentos no mês);
- * - adiciona linhas de fixos e categorias ativos que ainda não existem no
- *   mês (ex.: mês criado antes do cadastro, ou virada para um mês que já
- *   existia). Garante que categorias e fixos sejam mantidos ao virar o mês.
+ * - remove linhas cujos cadastros foram removidos (fixos desativados, e
+ *   categorias e origens desativadas que não têm gasto no mês);
+ * - adiciona linhas de fixos, categorias e origens ativos que ainda não
+ *   existem no mês (ex.: mês criado antes do cadastro, ou virada para um mês
+ *   que já existia). É o que mantém os três cadastros ao virar o mês.
  */
 async function syncMonthEntries(compartmentId: string, ym: string): Promise<void> {
-  const [fixedCad, catCad, fixedEntries, catEntries, expenses] = await Promise.all([
-    getDocs(collection(db, 'compartments', compartmentId, 'fixedExpenses')),
-    getDocs(collection(db, 'compartments', compartmentId, 'categories')),
-    getDocs(fixedEntriesCol(compartmentId, ym)),
-    getDocs(categoryEntriesCol(compartmentId, ym)),
-    getDocs(expensesCol(compartmentId, ym)),
-  ]);
+  const [fixedCad, catCad, originCad, fixedEntries, catEntries, originEntries, expenses] =
+    await Promise.all([
+      getDocs(collection(db, 'compartments', compartmentId, 'fixedExpenses')),
+      getDocs(collection(db, 'compartments', compartmentId, 'categories')),
+      getDocs(collection(db, 'compartments', compartmentId, 'origins')),
+      getDocs(fixedEntriesCol(compartmentId, ym)),
+      getDocs(categoryEntriesCol(compartmentId, ym)),
+      getDocs(originEntriesCol(compartmentId, ym)),
+      getDocs(expensesCol(compartmentId, ym)),
+    ]);
 
   const activeFixed = new Set(
     fixedCad.docs.filter((d) => d.data().active !== false).map((d) => d.id),
@@ -59,9 +68,19 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
   const activeCats = new Set(
     catCad.docs.filter((d) => d.data().active !== false).map((d) => d.id),
   );
+  const activeOrigins = new Set(
+    originCad.docs.filter((d) => d.data().active !== false).map((d) => d.id),
+  );
   const usedCats = new Set(expenses.docs.map((d) => d.data().categoryId as string));
+  // Origem usada no mês (por lançamento ou por gasto fixo) não perde a linha
+  // quando o cadastro é desativado: o status dela ainda vale para este mês.
+  const usedOrigins = new Set([
+    ...expenses.docs.map((d) => d.data().originId as string | null),
+    ...fixedEntries.docs.map((d) => d.data().originId as string | null),
+  ]);
   const fixedEntryIds = new Set(fixedEntries.docs.map((d) => d.id));
   const catEntryIds = new Set(catEntries.docs.map((d) => d.id));
+  const originEntryIds = new Set(originEntries.docs.map((d) => d.id));
 
   const batch = writeBatch(db);
   let dirty = false;
@@ -74,6 +93,12 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
   }
   for (const entry of catEntries.docs) {
     if (!activeCats.has(entry.id) && !usedCats.has(entry.id)) {
+      batch.delete(entry.ref);
+      dirty = true;
+    }
+  }
+  for (const entry of originEntries.docs) {
+    if (!activeOrigins.has(entry.id) && !usedOrigins.has(entry.id)) {
       batch.delete(entry.ref);
       dirty = true;
     }
@@ -105,22 +130,33 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
     } satisfies Omit<CategoryEntry, 'id'>);
     dirty = true;
   }
+  for (const cad of originCad.docs) {
+    const o = cad.data();
+    if (o.active === false || originEntryIds.has(cad.id)) continue;
+    batch.set(doc(originEntriesCol(compartmentId, ym), cad.id), {
+      name: o.name,
+      status: 'Pendente',
+    } satisfies Omit<OriginEntry, 'id'>);
+    dirty = true;
+  }
 
   if (dirty) await batch.commit();
 }
 
 /**
  * Adiciona ao batch as linhas do mês a partir dos cadastros ativos (fixos
- * com valor/ideal/descrição/origem/parcela; categorias com o ideal).
+ * com valor/ideal/descrição/origem/parcela; categorias com o ideal; origens
+ * apenas com o status, que é o que a aba Pagamento acompanha nelas).
  */
 async function seedMonthEntries(
   compartmentId: string,
   ym: string,
   batch: WriteBatch,
 ): Promise<void> {
-  const [fixed, categories] = await Promise.all([
+  const [fixed, categories, origins] = await Promise.all([
     fetchActive<Omit<FixedExpense, 'id'>>(compartmentId, 'fixedExpenses'),
     fetchActive<Omit<Category, 'id'>>(compartmentId, 'categories'),
+    fetchActive<Omit<Origin, 'id'>>(compartmentId, 'origins'),
   ]);
 
   for (const f of fixed) {
@@ -143,20 +179,36 @@ async function seedMonthEntries(
       status: 'Pendente',
     } satisfies Omit<CategoryEntry, 'id'>);
   }
+  for (const o of origins) {
+    batch.set(doc(originEntriesCol(compartmentId, ym), o.id), {
+      name: o.name,
+      status: 'Pendente',
+    } satisfies Omit<OriginEntry, 'id'>);
+  }
+}
+
+/** O mês existe e está aberto? É a condição para um cadastro refletir nele. */
+export async function isMonthOpen(compartmentId: string, ym: string): Promise<boolean> {
+  const month = await getDoc(monthRef(compartmentId, ym));
+  return month.exists() && month.data().status === 'open';
 }
 
 /**
  * Garante que o mês existe: se não existir, cria o documento do mês e as
- * linhas de gastos fixos (com valor/ideal preenchidos a partir do cadastro)
- * e de categorias (apenas o ideal; o gasto real vem dos lançamentos).
+ * linhas de gastos fixos (com valor/ideal preenchidos a partir do cadastro),
+ * de categorias (apenas o ideal; o gasto real vem dos lançamentos) e de
+ * origens (apenas o status).
  * Se já existir e estiver aberto, reconcilia as linhas com os cadastros.
  */
 export async function ensureMonth(compartmentId: string, ym: string): Promise<void> {
   const ref = monthRef(compartmentId, ym);
   const snap = await getDoc(ref);
   if (snap.exists()) {
+    // Reconciliar é manutenção: o mês já existe e o app funciona sem ela. Sem
+    // este catch, uma escrita recusada (regra do banco ainda não liberada, por
+    // exemplo) derrubaria a entrada no app, como se a sessão fosse inválida.
     if (snap.data().status === 'open') {
-      await syncMonthEntries(compartmentId, ym);
+      await syncMonthEntries(compartmentId, ym).catch(() => undefined);
     }
     return;
   }
@@ -185,7 +237,8 @@ async function commitInChunks(ops: BatchOp[]): Promise<void> {
 /**
  * Troca o mês de referência: `toYm` passa a ser o mês em aberto e leva junto
  * todo o conteúdo do mês que estava aberto (linhas de gastos fixos com valor e
- * status, linhas de categorias e lançamentos), cada documento com o mesmo id.
+ * status, linhas de categorias, linhas de origens e lançamentos), cada
+ * documento com o mesmo id.
  * O mês de origem fica vazio.
  *
  * Os cadastros (gastos fixos, categorias e origens) pertencem ao compartimento
@@ -211,18 +264,29 @@ export async function setOpenMonth(
     return;
   }
 
-  const [fromFixed, fromCats, fromExpenses, toFixed, toCats, toExpenses] = await Promise.all([
+  const [
+    fromFixed,
+    fromCats,
+    fromOrigins,
+    fromExpenses,
+    toFixed,
+    toCats,
+    toOrigins,
+    toExpenses,
+  ] = await Promise.all([
     getDocs(fixedEntriesCol(compartmentId, fromYm)),
     getDocs(categoryEntriesCol(compartmentId, fromYm)),
+    getDocs(originEntriesCol(compartmentId, fromYm)),
     getDocs(expensesCol(compartmentId, fromYm)),
     getDocs(fixedEntriesCol(compartmentId, toYm)),
     getDocs(categoryEntriesCol(compartmentId, toYm)),
+    getDocs(originEntriesCol(compartmentId, toYm)),
     getDocs(expensesCol(compartmentId, toYm)),
   ]);
 
   const prepara: BatchOp[] = [];
   if (replaceTarget) {
-    for (const d of [...toFixed.docs, ...toCats.docs, ...toExpenses.docs]) {
+    for (const d of [...toFixed.docs, ...toCats.docs, ...toOrigins.docs, ...toExpenses.docs]) {
       prepara.push((b) => b.delete(d.ref));
     }
   }
@@ -240,6 +304,9 @@ export async function setOpenMonth(
     ...fromCats.docs.map(
       (d): BatchOp => (b) => b.set(doc(categoryEntriesCol(compartmentId, toYm), d.id), d.data()),
     ),
+    ...fromOrigins.docs.map(
+      (d): BatchOp => (b) => b.set(doc(originEntriesCol(compartmentId, toYm), d.id), d.data()),
+    ),
     ...fromExpenses.docs.map(
       (d): BatchOp => (b) => b.set(doc(expensesCol(compartmentId, toYm), d.id), d.data()),
     ),
@@ -247,7 +314,7 @@ export async function setOpenMonth(
   await commitInChunks(copia);
 
   await commitInChunks(
-    [...fromFixed.docs, ...fromCats.docs, ...fromExpenses.docs].map(
+    [...fromFixed.docs, ...fromCats.docs, ...fromOrigins.docs, ...fromExpenses.docs].map(
       (d): BatchOp => (b) => b.delete(d.ref),
     ),
   );
@@ -260,12 +327,21 @@ export async function setOpenMonth(
  * Totais do mês. Linhas com status "Ignorar" ficam de fora do gasto somado
  * (fixedActual/varActual) mas continuam contando no ideal, que é o orçamento
  * planejado; o valor delas segue visível na tela, marcado como ignorado.
+ *
+ * O "Ignorar" vale em três lugares: na linha de gasto fixo, na linha de origem
+ * (tira do mês tudo que saiu dela, que é como a aba Pagamento trabalha hoje) e
+ * na linha de categoria, que não tem mais status na interface mas continua
+ * valendo para os meses em que foi marcada.
  */
 export function computeTotals(
   fixedEntries: FixedEntry[],
   categoryEntries: CategoryEntry[],
   expenses: VariableExpense[],
+  originEntries: OriginEntry[],
 ): MonthTotals {
+  const ignoredOrigins = new Set(
+    originEntries.filter((o) => o.status === IGNORED_STATUS).map((o) => o.id),
+  );
   const byCategory: MonthTotals['byCategory'] = {};
   for (const c of categoryEntries) {
     byCategory[c.id] = {
@@ -282,6 +358,9 @@ export function computeTotals(
       actual: 0,
       ignored: false,
     });
+    // A categoria continua na lista (o ideal dela vale), mas o dinheiro que
+    // saiu de uma origem ignorada não entra em soma nenhuma.
+    if (e.originId && ignoredOrigins.has(e.originId)) continue;
     cat.actual += e.amount;
   }
   return {
@@ -300,9 +379,11 @@ export function computeTotals(
 /**
  * Fecha o mês corrente: grava os totais no documento do mês, marca como
  * "closed" e avança o mês corrente do compartimento, inicializando o próximo
- * (gastos fixos e categorias são mantidos).
+ * (gastos fixos, categorias e origens são mantidos).
  *
- * Pré-condição (validada na UI e aqui): nenhuma linha com status "Pendente".
+ * Pré-condição (validada na UI e aqui): nenhuma linha com status "Pendente"
+ * entre as que a aba Pagamento resolve, que são as origens e os gastos fixos.
+ * A linha de categoria não entra: ela existe pelo ideal, não é paga.
  */
 export async function closeMonth(
   compartmentId: string,
@@ -310,13 +391,14 @@ export async function closeMonth(
   fixedEntries: FixedEntry[],
   categoryEntries: CategoryEntry[],
   expenses: VariableExpense[],
+  originEntries: OriginEntry[],
 ): Promise<string> {
-  const pending = [...fixedEntries, ...categoryEntries].filter((e) => e.status === 'Pendente');
+  const pending = [...originEntries, ...fixedEntries].filter((e) => e.status === 'Pendente');
   if (pending.length > 0) {
     throw new Error(`Ainda há itens pendentes: ${pending.map((p) => p.name).join(', ')}`);
   }
 
-  const totals = computeTotals(fixedEntries, categoryEntries, expenses);
+  const totals = computeTotals(fixedEntries, categoryEntries, expenses, originEntries);
   const next = nextMonthKey(ym);
 
   const batch = writeBatch(db);

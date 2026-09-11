@@ -119,8 +119,12 @@ function OriginModal(props: {
  * criada já nasce como padrão, para que o seletor da tela de novo gasto nunca
  * fique sem pré-seleção.
  */
-export function ManageOrigins(props: { compartmentId: string; origins: Origin[] }) {
-  const { compartmentId, origins } = props;
+export function ManageOrigins(props: {
+  compartmentId: string;
+  currentMonth: string;
+  origins: Origin[];
+}) {
+  const { compartmentId, currentMonth, origins } = props;
   const [modal, setModal] = useState<'closed' | 'new' | Origin>('closed');
   const [removeTarget, setRemoveTarget] = useState<Origin | null>(null);
   const [busy, setBusy] = useState(false);
@@ -134,9 +138,12 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
     setError(null);
     try {
       if (modal === 'new') {
-        await addOrigin(compartmentId, { ...input, isDefault: origins.length === 0 });
+        await addOrigin(compartmentId, currentMonth, {
+          ...input,
+          isDefault: origins.length === 0,
+        });
       } else if (modal !== 'closed') {
-        await saveOrigin(compartmentId, modal.id, input);
+        await saveOrigin(compartmentId, currentMonth, modal.id, input);
       }
       setModal('closed');
     } catch (err) {
@@ -151,7 +158,7 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
     setBusy(true);
     setError(null);
     try {
-      await removeOrigin(compartmentId, removeTarget.id);
+      await removeOrigin(compartmentId, currentMonth, removeTarget.id);
       setRemoveTarget(null);
     } catch (err) {
       setError(writeErrorMessage(err));
@@ -173,9 +180,10 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
       <section className="card">
         <h3>Origens do gasto</h3>
         <p className="card-hint">
-          A origem diz de onde o dinheiro saiu (cartão, Pix, dinheiro) e aparece no seletor da tela
-          de novo gasto, além de identificar cada lançamento no histórico. A origem{' '}
-          <strong>padrão</strong> vem pré-selecionada; use "tornar padrão" para trocar.
+          A origem diz de onde o dinheiro saiu (cartão, Pix, dinheiro), aparece no seletor da tela
+          de novo gasto e no cadastro do gasto fixo, e é por ela que a aba Pagamento acompanha o
+          que já foi pago no mês. A origem <strong>padrão</strong> vem pré-selecionada; use
+          "tornar padrão" para trocar.
         </p>
         <ul className="manage-list">
           {origins.map((o, i) => (
@@ -231,7 +239,8 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
           ))}
           {origins.length === 0 && (
             <li className="muted">
-              Nenhuma origem cadastrada. Sem origem, o seletor não aparece na tela de novo gasto.
+              Nenhuma origem cadastrada. Sem origem, o seletor não aparece na tela de novo gasto e
+              a aba Pagamento fica só com os gastos fixos.
             </li>
           )}
         </ul>
@@ -262,6 +271,10 @@ export function ManageOrigins(props: { compartmentId: string; origins: Origin[] 
           <p>
             <strong>{removeTarget.name}</strong> não estará mais disponível para novos gastos. Os
             lançamentos que já usaram essa origem continuam com o nome dela no histórico.
+          </p>
+          <p className="muted small">
+            No mês em aberto, a linha dela na aba Pagamento some se nada tiver saído dessa origem;
+            com gasto no mês, a linha fica até o mês virar.
           </p>
           {error && <p className="form-error">{error}</p>}
         </ConfirmModal>

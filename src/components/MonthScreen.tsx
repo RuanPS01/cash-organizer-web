@@ -1,13 +1,10 @@
-import { Fragment, useMemo, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { closeMonth, computeTotals, setOpenMonth } from '../services/months';
-import {
-  deleteVariableExpense,
-  updateCategoryEntry,
-  updateFixedEntry,
-} from '../services/expenses';
+import { setOriginStatus, updateFixedEntry } from '../services/expenses';
 import { formatBRL } from '../utils/money';
-import { dayLabel, monthLabel, nextMonthKey, prevMonthKey } from '../utils/dates';
+import { monthLabel, nextMonthKey, prevMonthKey } from '../utils/dates';
+import { writeErrorMessage } from '../utils/errors';
 import { useMonthData } from '../hooks/useMonthData';
 import { ConfirmModal, EditableMoney } from './shared';
 import { StatsView } from './StatsView';
@@ -48,7 +45,6 @@ export function MonthScreen(props: {
 }) {
   const { compartmentId, currentMonth, mode, origins } = props;
   const [viewMonth, setViewMonth] = useState(currentMonth);
-  const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   const [openStep, setOpenStep] = useState<0 | 1 | 2>(0);
   const [busy, setBusy] = useState(false);
@@ -65,15 +61,62 @@ export function MonthScreen(props: {
     data.fixedEntries.length + data.categoryEntries.length + data.expenses.length > 0;
 
   const totals = useMemo(
-    () => computeTotals(data.fixedEntries, data.categoryEntries, data.expenses),
+    () => computeTotals(data.fixedEntries, data.categoryEntries, data.expenses, data.originEntries),
     [data],
   );
+  // Só as linhas que a aba Pagamento resolve bloqueiam a virada: origens e
+  // gastos fixos. A linha de categoria existe pelo ideal, ela não é paga.
   const pendingCount = useMemo(
     () =>
-      [...data.fixedEntries, ...data.categoryEntries].filter((e) => e.status === 'Pendente')
-        .length,
+      [...data.originEntries, ...data.fixedEntries].filter((e) => e.status === 'Pendente').length,
     [data],
   );
+
+  // Valor de cada origem no mês: os lançamentos variáveis somados por origem e
+  // os gastos fixos que saem dela. O ícone e o tom vêm do cadastro, porque a
+  // linha do mês guarda só o id, o nome e o status.
+  const { originRows, noOrigin } = useMemo(() => {
+    const somarPorOrigem = (itens: { originId?: string | null; amount: number }[]) => {
+      const porOrigem = new Map<string, number>();
+      for (const item of itens) {
+        const chave = item.originId ?? '';
+        porOrigem.set(chave, (porOrigem.get(chave) ?? 0) + item.amount);
+      }
+      return porOrigem;
+    };
+    const variaveis = somarPorOrigem(data.expenses);
+    const fixos = somarPorOrigem(data.fixedEntries);
+    return {
+      originRows: data.originEntries.map((o) => ({
+        id: o.id,
+        name: originById.get(o.id)?.name ?? o.name,
+        icon: originById.get(o.id)?.icon,
+        color: originById.get(o.id)?.color,
+        status: o.status,
+        variable: variaveis.get(o.id) ?? 0,
+        fixed: fixos.get(o.id) ?? 0,
+      })),
+      noOrigin: { variable: variaveis.get('') ?? 0, fixed: fixos.get('') ?? 0 },
+    };
+  }, [data.expenses, data.fixedEntries, data.originEntries, originById]);
+
+  // A edição de status e de valor não tem botão de confirmar: sem este catch, a
+  // gravação recusada voltaria o valor anterior na tela, sem dizer por quê.
+  const run = (promise: Promise<void>) => {
+    setError(null);
+    promise.catch((err) => setError(writeErrorMessage(err)));
+  };
+
+  // O status da origem desce para os gastos fixos que saem dela; os ids saem
+  // daqui porque a tela já tem as linhas do mês assinadas.
+  const changeOriginStatus = (originId: string, status: EntryStatus) =>
+    setOriginStatus(
+      compartmentId,
+      viewMonth,
+      originId,
+      status,
+      data.fixedEntries.filter((f) => f.originId === originId).map((f) => f.id),
+    );
 
   const doCloseMonth = async () => {
     setBusy(true);
@@ -85,6 +128,7 @@ export function MonthScreen(props: {
         data.fixedEntries,
         data.categoryEntries,
         data.expenses,
+        data.originEntries,
       );
       setConfirmClose(false);
       setViewMonth(next);
@@ -151,6 +195,81 @@ export function MonthScreen(props: {
       ) : (
         <>
           <section className="card table-card">
+            <h3>Origens do gasto</h3>
+            <p className="card-hint">
+              O status da origem vale para tudo que saiu dela no mês. Ao trocar o status, os
+              gastos fixos daquela origem recebem o mesmo status, e cada um ainda pode ser
+              ajustado na tabela de baixo.
+            </p>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Origem</th>
+                    <th className="num hide-narrow">Fixos</th>
+                    <th className="num">Variáveis</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {originRows.map((o) => (
+                    <tr key={o.id} className={o.status === IGNORED_STATUS ? 'row-ignored' : ''}>
+                      <td>
+                        <span className="origin-cell">
+                          <OriginIcon icon={o.icon} color={o.color} size={15} />
+                          {o.name}
+                        </span>
+                        <span className="cell-sub">
+                          fixos <span className="sub-value">{formatBRL(o.fixed)}</span>
+                        </span>
+                      </td>
+                      <td className="num hide-narrow">{formatBRL(o.fixed)}</td>
+                      <td className="num">
+                        <strong>{formatBRL(o.variable)}</strong>
+                      </td>
+                      <td>
+                        <StatusSelect
+                          value={o.status}
+                          disabled={!editable}
+                          onChange={(s) => run(changeOriginStatus(o.id, s))}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Lançamento sem origem não tem onde guardar status: entra
+                      como linha de leitura, para o dinheiro do mês não sumir da
+                      conferência. Dar uma origem a ele no histórico o traz para
+                      uma das linhas de cima. */}
+                  {noOrigin.variable + noOrigin.fixed > 0 && (
+                    <tr>
+                      <td>
+                        <span className="muted">Sem origem</span>
+                        <span className="cell-sub">
+                          fixos <span className="sub-value">{formatBRL(noOrigin.fixed)}</span>
+                        </span>
+                      </td>
+                      <td className="num hide-narrow">{formatBRL(noOrigin.fixed)}</td>
+                      <td className="num">
+                        <strong>{formatBRL(noOrigin.variable)}</strong>
+                      </td>
+                      <td>
+                        <span className="muted small">sem status</span>
+                      </td>
+                    </tr>
+                  )}
+                  {originRows.length === 0 && noOrigin.variable + noOrigin.fixed === 0 && (
+                    <tr>
+                      <td colSpan={4} className="muted">
+                        Nenhuma origem cadastrada.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="card table-card">
             <h3>Gastos fixos</h3>
             <div className="table-scroll">
               <table>
@@ -190,7 +309,11 @@ export function MonthScreen(props: {
                               disabled={!editable}
                               muted
                               onSave={(v) =>
-                                updateFixedEntry(compartmentId, viewMonth, f.id, { idealAmount: v })
+                                run(
+                                  updateFixedEntry(compartmentId, viewMonth, f.id, {
+                                    idealAmount: v,
+                                  }),
+                                )
                               }
                             />
                           </span>
@@ -201,7 +324,11 @@ export function MonthScreen(props: {
                             disabled={!editable}
                             muted
                             onSave={(v) =>
-                              updateFixedEntry(compartmentId, viewMonth, f.id, { idealAmount: v })
+                              run(
+                                updateFixedEntry(compartmentId, viewMonth, f.id, {
+                                  idealAmount: v,
+                                }),
+                              )
                             }
                           />
                         </td>
@@ -210,7 +337,7 @@ export function MonthScreen(props: {
                             valueCents={f.amount}
                             disabled={!editable}
                             onSave={(v) =>
-                              updateFixedEntry(compartmentId, viewMonth, f.id, { amount: v })
+                              run(updateFixedEntry(compartmentId, viewMonth, f.id, { amount: v }))
                             }
                           />
                         </td>
@@ -219,7 +346,7 @@ export function MonthScreen(props: {
                             value={f.status}
                             disabled={!editable}
                             onChange={(s) =>
-                              updateFixedEntry(compartmentId, viewMonth, f.id, { status: s })
+                              run(updateFixedEntry(compartmentId, viewMonth, f.id, { status: s }))
                             }
                           />
                         </td>
@@ -230,127 +357,6 @@ export function MonthScreen(props: {
                     <tr>
                       <td colSpan={4} className="muted">
                         Nenhum gasto fixo cadastrado.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="card table-card">
-            <h3>Gastos variáveis (por categoria)</h3>
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Categoria</th>
-                    <th className="num hide-narrow">Ideal</th>
-                    <th className="num">Soma</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.categoryEntries.map((c) => {
-                    const catExpenses = data.expenses.filter((e) => e.categoryId === c.id);
-                    const sum = catExpenses.reduce((s, e) => s + e.amount, 0);
-                    const isOpen = expanded === c.id;
-                    return (
-                      <Fragment key={c.id}>
-                        <tr className={c.status === IGNORED_STATUS ? 'row-ignored' : ''}>
-                          <td>
-                            <button
-                              className="link-btn"
-                              onClick={() => setExpanded(isOpen ? null : c.id)}
-                            >
-                              {isOpen ? (
-                                <ChevronDown size={14} aria-hidden />
-                              ) : (
-                                <ChevronRight size={14} aria-hidden />
-                              )}{' '}
-                              {c.name}
-                              <span className="muted"> ({catExpenses.length})</span>
-                            </button>
-                            <span className="cell-sub">
-                              ideal
-                              <EditableMoney
-                                valueCents={c.idealAmount}
-                                disabled={!editable}
-                                muted
-                                onSave={(v) =>
-                                  updateCategoryEntry(compartmentId, viewMonth, c.id, {
-                                    idealAmount: v,
-                                  })
-                                }
-                              />
-                            </span>
-                          </td>
-                          <td className="num hide-narrow">
-                            <EditableMoney
-                              valueCents={c.idealAmount}
-                              disabled={!editable}
-                              muted
-                              onSave={(v) =>
-                                updateCategoryEntry(compartmentId, viewMonth, c.id, {
-                                  idealAmount: v,
-                                })
-                              }
-                            />
-                          </td>
-                          <td className="num">
-                            <strong>{formatBRL(sum)}</strong>
-                          </td>
-                          <td>
-                            <StatusSelect
-                              value={c.status}
-                              disabled={!editable}
-                              onChange={(s) =>
-                                updateCategoryEntry(compartmentId, viewMonth, c.id, { status: s })
-                              }
-                            />
-                          </td>
-                        </tr>
-                        {isOpen && (
-                          <tr className="details-row">
-                            <td colSpan={4}>
-                              {catExpenses.length === 0 ? (
-                                <p className="muted">Nenhum lançamento nesta categoria.</p>
-                              ) : (
-                                <ul className="expense-list">
-                                  {catExpenses.map((e) => (
-                                    <li key={e.id}>
-                                      <span className="muted when">
-                                        {dayLabel(e.createdAt)} · sem {e.week}
-                                      </span>
-                                      <span className="desc">
-                                        {e.description || 'Sem descrição'}
-                                      </span>
-                                      <strong>{formatBRL(e.amount)}</strong>
-                                      {editable && (
-                                        <button
-                                          className="btn icon danger"
-                                          title="Excluir lançamento"
-                                          onClick={() =>
-                                            deleteVariableExpense(compartmentId, viewMonth, e.id)
-                                          }
-                                        >
-                                          <X size={14} aria-hidden />
-                                        </button>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                  {data.categoryEntries.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="muted">
-                        Nenhuma categoria neste mês.
                       </td>
                     </tr>
                   )}
@@ -419,7 +425,8 @@ export function MonthScreen(props: {
         >
           <p>
             O mês de <strong>{monthLabel(currentMonth)}</strong> será fechado como pago/quitado e o
-            próximo mês será iniciado mantendo os gastos fixos e as categorias.
+            próximo mês será iniciado mantendo os cadastros de gastos fixos, categorias e
+            origens.
           </p>
           <p className="muted small">
             Gastos parcelados avançam uma parcela; os que estiverem na última saem do próximo mês.
@@ -437,7 +444,7 @@ export function MonthScreen(props: {
         >
           <p>
             Todo o conteúdo de <strong>{monthLabel(currentMonth)}</strong> (gastos fixos com valor
-            e status, categorias e lançamentos) será movido para{' '}
+            e status, categorias, origens com status e lançamentos) será movido para{' '}
             <strong>{monthLabel(viewMonth)}</strong>, que passa a ser o mês em aberto.
           </p>
           <p className="muted small">

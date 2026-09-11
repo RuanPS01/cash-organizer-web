@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, ListChecks, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Check, ListChecks, Pencil, Search, SlidersHorizontal, X } from 'lucide-react';
 import {
   deleteVariableExpense,
   removeFixedExpense,
@@ -7,11 +7,12 @@ import {
   updateVariableExpense,
   updateVariableExpenses,
 } from '../services/expenses';
-import type { ExpenseClassification } from '../services/expenses';
+import type { ExpenseClassification, ExpenseEdit } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { dateFromDayKey, dayLabel } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
 import { ConfirmModal, EditableMoney, EditableText } from './shared';
+import { ExpenseEditModal } from './ExpenseEditModal';
 import { OriginIcon } from './OriginIcon';
 import { IGNORED_STATUS, STATUS_CLASS } from '../types';
 import type { MonthData } from '../hooks/useMonthData';
@@ -36,36 +37,23 @@ function foldText(text: string): string {
 }
 
 /**
- * Selo da classificação do lançamento (categoria ou origem). Com o mês em
- * aberto ele vira botão e abre a reclassificação: o próprio selo é o alvo mais
- * óbvio para trocar o que ele mostra.
+ * Selo da classificação do lançamento (categoria ou origem). É só leitura: a
+ * troca de um lançamento acontece no modal do lápis, e a de vários na barra de
+ * seleção. Um alvo de edição por linha evita a dúvida de onde tocar.
  */
 function ClassBadge(props: {
   kind: 'cat' | 'origin';
   label: string;
   origin?: Origin;
   empty?: boolean;
-  onEdit?: () => void;
 }) {
-  const conteudo = (
-    <>
+  return (
+    <span className={`badge ${props.kind}${props.empty ? ' empty' : ''}`}>
       {props.kind === 'origin' && (
         <OriginIcon icon={props.origin?.icon} color={props.origin?.color} />
       )}
       {props.label}
-    </>
-  );
-  const classe = `badge ${props.kind}${props.empty ? ' empty' : ''}`;
-  if (!props.onEdit) return <span className={classe}>{conteudo}</span>;
-  return (
-    <button
-      type="button"
-      className={`${classe} editable`}
-      title={props.kind === 'cat' ? 'Trocar a categoria' : 'Trocar a origem'}
-      onClick={props.onEdit}
-    >
-      {conteudo}
-    </button>
+    </span>
   );
 }
 
@@ -161,8 +149,9 @@ function ReclassifyModal(props: {
 /**
  * Histórico do mês em aberto, com as duas naturezas de gasto em subabas:
  * os lançamentos variáveis (padrão, do mais recente para o mais antigo) e as
- * linhas de gasto fixo. Valor e descrição são editáveis no lugar e a remoção
- * passa por confirmação.
+ * linhas de gasto fixo. O lançamento variável é editado por inteiro no modal
+ * do lápis; a linha de gasto fixo, que é um espelho do cadastro, segue com
+ * valor e descrição editáveis no lugar. A remoção passa por confirmação.
  */
 export function ExpenseHistory(props: {
   compartmentId: string;
@@ -184,6 +173,7 @@ export function ExpenseHistory(props: {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reclassifyIds, setReclassifyIds] = useState<string[] | null>(null);
+  const [editTarget, setEditTarget] = useState<VariableExpense | null>(null);
   const [removeTarget, setRemoveTarget] = useState<
     { kind: 'expense'; item: VariableExpense } | { kind: 'fixed'; item: FixedEntry } | null
   >(null);
@@ -268,6 +258,25 @@ export function ExpenseHistory(props: {
   const openReclassify = (ids: string[]) => {
     setError(null);
     setReclassifyIds(ids);
+  };
+
+  const openEdit = (expense: VariableExpense) => {
+    setError(null);
+    setEditTarget(expense);
+  };
+
+  const confirmEdit = async (patch: ExpenseEdit) => {
+    if (!editTarget) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updateVariableExpense(compartmentId, ym, editTarget.id, patch);
+      setEditTarget(null);
+    } catch (err) {
+      setError(writeErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const confirmReclassify = async (patch: ExpenseClassification) => {
@@ -472,63 +481,51 @@ export function ExpenseHistory(props: {
                   </button>
                 )}
                 <span className="history-desc">
-                  <EditableText
-                    value={e.description}
-                    placeholder="Sem descrição"
-                    allowEmpty
-                    disabled={!editable}
-                    onSave={(description) =>
-                      run(updateVariableExpense(compartmentId, ym, e.id, { description }))
-                    }
-                  />
+                  <span className={`history-text${e.description ? '' : ' empty'}`}>
+                    {e.description || 'Sem descrição'}
+                  </span>
                 </span>
                 <span className="history-meta">
                   <span className="when">
                     {dayLabel(e.createdAt)} · sem {e.week}
                   </span>
-                  <ClassBadge
-                    kind="cat"
-                    label={e.categoryName}
-                    onEdit={editable && !selecting ? () => openReclassify([e.id]) : undefined}
-                  />
+                  <ClassBadge kind="cat" label={e.categoryName} />
                   {e.originId || e.originName ? (
                     <ClassBadge
                       kind="origin"
                       label={originById.get(e.originId ?? '')?.name ?? e.originName ?? ''}
                       origin={e.originId ? originById.get(e.originId) : undefined}
-                      onEdit={editable && !selecting ? () => openReclassify([e.id]) : undefined}
                     />
                   ) : (
-                    editable &&
-                    !selecting && (
-                      <ClassBadge
-                        kind="origin"
-                        label="sem origem"
-                        empty
-                        onEdit={() => openReclassify([e.id])}
-                      />
-                    )
+                    <ClassBadge kind="origin" label="sem origem" empty />
                   )}
                 </span>
                 <span className="history-value">
-                  <EditableMoney
-                    valueCents={e.amount}
-                    disabled={!editable}
-                    onSave={(amount) =>
-                      run(updateVariableExpense(compartmentId, ym, e.id, { amount }))
-                    }
-                  />
+                  <strong>{formatBRL(e.amount)}</strong>
                 </span>
-                {editable && (
-                  <button
-                    type="button"
-                    className="btn icon danger"
-                    title="Excluir lançamento"
-                    aria-label={`Excluir lançamento de ${formatBRL(e.amount)}`}
-                    onClick={() => setRemoveTarget({ kind: 'expense', item: e })}
-                  >
-                    <X size={14} aria-hidden />
-                  </button>
+                {/* No modo de seleção os botões saem da linha: ali o toque é
+                    para marcar, e a troca vale para a seleção inteira. */}
+                {editable && !selecting && (
+                  <span className="history-actions">
+                    <button
+                      type="button"
+                      className="btn icon"
+                      title="Editar lançamento"
+                      aria-label={`Editar lançamento de ${formatBRL(e.amount)}`}
+                      onClick={() => openEdit(e)}
+                    >
+                      <Pencil size={14} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn icon danger"
+                      title="Excluir lançamento"
+                      aria-label={`Excluir lançamento de ${formatBRL(e.amount)}`}
+                      onClick={() => setRemoveTarget({ kind: 'expense', item: e })}
+                    >
+                      <X size={14} aria-hidden />
+                    </button>
+                  </span>
                 )}
               </li>
             ))}
@@ -607,6 +604,18 @@ export function ExpenseHistory(props: {
         )}
         {error && <p className="form-error">{error}</p>}
       </section>
+
+      {editTarget && (
+        <ExpenseEditModal
+          expense={editTarget}
+          categories={categories}
+          origins={origins}
+          busy={busy}
+          saveError={error}
+          onConfirm={confirmEdit}
+          onCancel={() => setEditTarget(null)}
+        />
+      )}
 
       {reclassifyIds && (
         <ReclassifyModal

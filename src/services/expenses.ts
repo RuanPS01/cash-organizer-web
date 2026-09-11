@@ -14,7 +14,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { weekOfMonth } from '../utils/dates';
-import { categoryEntriesCol, expensesCol, fixedEntriesCol, monthRef } from './months';
+import {
+  categoryEntriesCol,
+  expensesCol,
+  fixedEntriesCol,
+  isMonthOpen,
+  originEntriesCol,
+} from './months';
 import type { Category, EntryStatus } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -66,17 +72,27 @@ export type ExpenseClassification = {
 };
 
 /**
- * Edita um lançamento já gravado (histórico do mês): valor, descrição e a
- * classificação. Data e semana não mudam, porque o mês do lançamento é a
- * referência da fatura.
+ * Edita um lançamento já gravado (histórico do mês): valor, descrição, data e
+ * classificação. A data traz a semana junto, porque a semana é derivada dela;
+ * o mês do documento não muda, porque o mês do app é a referência da fatura e
+ * não o calendário (é a mesma regra de quem lança em data passada).
  */
+export type ExpenseEdit = Partial<{ amount: number; description: string; date: Date }> &
+  ExpenseClassification;
+
 export async function updateVariableExpense(
   compartmentId: string,
   ym: string,
   expenseId: string,
-  patch: Partial<{ amount: number; description: string }> & ExpenseClassification,
+  patch: ExpenseEdit,
 ): Promise<void> {
-  await updateDoc(doc(expensesCol(compartmentId, ym), expenseId), patch);
+  const { date, ...rest } = patch;
+  await updateDoc(doc(expensesCol(compartmentId, ym), expenseId), {
+    ...rest,
+    // Sem data no patch, `createdAt` e `week` nem são tocados: quem só corrigiu
+    // o valor não reescreve a data do lançamento.
+    ...(date ? { createdAt: date.getTime(), week: weekOfMonth(date) } : {}),
+  });
 }
 
 // O Firestore aceita no máximo 500 operações por lote; a folga evita ter que
@@ -196,11 +212,6 @@ export async function updateFixedExpense(
   await updateDoc(doc(db, 'compartments', compartmentId, 'fixedExpenses', id), patch);
 }
 
-async function isMonthOpen(compartmentId: string, ym: string): Promise<boolean> {
-  const month = await getDoc(monthRef(compartmentId, ym));
-  return month.exists() && month.data().status === 'open';
-}
-
 /** Desativa o gasto fixo e remove a linha dele do mês corrente em aberto. */
 export async function removeFixedExpense(
   compartmentId: string,
@@ -252,8 +263,7 @@ export async function addCategory(
     active: true,
     createdAt: now,
   });
-  const month = await getDoc(monthRef(compartmentId, currentMonth));
-  if (month.exists() && month.data().status === 'open') {
+  if (await isMonthOpen(compartmentId, currentMonth)) {
     await setDoc(doc(categoryEntriesCol(compartmentId, currentMonth), ref.id), {
       name: input.name.trim(),
       idealAmount: input.idealAmount,
@@ -378,4 +388,25 @@ export async function updateCategoryEntry(
   patch: Partial<{ idealAmount: number; status: EntryStatus }>,
 ): Promise<void> {
   await updateDoc(doc(categoryEntriesCol(compartmentId, ym), entryId), patch);
+}
+
+/**
+ * Define o status da origem no mês e repassa o mesmo status aos gastos fixos
+ * que saem dela (cada fixo ainda pode ser ajustado depois, na tabela dele).
+ * Os dois vão no mesmo `writeBatch`: marcar a origem como paga e deixar os
+ * fixos dela pendentes seria um estado que a tela mostraria como meio pago.
+ */
+export async function setOriginStatus(
+  compartmentId: string,
+  ym: string,
+  originId: string,
+  status: EntryStatus,
+  fixedEntryIds: string[],
+): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(originEntriesCol(compartmentId, ym), originId), { status });
+  for (const id of fixedEntryIds) {
+    batch.update(doc(fixedEntriesCol(compartmentId, ym), id), { status });
+  }
+  await batch.commit();
 }
