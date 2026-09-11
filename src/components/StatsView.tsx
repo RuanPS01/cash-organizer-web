@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { computeTotals, fetchExpenses } from '../services/months';
 import { formatBRL } from '../utils/money';
 import { monthLabel, prevMonthKey } from '../utils/dates';
-import { MonthlyComparisonCard } from './MonthlyComparisonCard';
+import { MonthSummaryCard } from './MonthSummaryCard';
 import { ProgressBar } from './shared';
 import type { MonthData } from '../hooks/useMonthData';
 import type { MonthTotals, VariableExpense } from '../types';
@@ -64,7 +64,7 @@ export function StatsView(props: {
 
   return (
     <div className="stats">
-      <MonthlyComparisonCard compartmentId={compartmentId} viewMonth={viewMonth} data={data} />
+      <MonthSummaryCard viewMonth={viewMonth} data={data} />
 
       <section className="card">
         <h3>Categorias em {monthLabel(viewMonth)}</h3>

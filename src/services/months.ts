@@ -48,7 +48,9 @@ async function fetchActive<T>(compartmentId: string, colName: string): Promise<(
  *   categorias e origens desativadas que não têm gasto no mês);
  * - adiciona linhas de fixos, categorias e origens ativos que ainda não
  *   existem no mês (ex.: mês criado antes do cadastro, ou virada para um mês
- *   que já existia). É o que mantém os três cadastros ao virar o mês.
+ *   que já existia). É o que mantém os três cadastros ao virar o mês;
+ * - completa a linha de fixo que ainda não tem o campo de origem, criada antes
+ *   de o gasto fixo poder ter uma.
  */
 async function syncMonthEntries(compartmentId: string, ym: string): Promise<void> {
   const [fixedCad, catCad, originCad, fixedEntries, catEntries, originEntries, expenses] =
@@ -102,6 +104,22 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
       batch.delete(entry.ref);
       dirty = true;
     }
+  }
+
+  // Linha de fixo criada antes de o gasto fixo ter origem não tem os campos, e
+  // a aba Pagamento jogaria esse valor todo em "Sem origem". Completa uma vez,
+  // com o que está no cadastro, sem tocar em valor nem em status (que são do
+  // mês). Depois disso a chave existe e a linha não é mais reescrita.
+  for (const entry of fixedEntries.docs) {
+    if ('originId' in entry.data()) continue;
+    const cad = fixedCad.docs.find((d) => d.id === entry.id);
+    // Cadastro sumido ou desativado: a linha está sendo apagada logo acima.
+    if (!cad || cad.data().active === false) continue;
+    batch.update(entry.ref, {
+      originId: cad.data().originId ?? null,
+      originName: cad.data().originName ?? '',
+    });
+    dirty = true;
   }
 
   for (const cad of fixedCad.docs) {
@@ -438,16 +456,6 @@ async function advanceInstallments(compartmentId: string): Promise<void> {
     dirty = true;
   }
   if (dirty) await batch.commit();
-}
-
-/** Lista os meses existentes (mais recentes primeiro) para estatísticas. */
-export async function listMonths(compartmentId: string): Promise<MonthDoc[]> {
-  // Ordenação no cliente: orderBy('__name__', 'desc') não é suportado em
-  // key scans descendentes e a quantidade de meses é pequena.
-  const snap = await getDocs(collection(db, 'compartments', compartmentId, 'months'));
-  return snap.docs
-    .map((d) => ({ id: d.id, ...(d.data() as Omit<MonthDoc, 'id'>) }))
-    .sort((a, b) => b.id.localeCompare(a.id));
 }
 
 /** Carrega os lançamentos variáveis de um mês (para estatísticas). */

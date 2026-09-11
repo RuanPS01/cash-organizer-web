@@ -123,11 +123,13 @@ Meses fechados nunca são alterados por mudança de cadastro.
 
 A aba tem dois cards, na ordem em que o mês é resolvido:
 
-1. **Origens do gasto.** Uma linha por origem, com o total do mês daquela origem
-   (os gastos fixos dela mais a soma dos lançamentos variáveis, as duas parcelas
-   visíveis ao lado) e o status. O total é o valor da fatura: gasto fixo
-   debitado no cartão entra na conta do cartão. É a pergunta "esta fatura já foi
-   paga?".
+1. **Origens do gasto.** Uma linha por origem cadastrada, na ordem do cadastro,
+   com o total do mês daquela origem (os gastos fixos dela mais a soma dos
+   lançamentos variáveis, as duas parcelas visíveis ao lado) e o status. O total
+   é o valor da fatura: gasto fixo debitado no cartão entra na conta do cartão.
+   É a pergunta "esta fatura já foi paga?". Origem cadastrada aparece na tabela
+   mesmo antes de ter linha no mês, com o status `Pendente` que ela ganha ao
+   nascer; a linha é criada na primeira troca de status.
 2. **Gastos fixos.** Uma linha por gasto fixo, com ideal e valor editáveis no
    lugar, o selo da origem e o status.
 
@@ -198,9 +200,10 @@ Parcelas não avançam: mover a referência é uma correção, não uma virada d
 
 ## 7.8 Estatísticas
 
-- **Comparativo mensal**: até seis meses, com gasto, ideal, percentual, barra e a
+- **Resumo do mês**: o mês visualizado com gasto, ideal, percentual, barra e a
   linha de detalhe com fixos, variáveis e o restante (ou o excedido, em
-  vermelho). Meses fechados usam os totais gravados.
+  vermelho). Mês fechado usa os totais gravados. O mesmo card aparece na aba
+  Adicionar, com o mês em aberto.
 - **Categorias do mês**: gasto por categoria com o ideal e o percentual.
 - **Semanas**: as quatro semanas do mês visualizado comparadas com as do mês
   anterior, contra o ideal semanal (ideal das variáveis dividido por 4).

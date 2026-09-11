@@ -18,7 +18,7 @@ onde ela é usada.
 | Tipo | Convenção | Exemplo |
 |---|---|---|
 | Componente de tela | PascalCase terminando em `Screen` | `AddExpenseScreen.tsx` |
-| Outros componentes | PascalCase | `MonthlyComparisonCard.tsx` |
+| Outros componentes | PascalCase | `MonthSummaryCard.tsx` |
 | Componentes genéricos | um arquivo único | `shared.tsx` |
 | Hook | camelCase começando com `use` | `useMonthData.ts` |
 | Serviço | camelCase no plural do domínio | `expenses.ts`, `months.ts` |
@@ -84,13 +84,13 @@ const submit = async (e: FormEvent) => {
 ```tsx
 useEffect(() => {
   let cancelled = false;
-  listMonths(compartmentId).then((m) => {
-    if (!cancelled) setMonths(m);
+  fetchExpenses(compartmentId, prevMonth).then((e) => {
+    if (!cancelled) setPrevExpenses(e);
   });
   return () => {
     cancelled = true;
   };
-}, [compartmentId]);
+}, [compartmentId, prevMonth]);
 ```
 
 ## 5.5 TypeScript

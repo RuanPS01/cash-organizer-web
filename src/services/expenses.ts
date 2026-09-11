@@ -21,7 +21,7 @@ import {
   isMonthOpen,
   originEntriesCol,
 } from './months';
-import type { Category, EntryStatus } from '../types';
+import type { Category, EntryStatus, OriginEntry } from '../types';
 
 // ---------------------------------------------------------------------------
 // Lançamentos variáveis
@@ -395,18 +395,25 @@ export async function updateCategoryEntry(
  * que saem dela (cada fixo ainda pode ser ajustado depois, na tabela dele).
  * Os dois vão no mesmo `writeBatch`: marcar a origem como paga e deixar os
  * fixos dela pendentes seria um estado que a tela mostraria como meio pago.
+ *
+ * A linha da origem é gravada inteira (`set`), não alterada: a tela lista as
+ * origens do cadastro, então a primeira troca de status pode ser justamente o
+ * que cria a linha do mês (mês reconciliado antes de a origem existir, por
+ * exemplo). A linha só tem nome e status, então não há nada a preservar.
  */
 export async function setOriginStatus(
   compartmentId: string,
   ym: string,
-  originId: string,
-  status: EntryStatus,
+  origin: OriginEntry,
   fixedEntryIds: string[],
 ): Promise<void> {
   const batch = writeBatch(db);
-  batch.update(doc(originEntriesCol(compartmentId, ym), originId), { status });
+  batch.set(doc(originEntriesCol(compartmentId, ym), origin.id), {
+    name: origin.name,
+    status: origin.status,
+  } satisfies Omit<OriginEntry, 'id'>);
   for (const id of fixedEntryIds) {
-    batch.update(doc(fixedEntriesCol(compartmentId, ym), id), { status });
+    batch.update(doc(fixedEntriesCol(compartmentId, ym), id), { status: origin.status });
   }
   await batch.commit();
 }

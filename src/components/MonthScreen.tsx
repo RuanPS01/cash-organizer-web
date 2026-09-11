@@ -64,17 +64,16 @@ export function MonthScreen(props: {
     () => computeTotals(data.fixedEntries, data.categoryEntries, data.expenses, data.originEntries),
     [data],
   );
-  // Só as linhas que a aba Pagamento resolve bloqueiam a virada: origens e
-  // gastos fixos. A linha de categoria existe pelo ideal, ela não é paga.
-  const pendingCount = useMemo(
-    () =>
-      [...data.originEntries, ...data.fixedEntries].filter((e) => e.status === 'Pendente').length,
-    [data],
-  );
-
-  // Valor de cada origem no mês: os lançamentos variáveis somados por origem e
-  // os gastos fixos que saem dela. O ícone e o tom vêm do cadastro, porque a
-  // linha do mês guarda só o id, o nome e o status.
+  /**
+   * Uma linha por origem cadastrada, na ordem do cadastro, com o que saiu dela
+   * no mês. A lista vem do cadastro, e não das linhas do mês: origem recém
+   * criada (ou mês que ainda não foi reconciliado) apareceria fora da tabela se
+   * dependesse da linha, que é só onde o status mora. Sem linha ainda, o status
+   * exibido é "Pendente", que é com o que ela nasce.
+   *
+   * Origem que saiu do cadastro mas ainda tem linha no mês entra depois das
+   * cadastradas: o gasto dela é do mês e o status ainda vale.
+   */
   const { originRows, noOrigin } = useMemo(() => {
     const somarPorOrigem = (itens: { originId?: string | null; amount: number }[]) => {
       const porOrigem = new Map<string, number>();
@@ -93,18 +92,35 @@ export function MonthScreen(props: {
       // fatura do cartão inclui as contas fixas debitadas nele.
       return { variable, fixed, total: variable + fixed };
     };
-    return {
-      originRows: data.originEntries.map((o) => ({
-        id: o.id,
-        name: originById.get(o.id)?.name ?? o.name,
-        icon: originById.get(o.id)?.icon,
-        color: originById.get(o.id)?.color,
-        status: o.status,
-        ...linha(o.id),
-      })),
-      noOrigin: linha(''),
-    };
-  }, [data.expenses, data.fixedEntries, data.originEntries, originById]);
+    const porLinha = new Map(data.originEntries.map((e) => [e.id, e]));
+    const cadastradas = origins.map((o) => ({
+      id: o.id,
+      name: o.name,
+      icon: o.icon,
+      color: o.color,
+      status: porLinha.get(o.id)?.status ?? ('Pendente' satisfies EntryStatus),
+      ...linha(o.id),
+    }));
+    const removidas = data.originEntries
+      .filter((e) => !originById.has(e.id))
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        icon: undefined,
+        color: undefined,
+        status: e.status,
+        ...linha(e.id),
+      }));
+    return { originRows: [...cadastradas, ...removidas], noOrigin: linha('') };
+  }, [data.expenses, data.fixedEntries, data.originEntries, origins, originById]);
+
+  // Só o que a aba Pagamento resolve bloqueia a virada: origens e gastos fixos.
+  // A linha de categoria existe pelo ideal, ela não é paga.
+  const pendingCount = useMemo(
+    () =>
+      [...originRows, ...data.fixedEntries].filter((e) => e.status === 'Pendente').length,
+    [originRows, data.fixedEntries],
+  );
 
   // A edição de status e de valor não tem botão de confirmar: sem este catch, a
   // gravação recusada voltaria o valor anterior na tela, sem dizer por quê.
@@ -113,15 +129,14 @@ export function MonthScreen(props: {
     promise.catch((err) => setError(writeErrorMessage(err)));
   };
 
-  // O status da origem desce para os gastos fixos que saem dela; os ids saem
-  // daqui porque a tela já tem as linhas do mês assinadas.
-  const changeOriginStatus = (originId: string, status: EntryStatus) =>
+  // O status da origem desce para os gastos fixos que saem dela; o nome e os
+  // ids saem daqui porque a tela já tem o cadastro e as linhas do mês.
+  const changeOriginStatus = (origin: { id: string; name: string }, status: EntryStatus) =>
     setOriginStatus(
       compartmentId,
       viewMonth,
-      originId,
-      status,
-      data.fixedEntries.filter((f) => f.originId === originId).map((f) => f.id),
+      { id: origin.id, name: origin.name, status },
+      data.fixedEntries.filter((f) => f.originId === origin.id).map((f) => f.id),
     );
 
   const doCloseMonth = async () => {
@@ -240,7 +255,7 @@ export function MonthScreen(props: {
                         <StatusSelect
                           value={o.status}
                           disabled={!editable}
-                          onChange={(s) => run(changeOriginStatus(o.id, s))}
+                          onChange={(s) => run(changeOriginStatus(o, s))}
                         />
                       </td>
                     </tr>

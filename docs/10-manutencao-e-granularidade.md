@@ -7,16 +7,16 @@ Referência de setembro de 2026 (linhas):
 | Arquivo | Linhas |
 |---|---|
 | `styles.css` | 1984 |
-| `components/ExpenseHistory.tsx` | 661 |
+| `components/ExpenseHistory.tsx` | 662 |
+| `components/MonthScreen.tsx` | 521 |
 | `components/ManageScreen.tsx` | 503 |
-| `components/MonthScreen.tsx` | 494 |
-| `services/months.ts` | 457 |
-| `services/expenses.ts` | 412 |
-| `components/AddExpenseScreen.tsx` | 333 |
+| `services/months.ts` | 468 |
+| `services/expenses.ts` | 419 |
+| `components/AddExpenseScreen.tsx` | 329 |
 | `components/ManageOrigins.tsx` | 284 |
 | `components/shared.tsx` | 240 |
 | `types.ts` | 213 |
-| `services/origins.ts` | 181 |
+| `services/origins.ts` | 176 |
 | `App.tsx` | 147 |
 | `components/ExpenseEditModal.tsx` | 140 |
 | demais | menos de 125 cada |
@@ -28,7 +28,7 @@ ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 | Situação | Decisão |
 |---|---|
-| Bloco visual usado em duas telas ou mais | componente em `components/shared.tsx` se for genérico, ou arquivo próprio se tiver domínio (como o `MonthlyComparisonCard`) |
+| Bloco visual usado em duas telas ou mais | componente em `components/shared.tsx` se for genérico, ou arquivo próprio se tiver domínio (como o `MonthSummaryCard`) |
 | Bloco visual usado em uma tela só | função ou componente auxiliar no mesmo arquivo da tela |
 | Tela nova | arquivo `NomeScreen.tsx` mais entrada em `View` e na navbar do `App.tsx` |
 | Nova operação de banco | função no serviço existente do domínio; arquivo novo só se for um domínio novo |
