@@ -55,8 +55,10 @@ O mesmo componente serve às duas abas. Cabeçalho com navegação de mês
 (anterior e próximo) e selo de aberto ou fechado. Com `mode="stats"` delega para
 `StatsView`. Com `mode="payment"` mostra, nesta ordem:
 
-- tabela de **origens** (nome com glifo, fixos, variáveis, status): o status é o
-  pagamento da origem, e trocá-lo aplica o mesmo status aos gastos fixos dela
+- tabela de **origens** (nome com glifo, fixos, variáveis, total, status): o
+  total é a soma dos dois, que é o valor da fatura daquela origem no mês, e em
+  telas estreitas as duas parcelas descem para a sublinha `.cell-sub`. O status é
+  o pagamento da origem, e trocá-lo aplica o mesmo status aos gastos fixos dela
   (`setOriginStatus`). Lançamento sem origem vira uma linha só de leitura, porque
   não há onde guardar status;
 - tabela de gastos fixos (nome, ideal, valor, status), com ideal e valor
