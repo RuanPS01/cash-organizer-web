@@ -43,12 +43,27 @@ sessão e cai no login. Enquanto isso, a tela mostra "Abrindo seu compartimento�
 5. Origem: os chips de origem ficam logo acima do botão de adicionar, com a
    origem padrão pré-selecionada. Sem origem cadastrada, a linha não aparece e o
    lançamento é gravado com `originId: null`.
-6. "Adicionar em ..." grava o lançamento com `createdAt` e `week` derivados da
-   data escolhida, e mostra o flash de confirmação por 2,5 segundos.
+6. "Adicionar em ..." grava o lançamento com `createdAt` vindo da data escolhida
+   e `week` vindo da semana corrente do mês, e mostra o flash de confirmação por
+   2,5 segundos.
 
-O card de informe abaixo do formulário atualiza sozinho (dados em tempo real) e
-mostra quanto resta na semana e no mês da categoria, além dos totais de fixos e
-variáveis do mês.
+O card abaixo do formulário atualiza sozinho (dados em tempo real) e mostra a
+semana corrente do mês, quanto resta na semana e no mês da categoria
+acompanhada, e os totais de fixos e variáveis. A categoria acompanhada tem
+seletor próprio, independente do chip que escolhe onde o gasto entra, e fica
+guardada no compartimento: quem abre em outro aparelho vê a mesma.
+
+### Virar a semana
+
+A semana do mês (1 a 4) é contada pelo usuário, não pelo dia do calendário. O
+mês nasce na semana 1 e só avança quando ele toca em "Virar semana", no card de
+acompanhamento, e confirma. Os gastos já lançados ficam na semana em que
+entraram; só os próximos vão para a semana nova. Na semana 4 o botão fica
+desligado, porque a semana volta para 1 na virada do mês.
+
+Quando o dia é domingo e a semana ainda não virou naquele dia, o card mostra um
+aviso sugerindo a virada. O app nunca vira a semana sozinho: lembrar é
+reversível, virar não.
 
 ## 7.3.1 Histórico do mês (aba Adicionar)
 
@@ -173,7 +188,9 @@ flowchart TD
 ```
 
 `advanceInstallments` incrementa a parcela atual dos gastos parcelados; quem
-estava na última parcela é desativado e não aparece no mês seguinte.
+estava na última parcela é desativado e não aparece no mês seguinte. O mês novo
+nasce na semana 1, qualquer que seja o dia do calendário em que a virada
+aconteceu.
 
 ## 7.7 Mover o mês de referência
 
@@ -205,8 +222,9 @@ Parcelas não avançam: mover a referência é uma correção, não uma virada d
   vermelho). Mês fechado usa os totais gravados. O mesmo card aparece na aba
   Adicionar, com o mês em aberto.
 - **Categorias do mês**: gasto por categoria com o ideal e o percentual.
-- **Semanas**: as quatro semanas do mês visualizado comparadas com as do mês
-  anterior, contra o ideal semanal (ideal das variáveis dividido por 4).
+- **Semanas**: as quatro semanas do mês visualizado, cada uma com o gasto contra
+  o ideal semanal (ideal das variáveis dividido por 4). A semana corrente ganha
+  o selo "atual" enquanto o mês está em aberto.
 
 ## 7.9 Offline e instalação
 

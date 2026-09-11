@@ -1,22 +1,24 @@
 import { useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { CalendarDays, Eraser, Plus } from 'lucide-react';
+import { CalendarDays, CalendarSync, Eraser, Plus } from 'lucide-react';
 import { addCategory, addVariableExpense } from '../services/expenses';
-import { computeTotals } from '../services/months';
+import { computeTotals, monthWeek, setCurrentWeek } from '../services/months';
 import { formatBRL } from '../utils/money';
 import {
   dateFromDayKey,
   dayKey,
   dayKeyFullLabel,
   dayKeyLabel,
+  isSunday,
   monthLabel,
-  weekOfMonth,
 } from '../utils/dates';
-import { MoneyInput, ProgressBar } from './shared';
+import { writeErrorMessage } from '../utils/errors';
+import { ConfirmModal, MoneyInput, ProgressBar } from './shared';
 import { MonthSummaryCard } from './MonthSummaryCard';
 import { ExpenseHistory } from './ExpenseHistory';
 import { OriginIcon } from './OriginIcon';
 import type { MonthData } from '../hooks/useMonthData';
+import { MONTH_WEEKS } from '../types';
 import type { Category, Origin } from '../types';
 
 export function AddExpenseScreen(props: {
@@ -25,6 +27,9 @@ export function AddExpenseScreen(props: {
   categories: Category[];
   origins: Origin[];
   data: MonthData;
+  /** Categoria acompanhada no card da semana, guardada no compartimento. */
+  weekCategoryId: string | null;
+  onWeekCategoryChange: (categoryId: string) => void;
 }) {
   const { compartmentId, currentMonth, categories, origins, data } = props;
   // Pré-seleção: a categoria padrão do compartimento (Avulso, até o usuário
@@ -40,6 +45,8 @@ export function AddExpenseScreen(props: {
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [showNewCategory, setShowNewCategory] = useState(false);
+  const [confirmWeek, setConfirmWeek] = useState(false);
+  const [weekError, setWeekError] = useState<string | null>(null);
   const [newCatName, setNewCatName] = useState('');
   const [newCatIdeal, setNewCatIdeal] = useState(0);
   // Data do lançamento (YYYY-MM-DD): começa no dia atual e só muda se o
@@ -73,17 +80,32 @@ export function AddExpenseScreen(props: {
     categories.find((c) => c.id === categoryId) ?? defaultCategory ?? null;
   const selectedOrigin = origins.find((o) => o.id === originId) ?? defaultOrigin ?? null;
 
-  const currentWeek = weekOfMonth();
+  // A semana é do mês, não do calendário: ela vira no botão, não no dia 8.
+  const currentWeek = monthWeek(data.month);
+  const monthOpen = data.month?.status === 'open';
+  const canTurnWeek = monthOpen && currentWeek < MONTH_WEEKS;
+  // No domingo o app lembra de virar a semana, mas não insiste depois que ela
+  // já virou no mesmo dia.
+  const turnedToday =
+    data.month?.weekChangedAt !== undefined &&
+    dayKey(new Date(data.month.weekChangedAt)) === today;
+  const suggestTurn = canTurnWeek && isSunday() && !turnedToday;
+
+  // O card de acompanhamento tem categoria própria, guardada no compartimento:
+  // o chip de cima escolhe onde o gasto entra, este seletor escolhe o que
+  // olhar. Sem escolha guardada, vale a categoria padrão.
+  const viewCategory =
+    categories.find((c) => c.id === props.weekCategoryId) ?? defaultCategory ?? null;
 
   const info = useMemo(() => {
-    const entry = data.categoryEntries.find((c) => c.id === selected?.id);
-    const ideal = entry?.idealAmount ?? selected?.idealAmount ?? 0;
-    const catExpenses = data.expenses.filter((e) => e.categoryId === selected?.id);
+    const entry = data.categoryEntries.find((c) => c.id === viewCategory?.id);
+    const ideal = entry?.idealAmount ?? viewCategory?.idealAmount ?? 0;
+    const catExpenses = data.expenses.filter((e) => e.categoryId === viewCategory?.id);
     const spentMonth = catExpenses.reduce((s, e) => s + e.amount, 0);
     const spentWeek = catExpenses
       .filter((e) => e.week === currentWeek)
       .reduce((s, e) => s + e.amount, 0);
-    const weeklyIdeal = Math.round(ideal / 4);
+    const weeklyIdeal = Math.round(ideal / MONTH_WEEKS);
     // Totais do mês pelo mesmo cálculo da aba de pagamento (linhas com status
     // "Ignorar" ficam de fora).
     const totals = computeTotals(
@@ -102,7 +124,22 @@ export function AddExpenseScreen(props: {
       fixedTotal: totals.fixedActual,
       varTotal: totals.varActual,
     };
-  }, [data, selected, currentWeek]);
+  }, [data, viewCategory, currentWeek]);
+
+  const turnWeek = async () => {
+    if (!canTurnWeek || busy) return;
+    setBusy(true);
+    setWeekError(null);
+    try {
+      await setCurrentWeek(compartmentId, currentMonth, currentWeek + 1);
+      setConfirmWeek(false);
+    } catch (err) {
+      setWeekError(writeErrorMessage(err));
+      setConfirmWeek(false);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -114,6 +151,7 @@ export function AddExpenseScreen(props: {
         categoryName: selected.name,
         amount: cents,
         description,
+        week: currentWeek,
         date: isToday ? undefined : dateFromDayKey(date),
         originId: selectedOrigin?.id ?? null,
         originName: selectedOrigin?.name,
@@ -270,11 +308,49 @@ export function AddExpenseScreen(props: {
         {flash && <p className="flash">{flash}</p>}
       </form>
 
-      {selected && (
+      {viewCategory && (
         <section className="info card">
-          <h3>
-            {selected.name} <span className="week">· semana {currentWeek}</span>
-          </h3>
+          <div className="info-head">
+            <h3>Semana {currentWeek}</h3>
+            <button
+              type="button"
+              className="btn small"
+              disabled={!canTurnWeek || busy}
+              title={
+                currentWeek >= MONTH_WEEKS
+                  ? 'Última semana do mês: a semana 1 volta ao virar o mês'
+                  : `Passar para a semana ${currentWeek + 1}`
+              }
+              onClick={() => setConfirmWeek(true)}
+            >
+              <CalendarSync size={15} aria-hidden /> Virar semana
+            </button>
+          </div>
+
+          {suggestTurn && (
+            <p className="week-hint">
+              Hoje é domingo. Se a sua semana virou, toque em "Virar semana" para os próximos
+              gastos entrarem na semana {currentWeek + 1}.
+            </p>
+          )}
+          {weekError && <p className="form-error">{weekError}</p>}
+
+          <label className="info-category">
+            Categoria acompanhada
+            <span className="field">
+              <select
+                value={viewCategory.id}
+                onChange={(e) => props.onWeekCategoryChange(e.target.value)}
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </span>
+          </label>
+
           {info.ideal > 0 ? (
             <>
               <div className="info-row">
@@ -298,7 +374,7 @@ export function AddExpenseScreen(props: {
             </>
           ) : (
             <p className="muted">
-              Sem gasto ideal definido para esta categoria. Gasto no mês:{' '}
+              Sem gasto ideal definido para "{viewCategory.name}". Gasto no mês:{' '}
               <strong>{formatBRL(info.spentMonth)}</strong>
             </p>
           )}
@@ -324,6 +400,25 @@ export function AddExpenseScreen(props: {
         categories={categories}
         origins={origins}
       />
+
+      {confirmWeek && (
+        <ConfirmModal
+          title="Virar a semana?"
+          confirmLabel={`Virar para a semana ${currentWeek + 1}`}
+          busy={busy}
+          onConfirm={turnWeek}
+          onCancel={() => setConfirmWeek(false)}
+        >
+          <p>
+            O mês passa da <strong>semana {currentWeek}</strong> para a{' '}
+            <strong>semana {currentWeek + 1}</strong>. Os próximos gastos entram na semana nova.
+          </p>
+          <p className="muted small">
+            Os lançamentos que já estão na semana {currentWeek} continuam nela. A semana volta
+            para 1 quando o mês virar.
+          </p>
+        </ConfirmModal>
+      )}
     </div>
   );
 }

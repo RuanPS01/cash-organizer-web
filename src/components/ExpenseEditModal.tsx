@@ -21,7 +21,8 @@ function withCurrent(options: ClassOption[], id: string | null, name: string): C
  * Edição completa de um lançamento: descrição, valor, data, categoria e
  * origem em um formulário só, com um botão de salvar. A data pode ser de
  * outro mês; o lançamento continua no mês em que foi feito, porque o mês do
- * app é a referência da fatura.
+ * app é a referência da fatura, e a semana dele também não muda, porque é a
+ * semana em que o gasto foi lançado.
  */
 export function ExpenseEditModal(props: {
   expense: VariableExpense;
@@ -69,7 +70,8 @@ export function ExpenseEditModal(props: {
       originName: origem?.name ?? '',
     };
     // A data só entra no patch quando muda, e leva a hora original junto: os
-    // lançamentos do mesmo dia mantêm a ordem em que foram incluídos.
+    // lançamentos do mesmo dia mantêm a ordem em que foram incluídos. A semana
+    // fica fora: ela é do mês, não da data.
     if (day !== diaOriginal) patch.date = dateFromDayKey(day, new Date(expense.createdAt));
     props.onConfirm(patch);
   };
@@ -130,7 +132,8 @@ export function ExpenseEditModal(props: {
           </span>
         </label>
         <p className="card-hint">
-          A semana acompanha a data escolhida. O lançamento continua no mês em que foi feito,
+          A semana do lançamento não muda com a data: ela é a semana em que o gasto foi lançado,
+          contada pelo botão "Virar semana". O lançamento também continua no mês em que foi feito,
           mesmo com data de outro mês.
         </p>
         {(error ?? props.saveError) && <p className="form-error">{error ?? props.saveError}</p>}

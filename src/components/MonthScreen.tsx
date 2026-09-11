@@ -208,7 +208,7 @@ export function MonthScreen(props: {
       )}
 
       {mode === 'stats' ? (
-        <StatsView compartmentId={compartmentId} viewMonth={viewMonth} data={data} />
+        <StatsView viewMonth={viewMonth} data={data} />
       ) : data.loading ? (
         <p className="muted center">Carregando…</p>
       ) : !data.month ? (

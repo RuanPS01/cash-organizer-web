@@ -2,7 +2,7 @@ import { collection, doc, getDoc, getDocs, updateDoc, writeBatch } from 'firebas
 import type { WriteBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { nextMonthKey } from '../utils/dates';
-import { IGNORED_STATUS } from '../types';
+import { IGNORED_STATUS, MONTH_WEEKS } from '../types';
 import type {
   Category,
   CategoryEntry,
@@ -205,6 +205,32 @@ async function seedMonthEntries(
   }
 }
 
+/**
+ * Semana corrente do mês, de 1 a 4. Quem decide é o usuário, no botão "Virar
+ * semana": o mês nasce na semana 1 e fica nela até ele virar. Mês criado antes
+ * do campo existir (ou recém movido) vale como semana 1.
+ */
+export function monthWeek(month: MonthDoc | null | undefined): number {
+  const week = month?.currentWeek;
+  if (typeof week !== 'number') return 1;
+  return Math.min(MONTH_WEEKS, Math.max(1, Math.trunc(week)));
+}
+
+/**
+ * Vira a semana do mês. Grava também o momento da virada, que é o que evita
+ * sugerir a virada de novo no mesmo domingo em que ela já foi feita.
+ */
+export async function setCurrentWeek(
+  compartmentId: string,
+  ym: string,
+  week: number,
+): Promise<void> {
+  await updateDoc(monthRef(compartmentId, ym), {
+    currentWeek: Math.min(MONTH_WEEKS, Math.max(1, Math.trunc(week))),
+    weekChangedAt: Date.now(),
+  });
+}
+
 /** O mês existe e está aberto? É a condição para um cadastro refletir nele. */
 export async function isMonthOpen(compartmentId: string, ym: string): Promise<boolean> {
   const month = await getDoc(monthRef(compartmentId, ym));
@@ -232,7 +258,9 @@ export async function ensureMonth(compartmentId: string, ym: string): Promise<vo
   }
 
   const batch = writeBatch(db);
-  batch.set(ref, { status: 'open' } satisfies Omit<MonthDoc, 'id'>);
+  // Mês novo começa na semana 1, seja ele criado pela virada de mês ou pela
+  // primeira abertura do app em um mês novo.
+  batch.set(ref, { status: 'open', currentWeek: 1 } satisfies Omit<MonthDoc, 'id'>);
   await seedMonthEntries(compartmentId, ym, batch);
   await batch.commit();
 }
@@ -283,6 +311,7 @@ export async function setOpenMonth(
   }
 
   const [
+    fromMonth,
     fromFixed,
     fromCats,
     fromOrigins,
@@ -292,6 +321,7 @@ export async function setOpenMonth(
     toOrigins,
     toExpenses,
   ] = await Promise.all([
+    getDoc(monthRef(compartmentId, fromYm)),
     getDocs(fixedEntriesCol(compartmentId, fromYm)),
     getDocs(categoryEntriesCol(compartmentId, fromYm)),
     getDocs(originEntriesCol(compartmentId, fromYm)),
@@ -309,9 +339,16 @@ export async function setOpenMonth(
     }
   }
   // set sem merge sobrescreve o doc do mês, limpando closedAt e totals de um
-  // mês que já tinha sido fechado.
+  // mês que já tinha sido fechado. A semana corrente viaja junto com o
+  // conteúdo: mover a referência é corrigir o mês de lugar, não recomeçá-lo.
+  const semana = monthWeek(
+    fromMonth.exists() ? ({ id: fromYm, ...fromMonth.data() } as MonthDoc) : null,
+  );
   prepara.push((b) =>
-    b.set(monthRef(compartmentId, toYm), { status: 'open' } satisfies Omit<MonthDoc, 'id'>),
+    b.set(monthRef(compartmentId, toYm), {
+      status: 'open',
+      currentWeek: semana,
+    } satisfies Omit<MonthDoc, 'id'>),
   );
   await commitInChunks(prepara);
 
@@ -456,13 +493,4 @@ async function advanceInstallments(compartmentId: string): Promise<void> {
     dirty = true;
   }
   if (dirty) await batch.commit();
-}
-
-/** Carrega os lançamentos variáveis de um mês (para estatísticas). */
-export async function fetchExpenses(
-  compartmentId: string,
-  ym: string,
-): Promise<VariableExpense[]> {
-  const snap = await getDocs(expensesCol(compartmentId, ym));
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<VariableExpense, 'id'>) }));
 }

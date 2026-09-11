@@ -9,8 +9,10 @@ que já existe é o erro mais comum neste repositório.
 
 Não é uma tela: é o container. Cuida de restaurar a sessão, exibir o
 `LoginScreen` quando não há compartimento, e montar o `Shell` (topbar com marca e
-botão Sair, área de conteúdo e navbar com quatro abas). Guarda `view` e
-`currentMonth`, e assina `useConfig` e `useMonthData` para repassar às telas.
+botão Sair, área de conteúdo e navbar com quatro abas). Guarda `view`,
+`currentMonth` e a categoria acompanhada no card da semana (que nasce do
+compartimento e é gravada por `setWeekCategory`), e assina `useConfig` e
+`useMonthData` para repassar às telas.
 
 ### `LoginScreen`
 
@@ -23,7 +25,7 @@ sessão, garante o mês corrente e chama `onEnter`.
 
 ### `AddExpenseScreen` (aba Adicionar)
 
-`props: { compartmentId, currentMonth, categories, origins, data }`
+`props: { compartmentId, currentMonth, categories, origins, data, weekCategoryId, onWeekCategoryChange }`
 
 Tela principal. Contém:
 
@@ -36,8 +38,10 @@ Tela principal. Contém:
 - linha de chips de **origem** (de onde o dinheiro saiu), com o glifo colorido
   de cada origem e a origem padrão pré-selecionada; a linha inteira some quando
   não há origem cadastrada;
-- card de informe da categoria selecionada (restante da semana, restante do mês,
-  barras de progresso, totais de fixos e variáveis do mês);
+- card de acompanhamento da semana: título com a semana corrente do mês, botão
+  "Virar semana" (com confirmação), aviso de domingo quando a semana ainda não
+  virou no dia, seletor da categoria acompanhada e, para ela, restante da semana
+  e do mês com as barras de progresso, mais os totais de fixos e variáveis;
 - `MonthSummaryCard`;
 - `ExpenseHistory` no rodapé, com o histórico do mês.
 
@@ -195,11 +199,12 @@ removida do cadastro), cai na carteira em ouro.
 
 ### `components/StatsView.tsx`
 
-`props: { compartmentId, viewMonth, data }`
+`props: { viewMonth, data }`
 
-Subtela de estatísticas: o resumo do mês, o uso por categoria no mês
-visualizado (com selo "ignorado" quando a categoria está fora da soma) e a
-comparação das quatro semanas com o mês anterior.
+Subtela de estatísticas: o resumo do mês, o uso por categoria no mês visualizado
+(com selo "ignorado" quando a categoria está fora da soma) e as quatro semanas
+do próprio mês, cada uma com o gasto contra o ideal semanal e o selo "atual" na
+semana corrente, quando o mês está em aberto.
 
 ### `StatusSelect` (interno do `MonthScreen`)
 
@@ -229,7 +234,8 @@ Antes de escrever uma escrita nova, confira se ela já existe.
 
 `slugify`, `compartmentRef`, `fetchCompartment`, `openCompartment` (devolve
 `ok`, `not-found` ou `wrong-password`), `createCompartment` (já cria a categoria
-padrão "Avulso").
+padrão "Avulso"), `setWeekCategory` (guarda a categoria acompanhada no card da
+semana).
 
 ### `services/session.ts`
 
@@ -241,7 +247,8 @@ padrão "Avulso").
 `expensesCol`, `isMonthOpen`, `ensureMonth`, `setOpenMonth` (move o conteúdo do
 mês em aberto para outro mês e troca a referência), `computeTotals` (recebe
 também as linhas de origem, porque origem ignorada tira do gasto tudo que saiu
-dela), `closeMonth`, `fetchExpenses`.
+dela), `closeMonth`, `monthWeek` (semana corrente do mês, 1 quando o campo não
+existe) e `setCurrentWeek` (vira a semana e marca quando isso aconteceu).
 
 ### `services/origins.ts`
 
@@ -274,7 +281,7 @@ Linhas do mês: `updateFixedEntry`, `updateCategoryEntry`, `setOriginStatus`
 | `monthKey(date?)` | `utils/dates.ts` | `YYYY-MM` |
 | `nextMonthKey`, `prevMonthKey` | `utils/dates.ts` | navegação de mês |
 | `monthLabel(key)` | `utils/dates.ts` | "Setembro de 2026" |
-| `weekOfMonth(date?)` | `utils/dates.ts` | semana 1 a 4 (dia 29 em diante é 4) |
+| `isSunday(date?)` | `utils/dates.ts` | domingo é quando o app sugere virar a semana |
 | `dayKey(date?)` | `utils/dates.ts` | `YYYY-MM-DD` para o `input[type=date]` |
 | `dateFromDayKey(key, time?)` | `utils/dates.ts` | `YYYY-MM-DD` para `Date` local, com a hora do relógio |
 | `dayLabel(ms)`, `dayKeyLabel(key)` | `utils/dates.ts` | "21/08" |

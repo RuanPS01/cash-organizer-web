@@ -78,19 +78,21 @@ const submit = async (e: FormEvent) => {
 - Feedback de sucesso usa `flash` com `setTimeout` de 2500 ms.
 - Classe condicional com template string:
   `` className={`btn icon date-btn${isToday ? '' : ' custom'}`} ``.
-- Nada de `useEffect` para buscar dados que já vêm dos hooks. `useEffect` só
-  aparece para assinaturas e para leituras pontuais com flag `cancelled`:
+- Nada de `useEffect` para buscar dados que já vêm dos hooks. Hoje o único
+  `useEffect` de dados é o das assinaturas, em `useMonthData`. Se voltar a ser
+  preciso ler algo de forma pontual, o formato é este, com a flag `cancelled`
+  para não gravar estado depois que a tela saiu:
 
 ```tsx
 useEffect(() => {
   let cancelled = false;
-  fetchExpenses(compartmentId, prevMonth).then((e) => {
-    if (!cancelled) setPrevExpenses(e);
+  fetchAlgo(compartmentId).then((v) => {
+    if (!cancelled) setAlgo(v);
   });
   return () => {
     cancelled = true;
   };
-}, [compartmentId, prevMonth]);
+}, [compartmentId]);
 ```
 
 ## 5.5 TypeScript

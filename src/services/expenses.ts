@@ -13,7 +13,6 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { weekOfMonth } from '../utils/dates';
 import {
   categoryEntriesCol,
   expensesCol,
@@ -35,6 +34,12 @@ export async function addVariableExpense(
     categoryName: string;
     amount: number;
     description: string;
+    /**
+     * Semana corrente do mês (1 a 4), que quem decide é o usuário no botão
+     * "Virar semana". A data escolhida não manda aqui: lançar um gasto de
+     * ontem continua sendo um gasto da semana em que o mês está.
+     */
+    week: number;
     /** Data do lançamento; sem ela, o momento atual. */
     date?: Date;
     /** Origem do gasto; sem origem cadastrada, fica null. */
@@ -48,7 +53,6 @@ export async function addVariableExpense(
     ...rest,
     description: description.trim(),
     createdAt: when.getTime(),
-    week: weekOfMonth(when),
     // Sempre gravados (null/vazio quando não há origem): undefined faz o SDK
     // recusar o documento inteiro.
     originId: originId ?? null,
@@ -73,9 +77,9 @@ export type ExpenseClassification = {
 
 /**
  * Edita um lançamento já gravado (histórico do mês): valor, descrição, data e
- * classificação. A data traz a semana junto, porque a semana é derivada dela;
- * o mês do documento não muda, porque o mês do app é a referência da fatura e
- * não o calendário (é a mesma regra de quem lança em data passada).
+ * classificação. A semana não acompanha a data: ela é a semana do mês em que o
+ * gasto foi lançado, contada pelo usuário. O mês do documento também não muda,
+ * porque o mês do app é a referência da fatura e não o calendário.
  */
 export type ExpenseEdit = Partial<{ amount: number; description: string; date: Date }> &
   ExpenseClassification;
@@ -89,9 +93,9 @@ export async function updateVariableExpense(
   const { date, ...rest } = patch;
   await updateDoc(doc(expensesCol(compartmentId, ym), expenseId), {
     ...rest,
-    // Sem data no patch, `createdAt` e `week` nem são tocados: quem só corrigiu
-    // o valor não reescreve a data do lançamento.
-    ...(date ? { createdAt: date.getTime(), week: weekOfMonth(date) } : {}),
+    // Sem data no patch, `createdAt` nem é tocado: quem só corrigiu o valor não
+    // reescreve a data do lançamento.
+    ...(date ? { createdAt: date.getTime() } : {}),
   });
 }
 

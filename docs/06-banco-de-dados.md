@@ -11,7 +11,7 @@ ficam no repositório `cash-organizer-functions`, não aqui.
 | Data e hora | número em milissegundos (`Date.now()` ou `date.getTime()`), nunca `Timestamp` do Firestore |
 | Chave de mês | string `YYYY-MM`, usada como id do documento do mês |
 | Chave de dia | string `YYYY-MM-DD` apenas na UI (`input[type=date]`), nunca persistida |
-| Semana | inteiro de 1 a 4; dias 29 em diante contam como semana 4 |
+| Semana | inteiro de 1 a 4, contado pelo usuário (botão "Virar semana"), não pelo dia do mês |
 | Campo vazio | `null` ou chave ausente. **`undefined` faz o SDK rejeitar a escrita** |
 | Ordenação de categoria | `sortOrder` numérico (fallback para `createdAt`) |
 | Booleano de ciclo de vida | `active` no cadastro; remoção é desativação, não exclusão |
@@ -42,6 +42,7 @@ uma comparação direta de ids.
 | `name` | string | nome digitado, com trim |
 | `passwordHash` | string | SHA-256 de `${id}::${senha}` em hexadecimal |
 | `currentMonth` | string | `YYYY-MM` do mês em aberto |
+| `weekCategoryId` | string ou null | categoria acompanhada no card da semana da aba Adicionar. Fica aqui, e não no dispositivo, para a escolha valer em qualquer aparelho |
 | `createdAt` | number | ms |
 
 A senha em texto puro nunca sai do dispositivo. O id entra como sal, então o
@@ -121,13 +122,19 @@ e os lançamentos antigos seguem com `originName`.
 > - `match /months/{ym}/originEntries/{originId}`, a subcoleção nova de linha de
 >   mês. Sem ela a aba Pagamento não lista nem grava status de origem;
 > - `createdAt` e `week` no `update` de `expenses`, que antes eram recusados. Sem
->   isso a edição do lançamento funciona em tudo, menos quando a data muda.
+>   isso a edição do lançamento funciona em tudo, menos quando a data muda;
+> - `weekCategoryId` no `update` de `compartments`, que só aceitava
+>   `currentMonth`. Sem isso a categoria acompanhada não fica guardada;
+> - `currentWeek` no documento do mês, validado de 1 a 4. Sem isso a virada de
+>   semana é recusada.
 
 ## 6.6 `months/{YYYY-MM}`
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `status` | `'open'` ou `'closed'` | só o mês corrente do compartimento fica aberto |
+| `currentWeek` | number | semana corrente, de 1 a 4. O mês nasce em 1 e só avança no botão "Virar semana"; mês sem o campo vale como semana 1 |
+| `weekChangedAt` | number | ms da última virada de semana; serve para não sugerir a virada duas vezes no mesmo domingo |
 | `closedAt` | number | gravado ao virar o mês |
 | `totals` | `MonthTotals` | snapshot gravado ao fechar, usado nas estatísticas |
 
@@ -206,7 +213,7 @@ lançamentos variáveis daquela origem e os gastos fixos que saem dela.
 | `amount` | number | centavos |
 | `description` | string | com trim, pode ser `''` |
 | `createdAt` | number | ms da data escolhida (com a hora do relógio, para manter a ordem de inclusão do mesmo dia) |
-| `week` | number | 1 a 4, calculado por `weekOfMonth` sobre a data do lançamento |
+| `week` | number | 1 a 4: a semana em que o mês estava quando o gasto foi lançado (`month.currentWeek`). Não muda ao editar a data |
 | `originId` | string ou null | id da origem escolhida; `null` quando não havia origem cadastrada |
 | `originName` | string | denormalizado, mantém o histórico legível se a origem for renomeada ou removida |
 
@@ -255,12 +262,14 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 
 | Função | Quando roda | O que faz |
 |---|---|---|
-| `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês com as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
+| `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês na semana 1, com as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
 | `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries`, `categoryEntries` e `originEntries` a partir dos cadastros ativos, tudo com status `Pendente` |
 | `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês), cria linhas de cadastros que ainda não estão no mês e completa a linha de fixo que ainda não tem o campo de origem |
 | `computeTotals` | a cada render das telas com dados do mês | soma ideais e gastos, deixando de fora o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
 | `closeMonth` | botão "Virar mês" | recusa se houver `Pendente` em origem ou em gasto fixo, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
 | `advanceInstallments` | dentro de `closeMonth` | incrementa `installmentCurrent`; quem estava na última parcela é desativado |
+| `monthWeek` | a cada render das telas que mostram a semana | semana corrente do mês, de 1 a 4; mês sem o campo vale 1 |
+| `setCurrentWeek` | botão "Virar semana" | grava a semana nova e o `weekChangedAt`, que evita sugerir a virada duas vezes no mesmo dia |
 | `setOpenMonth` | ação "Mover o mês atual para..." | move o conteúdo do mês em aberto (linhas de fixos, de categorias e de origens, mais os lançamentos, todos com o mesmo id) para o mês escolhido, esvazia o mês de partida, troca o `currentMonth` e reconcilia o destino com os cadastros. Com `replaceTarget`, apaga antes o que já existia no destino |
 
 ### Mover o mês de referência
@@ -274,7 +283,8 @@ conteúdo aparecer nos dois meses, e nada se perde.
 
 Os cadastros (`fixedExpenses`, `categories` e `origins`) pertencem ao
 compartimento, não ao mês, então não são copiados: já valem para qualquer mês. O
-que viaja é a linha de mês de cada um, com o status como estava.
+que viaja é a linha de mês de cada um, com o status como estava, e a semana
+corrente do mês: mover a referência é corrigir o mês de lugar, não recomeçá-lo.
 O `syncMonthEntries` do fim completa o destino com cadastro ativo que ainda não
 tinha linha.
 

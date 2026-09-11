@@ -53,9 +53,9 @@ src/
   hooks/
     useMonthData.ts         useMonthData e useConfig (assinaturas em tempo real)
   services/
-    compartments.ts         criar, abrir e buscar compartimento
+    compartments.ts         criar, abrir, buscar e preferência do compartimento
     session.ts              sessão no localStorage
-    months.ts               ciclo de vida do mês e cálculo de totais
+    months.ts               ciclo de vida do mês, semana corrente e totais
     expenses.ts             lançamentos, gastos fixos, categorias e linhas do mês
     origins.ts              cadastro de origens e a linha de origem do mês
   utils/
