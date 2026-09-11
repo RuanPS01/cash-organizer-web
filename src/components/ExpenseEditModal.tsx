@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ConfirmModal, MoneyInput } from './shared';
 import { dateFromDayKey, dayKey } from '../utils/dates';
 import type { ExpenseEdit } from '../services/expenses';
+import { MONTH_WEEKS } from '../types';
 import type { Category, Origin, VariableExpense } from '../types';
 
 /** Opção de categoria ou de origem no seletor do modal de edição. */
@@ -28,6 +29,8 @@ export function ExpenseEditModal(props: {
   expense: VariableExpense;
   categories: Category[];
   origins: Origin[];
+  /** Semana corrente do mês, só para marcar qual está ativa no seletor. */
+  currentWeek: number;
   busy: boolean;
   saveError: string | null;
   onConfirm: (patch: ExpenseEdit) => void;
@@ -38,6 +41,7 @@ export function ExpenseEditModal(props: {
   const [description, setDescription] = useState(expense.description);
   const [amount, setAmount] = useState(expense.amount);
   const [day, setDay] = useState(diaOriginal);
+  const [week, setWeek] = useState(expense.week);
   const [categoryId, setCategoryId] = useState(expense.categoryId);
   const [originId, setOriginId] = useState(expense.originId ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -71,8 +75,9 @@ export function ExpenseEditModal(props: {
     };
     // A data só entra no patch quando muda, e leva a hora original junto: os
     // lançamentos do mesmo dia mantêm a ordem em que foram incluídos. A semana
-    // fica fora: ela é do mês, não da data.
+    // é campo à parte, porque ela é do mês e não da data.
     if (day !== diaOriginal) patch.date = dateFromDayKey(day, new Date(expense.createdAt));
+    if (week !== expense.week) patch.week = week;
     props.onConfirm(patch);
   };
 
@@ -107,6 +112,19 @@ export function ExpenseEditModal(props: {
           </span>
         </label>
         <label>
+          Semana do mês
+          <span className="field">
+            <select value={week} onChange={(e) => setWeek(Number(e.target.value))}>
+              {Array.from({ length: MONTH_WEEKS }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  Semana {n}
+                  {n === props.currentWeek ? ' (atual)' : ''}
+                </option>
+              ))}
+            </select>
+          </span>
+        </label>
+        <label>
           Categoria
           <span className="field">
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
@@ -132,9 +150,9 @@ export function ExpenseEditModal(props: {
           </span>
         </label>
         <p className="card-hint">
-          A semana do lançamento não muda com a data: ela é a semana em que o gasto foi lançado,
-          contada pelo botão "Virar semana". O lançamento também continua no mês em que foi feito,
-          mesmo com data de outro mês.
+          A semana não acompanha a data: ela é a semana em que o gasto foi lançado, contada pelo
+          botão "Virar semana". Troque aqui quando o gasto tiver caído na semana errada. O
+          lançamento continua no mês em que foi feito, mesmo com data de outro mês.
         </p>
         {(error ?? props.saveError) && <p className="form-error">{error ?? props.saveError}</p>}
       </div>

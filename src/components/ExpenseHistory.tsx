@@ -8,6 +8,7 @@ import {
   updateVariableExpenses,
 } from '../services/expenses';
 import type { ExpenseClassification, ExpenseEdit } from '../services/expenses';
+import { monthWeek } from '../services/months';
 import { formatBRL } from '../utils/money';
 import { dateFromDayKey, dayLabel } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
@@ -610,6 +611,7 @@ export function ExpenseHistory(props: {
           expense={editTarget}
           categories={categories}
           origins={origins}
+          currentWeek={monthWeek(data.month)}
           busy={busy}
           saveError={error}
           onConfirm={confirmEdit}

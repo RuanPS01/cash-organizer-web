@@ -85,11 +85,13 @@ quando existe um, e no rodapé do card na edição no lugar, que não tem botão
 confirmar.
 
 Na subaba de variáveis, o lápis da linha abre o modal de edição do lançamento,
-com descrição, valor, data do gasto, categoria e origem em um formulário só. É o
-único caminho de edição de um lançamento: os selos de categoria e de origem são
-apenas leitura. A data pode ser de outro mês; o lançamento continua no mês em que
-foi feito e a semana acompanha a data escolhida. A hora original é preservada,
-para os lançamentos do mesmo dia manterem a ordem de inclusão.
+com descrição, valor, data do gasto, semana, categoria e origem em um formulário
+só. É o único caminho de edição de um lançamento: os selos de categoria e de
+origem são apenas leitura. A data pode ser de outro mês; o lançamento continua no
+mês em que foi feito, e a hora original é preservada para os lançamentos do mesmo
+dia manterem a ordem de inclusão. A semana tem campo próprio, com a corrente
+marcada como "(atual)": quem lançou um gasto antes de virar a semana conserta
+por ali, sem mexer na data.
 
 O botão de seleção liga o modo de lote: marque os lançamentos, use
 "Reclassificar" e a troca de categoria ou de origem vale para todos os marcados.

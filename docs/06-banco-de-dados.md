@@ -213,13 +213,14 @@ lançamentos variáveis daquela origem e os gastos fixos que saem dela.
 | `amount` | number | centavos |
 | `description` | string | com trim, pode ser `''` |
 | `createdAt` | number | ms da data escolhida (com a hora do relógio, para manter a ordem de inclusão do mesmo dia) |
-| `week` | number | 1 a 4: a semana em que o mês estava quando o gasto foi lançado (`month.currentWeek`). Não muda ao editar a data |
+| `week` | number | 1 a 4: a semana em que o mês estava quando o gasto foi lançado (`month.currentWeek`). Não muda ao editar a data, e tem campo próprio no modal de edição |
 | `originId` | string ou null | id da origem escolhida; `null` quando não havia origem cadastrada |
 | `originName` | string | denormalizado, mantém o histórico legível se a origem for renomeada ou removida |
 
 O modal de edição do histórico grava tudo de uma vez: `amount`, `description`,
-`categoryId`, `categoryName`, `originId`, `originName` e, quando a data muda,
-`createdAt` e `week` (a semana é sempre derivada da data). A reclassificação em
+`categoryId`, `categoryName`, `originId`, `originName`, `createdAt` (quando a
+data muda) e `week` (quando a semana muda; os dois são independentes, porque a
+semana é do mês e não da data). A reclassificação em
 lote continua tocando só a classificação. `createdAt` só é reescrito quando a
 data muda de dia, e leva a hora original junto, para os lançamentos do mesmo dia
 manterem a ordem de inclusão.
