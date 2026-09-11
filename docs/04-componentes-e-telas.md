@@ -49,19 +49,26 @@ calendário.
 
 ### `MonthScreen` (abas Pagamento e Estatísticas)
 
-`props: { compartmentId, currentMonth, mode: 'payment' | 'stats', onCurrentMonthChange }`
+`props: { compartmentId, currentMonth, mode: 'payment' | 'stats', origins, onCurrentMonthChange }`
 
 O mesmo componente serve às duas abas. Cabeçalho com navegação de mês
 (anterior e próximo) e selo de aberto ou fechado. Com `mode="stats"` delega para
-`StatsView`. Com `mode="payment"` mostra:
+`StatsView`. Com `mode="payment"` mostra, nesta ordem:
 
+- tabela de **origens** (nome com glifo, fixos, variáveis, status): o status é o
+  pagamento da origem, e trocá-lo aplica o mesmo status aos gastos fixos dela
+  (`setOriginStatus`). Lançamento sem origem vira uma linha só de leitura, porque
+  não há onde guardar status;
 - tabela de gastos fixos (nome, ideal, valor, status), com ideal e valor
-  editáveis no lugar;
-- tabela de categorias com a soma dos lançamentos, expansível para listar e
-  excluir lançamentos;
+  editáveis no lugar e o selo da origem ao lado do nome (o glifo e o tom vêm do
+  cadastro recebido em `origins`; a linha do mês guarda só o id e o nome);
 - card de totais (ideal, atual, fixos, variáveis) e o botão "Virar mês", liberado
-  só quando não há linha `Pendente`;
+  só quando não há origem nem gasto fixo em `Pendente`;
 - fluxo de dupla confirmação para definir outro mês como o mês em aberto.
+
+Não há tabela de categorias: categoria é orçamento, não forma de pagamento. O
+ideal por categoria é editado na tela Gerenciar e os lançamentos ficam no
+histórico da aba Adicionar.
 
 Edição só é permitida quando o mês visualizado é o corrente e está aberto
 (`editable`).
@@ -70,10 +77,11 @@ Edição só é permitida quando o mês visualizado é o corrente e está aberto
 
 `props: { compartmentId, currentMonth, fixedExpenses, categories, origins, monthData }`
 
-Cadastro de gastos fixos (com modal completo: nome, descrição, valor, ideal e
-parcela) e de categorias (nome editável, ideal editável, reordenação com as
-setas, "tornar padrão" e remoção). Mostra totais de cadastro por seção. A
-terceira seção, de origens do gasto, é delegada ao `ManageOrigins`.
+Cadastro de gastos fixos (com modal completo: nome, descrição, valor, ideal,
+origem e parcela; a lista mostra o selo da origem ao lado do nome) e de
+categorias (nome editável, ideal editável, reordenação com as setas, "tornar
+padrão" e remoção). Mostra totais de cadastro por seção. A terceira seção, de
+origens do gasto, é delegada ao `ManageOrigins`.
 
 ## 4.2 Componentes reutilizáveis
 
@@ -115,33 +123,57 @@ aba Estatísticas: se precisar dele em outro lugar, reutilize em vez de copiar.
 
 Histórico do mês exibido na aba Adicionar, com duas subabas: **Variáveis**
 (padrão, do lançamento mais recente para o mais antigo) e **Fixos**. Tem barra
-de busca (sem acento e sem caixa) e, na aba de variáveis, filtros de categoria,
-origem e faixa de data.
+de busca (sem acento e sem caixa, cobrindo também o nome da origem nas duas
+subabas) e, na aba de variáveis, filtros de categoria, origem e faixa de data.
+Na subaba de fixos o selo da origem aparece ao lado do status, sem botão de
+troca: a origem do gasto fixo vem do cadastro e muda na aba Gerenciar.
 
-**Reclassificação.** O selo de categoria e o de origem viram botões com o mês em
-aberto e abrem o `ReclassifyModal` (privado do arquivo), que troca categoria,
-origem ou as duas, com a opção "Manter a atual" em cada campo. Lançamento sem
-origem mostra um selo apagado "sem origem", só para dar onde tocar. O botão de
-seleção na barra de busca liga o modo de lote: cada item ganha uma caixa de
-marcação (`.check-box`), a barra `.bulk-bar` mostra o contador com "Selecionar
-todos" e o mesmo modal aplica a troca a todos os marcados de uma vez. A seleção
+**Edição do lançamento.** Cada linha de variável tem dois botões: o lápis abre o
+`ExpenseEditModal` (arquivo próprio, ao lado), com descrição, valor, data do
+gasto, categoria e origem em um formulário só; o X abre a confirmação de
+exclusão. Os
+selos de categoria e de origem são apenas leitura, e um lançamento sem origem
+mostra o selo apagado "sem origem". A data só vai para o patch quando muda de
+dia, levando a hora original junto (`updateVariableExpense` deriva a semana da
+data).
+
+**Reclassificação em lote.** O botão de seleção na barra de busca liga o modo de
+lote: cada item ganha uma caixa de marcação (`.check-box`), os botões de editar e
+excluir saem das linhas, a barra `.bulk-bar` mostra o contador com "Selecionar
+todos" e o `ReclassifyModal` aplica a troca de categoria e de origem a todos os
+marcados de uma vez, com a opção "Manter a atual" em cada campo. A seleção
 considera apenas o que está visível: filtrar depois de marcar não deixa um
 lançamento fora da tela ser alterado sem querer.
 
-Valor e descrição são editáveis no lugar
-(`EditableMoney` e `EditableText`) e a remoção passa por `ConfirmModal`:
-lançamento variável é excluído de verdade, gasto fixo usa `removeFixedExpense`
-(sai do mês e dos próximos, porque uma linha apagada sozinha voltaria na
-próxima reconciliação de `ensureMonth`). Edição só é liberada com o mês em
-aberto.
+Na subaba de fixos, valor e descrição da linha do mês seguem editáveis no lugar
+(`EditableMoney` e `EditableText`), porque ali o cadastro é que manda. A remoção
+passa por `ConfirmModal`: lançamento variável é excluído de verdade, gasto fixo
+usa `removeFixedExpense` (sai do mês e dos próximos, porque uma linha apagada
+sozinha voltaria na próxima reconciliação de `ensureMonth`). Edição só é liberada
+com o mês em aberto.
+
+### `components/ExpenseEditModal.tsx`
+
+`props: { expense, categories, origins, busy, saveError, onConfirm, onCancel }`
+
+Modal de edição completa de um lançamento variável: descrição, valor, data do
+gasto, categoria e origem, com um botão de salvar. Categoria ou origem que saiu
+do cadastro continua na lista enquanto o lançamento a usa, senão salvar qualquer
+campo trocaria a classificação dele. Devolve em `onConfirm` o patch do
+`updateVariableExpense`, com `date` presente só quando o dia muda.
+
+Saiu do `ExpenseHistory` para arquivo próprio quando o histórico passou de 790
+linhas (ver [10-manutencao-e-granularidade.md](10-manutencao-e-granularidade.md),
+seção 10.2).
 
 ### `components/ManageOrigins.tsx`
 
-`props: { compartmentId, origins }`
+`props: { compartmentId, currentMonth, origins }`
 
 Seção "Origens do gasto" da tela Gerenciar mais o modal de criação e edição
 (nome, grade de ícones e fileira de tons, com prévia). A primeira origem criada
-já nasce como padrão. Modais ficam fora do `.card` de propósito: `clip-path`
+já nasce como padrão. Criar, renomear e remover refletem na linha do mês em
+aberto (é ela que a aba Pagamento lista), daí o `currentMonth` nas props. Modais ficam fora do `.card` de propósito: `clip-path`
 recorta até descendente `position: fixed`.
 
 ### `components/OriginIcon.tsx`
@@ -176,7 +208,7 @@ Ambos em [`src/hooks/useMonthData.ts`](../src/hooks/useMonthData.ts).
 
 | Hook | Retorno | O que assina |
 |---|---|---|
-| `useMonthData(compartmentId, ym)` | `{ loading, month, fixedEntries, categoryEntries, expenses }` | documento do mês e as três subcoleções, em tempo real |
+| `useMonthData(compartmentId, ym)` | `{ loading, month, fixedEntries, categoryEntries, originEntries, expenses }` | documento do mês e as quatro subcoleções, em tempo real |
 | `useConfig(compartmentId)` | `{ fixedExpenses, categories, origins }` | cadastros do compartimento, já filtrados por `active` e ordenados |
 
 `useConfig` ordena categorias e origens por `sortOrder ?? createdAt`, que é a
@@ -198,28 +230,33 @@ padrão "Avulso").
 
 ### `services/months.ts`
 
-`monthRef`, `fixedEntriesCol`, `categoryEntriesCol`, `expensesCol`,
-`ensureMonth`, `setOpenMonth` (move o conteúdo do mês em aberto para outro mês e
-troca a referência), `computeTotals`, `closeMonth`, `listMonths`,
-`fetchExpenses`.
+`monthRef`, `fixedEntriesCol`, `categoryEntriesCol`, `originEntriesCol`,
+`expensesCol`, `isMonthOpen`, `ensureMonth`, `setOpenMonth` (move o conteúdo do
+mês em aberto para outro mês e troca a referência), `computeTotals` (recebe
+também as linhas de origem, porque origem ignorada tira do gasto tudo que saiu
+dela), `closeMonth`, `listMonths`, `fetchExpenses`.
 
 ### `services/origins.ts`
 
 `originsCol`, `addOrigin`, `saveOrigin`, `updateOrigin`, `moveOrigin`,
 `setDefaultOrigin`, `removeOrigin` (desativa; o histórico segue com o nome
-gravado no lançamento).
+gravado no lançamento). `addOrigin`, `saveOrigin` e `removeOrigin` recebem o
+`currentMonth` e mantêm a linha `originEntries` do mês em aberto em dia; a
+remoção só apaga a linha quando nada saiu daquela origem no mês.
 
 ### `services/expenses.ts`
 
 Lançamentos: `addVariableExpense` (aceita `originId` e `originName`),
-`updateVariableExpense` (valor, descrição e classificação),
-`updateVariableExpenses` (mesma classificação em vários lançamentos, em
-`writeBatch` de até 400 por vez), `deleteVariableExpense`.
-Gastos fixos: `addFixedExpense`, `saveFixedExpense`, `updateFixedExpense`,
+`updateVariableExpense` (valor, descrição, classificação e data, que grava
+`createdAt` e `week` juntos), `updateVariableExpenses` (mesma classificação em
+vários lançamentos, em `writeBatch` de até 400 por vez), `deleteVariableExpense`.
+Gastos fixos: `addFixedExpense` e `saveFixedExpense` (gravam o cadastro completo,
+origem inclusive, e refletem na linha do mês em aberto), `updateFixedExpense`,
 `removeFixedExpense`.
 Categorias: `addCategory`, `updateCategory`, `renameCategory`,
 `saveCategoryIdeal`, `moveCategory`, `setDefaultCategory`, `removeCategory`.
-Linhas do mês: `updateFixedEntry`, `updateCategoryEntry`.
+Linhas do mês: `updateFixedEntry`, `updateCategoryEntry`, `setOriginStatus`
+(status da origem mais o mesmo status nos gastos fixos dela, em um `writeBatch`).
 
 ## 4.5 Utilitários
 

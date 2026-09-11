@@ -16,26 +16,38 @@ import type { FixedExpenseInput } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { EditableMoney, EditableText, MoneyInput, ConfirmModal } from './shared';
 import { ManageOrigins } from './ManageOrigins';
+import { OriginIcon } from './OriginIcon';
 import type { MonthData } from '../hooks/useMonthData';
-import type { Category, FixedExpense, Origin } from '../types';
+import type { Category, FixedExpense, Origin, OriginColorKey, OriginIconKey } from '../types';
 
 function parsePositiveInt(text: string): number | null {
   const n = Number.parseInt(text.trim(), 10);
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+/** Origem que pode ser escolhida no modal (o cadastro ou a já gravada no gasto). */
+type OriginOption = { id: string; name: string; icon?: OriginIconKey; color?: OriginColorKey };
+
 /** Modal de criação/edição de gasto fixo com todos os campos. */
 function FixedExpenseModal(props: {
   initial: FixedExpense | null;
+  origins: Origin[];
   busy: boolean;
   onSave: (input: FixedExpenseInput) => void;
   onCancel: () => void;
 }) {
-  const { initial } = props;
+  const { initial, origins } = props;
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [amount, setAmount] = useState(initial?.amount ?? 0);
   const [ideal, setIdeal] = useState(initial?.idealAmount ?? 0);
+  // Mesma regra do lançamento variável: a origem padrão já vem escolhida em um
+  // cadastro novo. Na edição vale o que está gravado, para que salvar um gasto
+  // antigo (sem origem) não passe a marcar a padrão sem o usuário pedir.
+  const defaultOrigin = origins.find((o) => o.isDefault) ?? origins[0];
+  const [originId, setOriginId] = useState<string | null>(
+    initial ? (initial.originId ?? null) : (defaultOrigin?.id ?? null),
+  );
   const [instCur, setInstCur] = useState(
     initial?.installmentCurrent ? String(initial.installmentCurrent) : '',
   );
@@ -43,6 +55,14 @@ function FixedExpenseModal(props: {
     initial?.installmentTotal ? String(initial.installmentTotal) : '',
   );
   const [error, setError] = useState<string | null>(null);
+
+  // Origem já gravada que saiu do cadastro (foi removida) continua na fileira:
+  // sem isso ela sumiria da tela e salvar qualquer outro campo apagaria a
+  // origem do gasto sem o usuário pedir.
+  const originOptions: OriginOption[] =
+    initial?.originId && !origins.some((o) => o.id === initial.originId)
+      ? [...origins, { id: initial.originId, name: initial.originName || 'Origem removida' }]
+      : origins;
 
   const submit = () => {
     setError(null);
@@ -70,11 +90,14 @@ function FixedExpenseModal(props: {
         return;
       }
     }
+    const origin = originOptions.find((o) => o.id === originId);
     props.onSave({
       name,
       amount,
       idealAmount: ideal || undefined,
       description: description || undefined,
+      originId: origin?.id ?? null,
+      originName: origin?.name ?? '',
       installmentCurrent,
       installmentTotal,
     });
@@ -108,6 +131,37 @@ function FixedExpenseModal(props: {
           <MoneyInput valueCents={amount} onChange={setAmount} placeholder="Valor" />
           <MoneyInput valueCents={ideal} onChange={setIdeal} placeholder="Ideal (opcional)" />
         </div>
+
+        {originOptions.length > 0 && (
+          <div className="origin-picker">
+            <span className="origin-label">Origem</span>
+            <div className="chip-row" role="radiogroup" aria-label="Origem do gasto fixo">
+              {originOptions.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={originId === o.id}
+                  className={`chip${originId === o.id ? ' selected' : ''}`}
+                  onClick={() => setOriginId(o.id)}
+                >
+                  <OriginIcon icon={o.icon} color={o.color} />
+                  {o.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={originId === null}
+                className={`chip${originId === null ? ' selected' : ''}`}
+                onClick={() => setOriginId(null)}
+              >
+                Sem origem
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="inline-pair installments">
           <span className="muted small">Parcela (opcional):</span>
           <span className="field">
@@ -158,6 +212,10 @@ export function ManageScreen(props: {
     [fixedExpenses, categories, monthData.expenses],
   );
 
+  // A linha guarda o id e o nome da origem; o cadastro é quem tem o ícone e o
+  // tom, então o mapa liga um ao outro sem varrer a lista a cada gasto fixo.
+  const originById = useMemo(() => new Map(origins.map((o) => [o.id, o])), [origins]);
+
   const [fixedModal, setFixedModal] = useState<'closed' | 'new' | FixedExpense>('closed');
   const [catName, setCatName] = useState('');
   const [catIdeal, setCatIdeal] = useState(0);
@@ -186,6 +244,8 @@ export function ManageScreen(props: {
       amount: f.amount,
       idealAmount: f.idealAmount,
       description: f.description,
+      originId: f.originId,
+      originName: f.originName,
       installmentCurrent: f.installmentCurrent,
       installmentTotal: f.installmentTotal,
       ...patch,
@@ -229,7 +289,8 @@ export function ManageScreen(props: {
         <h3>Gastos fixos</h3>
         <p className="card-hint">
           O valor fixo é usado como gasto ideal automaticamente, a menos que você defina outro
-          ideal. Novos fixos entram no mês corrente em aberto.
+          ideal. A origem diz de onde o dinheiro sai e acompanha o gasto na listagem, no
+          histórico e na aba Pagamento. Novos fixos entram no mês corrente em aberto.
         </p>
         <div className="section-totals">
           <span>
@@ -242,52 +303,61 @@ export function ManageScreen(props: {
           </span>
         </div>
         <ul className="manage-list">
-          {fixedExpenses.map((f) => (
-            <li key={f.id}>
-              <div className="row-main">
-                <span className="name">
-                  {f.name}
-                  {f.installmentTotal ? (
-                    <span className="badge installment">
-                      {f.installmentCurrent ?? 1}/{f.installmentTotal}
+          {fixedExpenses.map((f) => {
+            const origin = f.originId ? originById.get(f.originId) : undefined;
+            return (
+              <li key={f.id}>
+                <div className="row-main">
+                  <span className="name">
+                    {f.name}
+                    {f.installmentTotal ? (
+                      <span className="badge installment">
+                        {f.installmentCurrent ?? 1}/{f.installmentTotal}
+                      </span>
+                    ) : null}
+                    {f.originId || f.originName ? (
+                      <span className="badge origin">
+                        <OriginIcon icon={origin?.icon} color={origin?.color} />
+                        {origin?.name ?? f.originName}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="values">
+                    <span className="pair">
+                      <span className="muted small">valor</span>
+                      <EditableMoney
+                        valueCents={f.amount}
+                        onSave={(v) => inlineSaveFixed(f, { amount: v })}
+                      />
                     </span>
-                  ) : null}
-                </span>
-                <span className="values">
-                  <span className="pair">
-                    <span className="muted small">valor</span>
-                    <EditableMoney
-                      valueCents={f.amount}
-                      onSave={(v) => inlineSaveFixed(f, { amount: v })}
-                    />
+                    <span className="pair">
+                      <span className="muted small">ideal</span>
+                      <EditableMoney
+                        valueCents={f.idealAmount}
+                        muted
+                        onSave={(v) => inlineSaveFixed(f, { idealAmount: v })}
+                      />
+                    </span>
                   </span>
-                  <span className="pair">
-                    <span className="muted small">ideal</span>
-                    <EditableMoney
-                      valueCents={f.idealAmount}
-                      muted
-                      onSave={(v) => inlineSaveFixed(f, { idealAmount: v })}
-                    />
-                  </span>
-                </span>
-                {f.description && <span className="row-desc muted small">{f.description}</span>}
-              </div>
-              <button
-                className="btn icon"
-                title="Editar gasto fixo"
-                onClick={() => setFixedModal(f)}
-              >
-                <Pencil size={15} aria-hidden />
-              </button>
-              <button
-                className="btn icon danger"
-                title="Remover gasto fixo"
-                onClick={() => setRemoveTarget({ kind: 'fixed', item: f })}
-              >
-                <X size={16} aria-hidden />
-              </button>
-            </li>
-          ))}
+                  {f.description && <span className="row-desc muted small">{f.description}</span>}
+                </div>
+                <button
+                  className="btn icon"
+                  title="Editar gasto fixo"
+                  onClick={() => setFixedModal(f)}
+                >
+                  <Pencil size={15} aria-hidden />
+                </button>
+                <button
+                  className="btn icon danger"
+                  title="Remover gasto fixo"
+                  onClick={() => setRemoveTarget({ kind: 'fixed', item: f })}
+                >
+                  <X size={16} aria-hidden />
+                </button>
+              </li>
+            );
+          })}
           {fixedExpenses.length === 0 && <li className="muted">Nenhum gasto fixo ainda.</li>}
         </ul>
         <button className="btn primary" onClick={() => setFixedModal('new')}>
@@ -390,11 +460,16 @@ export function ManageScreen(props: {
         </form>
       </section>
 
-      <ManageOrigins compartmentId={compartmentId} origins={origins} />
+      <ManageOrigins
+        compartmentId={compartmentId}
+        currentMonth={currentMonth}
+        origins={origins}
+      />
 
       {fixedModal !== 'closed' && (
         <FixedExpenseModal
           initial={fixedModal === 'new' ? null : fixedModal}
+          origins={origins}
           busy={busy}
           onSave={saveFixed}
           onCancel={() => setFixedModal('closed')}

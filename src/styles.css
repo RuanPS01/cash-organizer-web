@@ -1083,63 +1083,6 @@ td:first-child {
 
 tr:last-child td { border-bottom: none; }
 
-.details-row td {
-  background: rgba(212, 175, 55, 0.04);
-  white-space: normal;
-}
-
-.link-btn {
-  border: none;
-  background: none;
-  color: var(--text);
-  font: 600 0.86rem/1.2 var(--font-ui);
-  cursor: pointer;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  text-align: left;
-}
-
-.link-btn:hover { color: var(--gold-soft); }
-.link-btn svg { color: var(--gold); }
-
-.expense-list {
-  list-style: none;
-  margin: 0;
-  padding: 0.25rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-/* O botão de excluir não quebra de linha: só a descrição encolhe */
-.expense-list li {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 0.6rem;
-  font-size: 0.82rem;
-  color: var(--text-soft);
-}
-
-.expense-list li > * { flex: 0 0 auto; }
-.expense-list li strong { font-family: var(--font-num); color: var(--gold-soft); }
-
-.expense-list .when {
-  font-family: var(--font-num);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-}
-
-/* A descrição ocupa o espaço que sobra e quebra o texto quando não couber:
-   com "nowrap" ela viraria a largura mínima da célula e empurraria a tabela
-   inteira para fora da tela ao expandir a categoria. */
-.expense-list .desc {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 
 .money-cell {
   border: none;
@@ -1496,6 +1439,20 @@ tr.row-ignored td { opacity: 0.7; }
 
 .origin-picker .chip-row { margin-bottom: 0; }
 
+/* Dentro do modal quem separa os campos é o gap do .modal-form: a margem
+   própria do seletor abriria um buraco entre a origem e a linha da parcela. */
+.modal-form .origin-picker { margin-bottom: 0; }
+
+/* No modal os chips quebram em vez de rolar. A largura do modal é decidida
+   pelo conteúdo (ele é item de grade do .modal-backdrop), e uma fileira que
+   rola no eixo horizontal empurraria essa medida para além da tela em 360px,
+   cortando o modal inteiro pela direita. */
+.modal-form .chip-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 0;
+}
+
 .badge.origin,
 .badge.cat {
   --frame-edge: var(--line-soft);
@@ -1512,13 +1469,15 @@ tr.row-ignored td { opacity: 0.7; }
   padding: 0.22rem 0.5rem;
 }
 
-/* Com o mês em aberto o selo vira botão e abre a reclassificação: o alvo de
-   toque é o próprio valor que vai mudar. */
-.badge.editable { cursor: pointer; }
+/* Na tabela da aba Pagamento o nome do gasto vem colado no selo, porque a
+   célula é texto corrido e não um contêiner flex com gap. */
+td .badge.origin { margin-left: 0.4rem; }
 
-.badge.editable:hover {
-  --frame-edge: var(--gold);
-  color: var(--gold-soft);
+/* Nome da origem na tabela do mês: o glifo acompanha o texto na mesma linha. */
+.origin-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 /* Lançamento sem origem: o selo aparece apagado só para dar onde tocar. */
@@ -1721,15 +1680,15 @@ tr.row-ignored td { opacity: 0.7; }
   padding: 0;
 }
 
-/* Duas linhas de texto à esquerda (descrição e selos), com valor e excluir
-   fixos à direita: o mesmo desenho da lista de lançamentos da aba Pagamento,
-   que já provou caber em 360px. */
+/* Duas linhas de texto à esquerda (descrição e selos) e, à direita, o valor e
+   os botões da linha, que nunca quebram: é o desenho que cabe em 360px sem
+   espremer a descrição. */
 .history-list li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   grid-template-areas:
-    'desc value delete'
-    'meta value delete';
+    'desc value actions'
+    'meta value actions';
   align-items: center;
   column-gap: 0.6rem;
   row-gap: 0.15rem;
@@ -1798,15 +1757,44 @@ tr.row-ignored td { opacity: 0.7; }
   white-space: nowrap;
 }
 
-.history-list .btn.icon { grid-area: delete; }
+.history-list .btn.icon { grid-area: actions; }
+
+/* Editar e excluir ficam juntos na coluna da direita, ocupando as duas linhas
+   do item: um alvo de toque por ação, sem disputar espaço com o texto. */
+.history-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Texto e valor do lançamento são leitura: a edição inteira passou para o
+   modal do lápis. */
+.history-text {
+  font: 600 0.86rem/1.2 var(--font-ui);
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.history-text.empty {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.history-value strong {
+  font: 600 0.86rem/1.2 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
 
 /* Modo de seleção: entra uma coluna à esquerda com a caixa de marcação, que
    ocupa as duas linhas do item. Valor e excluir continuam à direita. */
 .history-list.selecting li {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
-    'check desc value delete'
-    'check meta value delete';
+    'check desc value actions'
+    'check meta value actions';
 }
 
 .check-box {
@@ -1944,8 +1932,6 @@ tr.row-ignored td { opacity: 0.7; }
 
   .hide-narrow { display: none; }
 
-  .details-row { background: none; }
-  .details-row td { flex: 1 1 100%; min-width: 0; padding: 0.1rem 0.4rem; }
 
   .cell-sub {
     display: flex;
@@ -1959,7 +1945,10 @@ tr.row-ignored td { opacity: 0.7; }
     color: var(--muted);
   }
 
-  .cell-sub .money-cell {
+  /* .sub-value é a versão só de leitura (a origem não tem valor editável). */
+  .cell-sub .money-cell,
+  .cell-sub .sub-value {
+    font-family: var(--font-num);
     font-size: 0.74rem;
     letter-spacing: 0;
     text-transform: none;
@@ -1971,27 +1960,6 @@ tr.row-ignored td { opacity: 0.7; }
   .status-select { font-size: 0.68rem; padding: 0.35rem 0.4rem; }
   .money-cell { font-size: 0.8rem; }
 
-  /* O lançamento vira um bloco de duas linhas: descrição inteira com a
-     data/semana embaixo e, à direita, o valor e o excluir. */
-  .expense-list { gap: 0; }
-
-  .expense-list li {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      'desc value delete'
-      'when value delete';
-    align-items: center;
-    column-gap: 0.5rem;
-    padding: 0.5rem 0;
-    border-top: 1px solid var(--line);
-  }
-
-  .expense-list li:first-child { border-top: none; padding-top: 0.15rem; }
-  .expense-list .desc { grid-area: desc; }
-  .expense-list .when { grid-area: when; }
-  .expense-list li strong { grid-area: value; }
-  .expense-list li .btn.icon { grid-area: delete; }
 
   .section-totals { gap: 1.25rem; }
   .money-input.big { font-size: 1.9rem; }

@@ -57,7 +57,7 @@ src/
     session.ts              sessão no localStorage
     months.ts               ciclo de vida do mês e cálculo de totais
     expenses.ts             lançamentos, gastos fixos, categorias e linhas do mês
-    origins.ts              cadastro de origens do gasto (forma de pagamento)
+    origins.ts              cadastro de origens e a linha de origem do mês
   utils/
     crypto.ts               SHA-256 da senha e AES-GCM da sessão
     dates.ts                chaves de mês e dia, semana do mês, rótulos pt-BR
@@ -85,9 +85,10 @@ a função está no lugar errado. Ela pertence a `services/` ou a um hook.
 
 Não existe Redux, Zustand, Context nem React Query. O estado vem de três lugares:
 
-1. **Tempo real do Firestore.** `useMonthData` assina o documento do mês e as três
-   subcoleções (`fixedEntries`, `categoryEntries`, `expenses`); `useConfig` assina
-   os cadastros de `fixedExpenses`, `categories` e `origins`. Como a escrita vai direto ao
+1. **Tempo real do Firestore.** `useMonthData` assina o documento do mês e as
+   quatro subcoleções (`fixedEntries`, `categoryEntries`, `originEntries`,
+   `expenses`); `useConfig` assina os cadastros de `fixedExpenses`, `categories`
+   e `origins`. Como a escrita vai direto ao
    Firestore, a tela se atualiza sozinha depois de qualquer serviço, sem
    invalidação manual de cache.
 2. **Estado local de tela.** `useState` dentro de cada componente para formulário,
@@ -139,7 +140,7 @@ do app.
 
 | Preciso de... | Vá para |
 |---|---|
-| Nova operação de banco | função nova em `services/` (`months.ts` para ciclo do mês, `expenses.ts` para lançamentos e cadastros de fixos e categorias, `origins.ts` para origens) |
+| Nova operação de banco | função nova em `services/` (`months.ts` para ciclo do mês, `expenses.ts` para lançamentos, cadastros de fixos e categorias e linhas do mês, `origins.ts` para origens) |
 | Novo cálculo sobre dados do mês | `computeTotals` ou uma função pura em `services/months.ts` |
 | Nova formatação de valor ou data | `utils/money.ts` ou `utils/dates.ts` |
 | Novo campo persistido | tipo em `types.ts` mais escrita no serviço mais documentação em `06-banco-de-dados.md` |

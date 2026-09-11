@@ -60,32 +60,46 @@ histórico do mês em duas subabas:
   mais nome). Busca por texto (sem acento e sem caixa, cobrindo descrição,
   categoria e origem) e filtros de categoria, origem ("Sem origem" inclusive) e
   faixa de data.
-- **Fixos**: as linhas de gasto fixo do mês, com selo de status, ideal e busca
-  por nome ou descrição.
+- **Fixos**: as linhas de gasto fixo do mês, com selo de status, selo da origem
+  (quando o cadastro tem uma), ideal e busca por nome, descrição ou origem. O
+  selo da origem aqui não abre troca: ela vem do cadastro e muda na aba
+  Gerenciar.
 
 Falha de gravação (recusa do banco ou falta de rede) aparece na tela: no modal,
 quando existe um, e no rodapé do card na edição no lugar, que não tem botão de
 confirmar.
 
-Na subaba de variáveis, tocar no selo de categoria ou de origem abre a
-reclassificação, que troca um dos dois ou os dois de uma vez. O botão de seleção
-liga o modo de lote: marque os lançamentos, use "Reclassificar" e a mesma troca
-vale para todos os marcados. Só o que está visível na lista entra na conta, então
-mudar o filtro depois de marcar não altera nada fora da tela.
+Na subaba de variáveis, o lápis da linha abre o modal de edição do lançamento,
+com descrição, valor, data do gasto, categoria e origem em um formulário só. É o
+único caminho de edição de um lançamento: os selos de categoria e de origem são
+apenas leitura. A data pode ser de outro mês; o lançamento continua no mês em que
+foi feito e a semana acompanha a data escolhida. A hora original é preservada,
+para os lançamentos do mesmo dia manterem a ordem de inclusão.
 
-Nas duas subabas, valor e descrição são editáveis no lugar e a remoção passa por
-confirmação. Excluir um lançamento variável apaga o documento; remover um gasto
-fixo usa o mesmo caminho da tela Gerenciar (sai do mês em aberto e dos próximos
-meses), porque apagar só a linha do mês faria o gasto voltar na próxima
-reconciliação. Meses fechados não são alterados, e a edição só é liberada com o
-mês em aberto.
+O botão de seleção liga o modo de lote: marque os lançamentos, use
+"Reclassificar" e a troca de categoria ou de origem vale para todos os marcados.
+Só o que está visível na lista entra na conta, então mudar o filtro depois de
+marcar não altera nada fora da tela. No modo de seleção os botões de editar e
+excluir saem das linhas, porque ali o toque é para marcar.
+
+Na subaba de fixos, valor e descrição da linha do mês continuam editáveis no
+lugar: ali o cadastro é que manda, e a edição completa dele fica na tela
+Gerenciar. A remoção passa por confirmação nas duas subabas. Excluir um
+lançamento variável apaga o documento; remover um gasto fixo usa o mesmo caminho
+da tela Gerenciar (sai do mês em aberto e dos próximos meses), porque apagar só a
+linha do mês faria o gasto voltar na próxima reconciliação. Meses fechados não
+são alterados, e a edição só é liberada com o mês em aberto.
 
 ## 7.4 Gerenciar cadastros
 
-Gasto fixo: modal com nome, descrição, valor, ideal e parcela ("2 de 4"). Ao
-salvar, o cadastro é atualizado e o mês corrente em aberto recebe o reflexo (a
-linha é criada se ainda não existir). Valor e ideal também podem ser editados
-direto na lista.
+Gasto fixo: modal com nome, descrição, valor, ideal, origem e parcela ("2 de 4").
+A origem usa a mesma fileira de chips do novo gasto, com a origem padrão já
+escolhida em um cadastro novo e o chip "Sem origem" para deixar o gasto sem uma.
+Na edição vale o que está gravado, e origem que foi removida do cadastro continua
+na fileira para não ser apagada sem querer. Ao salvar, o cadastro é atualizado e o
+mês corrente em aberto recebe o reflexo (a linha é criada se ainda não existir).
+Valor e ideal também podem ser editados direto na lista, que mostra o selo da
+origem ao lado do nome.
 
 Categoria: nome e ideal editáveis no lugar, setas para reordenar (a ordem vale
 para os chips da tela de novo gasto), "tornar padrão" para transferir o papel da
@@ -107,26 +121,43 @@ Meses fechados nunca são alterados por mudança de cadastro.
 
 ## 7.5 Aba Pagamento
 
-Para cada linha (fixo ou categoria) o usuário ajusta o status e, nos fixos, o
-valor efetivo. Só o mês corrente em aberto é editável; meses anteriores são
-consultáveis, em modo leitura.
+A aba tem dois cards, na ordem em que o mês é resolvido:
+
+1. **Origens do gasto.** Uma linha por origem, com o que saiu dela no mês (os
+   gastos fixos e a soma dos lançamentos variáveis) e o status. É a pergunta
+   "esta fatura já foi paga?".
+2. **Gastos fixos.** Uma linha por gasto fixo, com ideal e valor editáveis no
+   lugar, o selo da origem e o status.
+
+Trocar o status de uma origem aplica o mesmo status aos gastos fixos que saem
+dela, em uma gravação só. Depois disso, cada gasto fixo ainda pode ser ajustado
+na tabela de baixo: a cascata é um atalho, não uma amarra.
+
+Lançamento sem origem aparece em uma linha "Sem origem", só de leitura: sem
+origem não há onde guardar status. Dar uma origem a ele no histórico o leva para
+a linha da origem escolhida.
+
+Não existe card de categorias na aba: a categoria é orçamento (ideal e
+estatísticas), não forma de pagamento. O ideal por categoria é editado na tela
+Gerenciar, e o histórico de lançamentos fica na aba Adicionar.
+
+Só o mês corrente em aberto é editável; meses anteriores são consultáveis, em
+modo leitura.
 
 Efeitos por status estão em [06-banco-de-dados.md](06-banco-de-dados.md). O que
 importa no fluxo:
 
-- `Pendente` em qualquer linha bloqueia o botão "Virar mês", e o app informa
-  quantos itens faltam;
-- `Ignorar` tira o valor da soma do gasto do mês, mantendo o ideal. A linha fica
-  com o valor riscado, e nas estatísticas a categoria ganha o selo "ignorado".
-
-Expandir uma categoria lista os lançamentos com data, semana, descrição e valor,
-com opção de excluir.
+- `Pendente` em origem ou em gasto fixo bloqueia o botão "Virar mês", e o app
+  informa quantos itens faltam;
+- `Ignorar` tira do gasto do mês o que está na linha, mantendo o ideal: na
+  origem, tudo que saiu dela; no gasto fixo, o valor daquela linha. A linha fica
+  com o valor riscado.
 
 ## 7.6 Virar o mês
 
 ```mermaid
 flowchart TD
-  A["Botão Virar mês"] --> B{"alguma linha Pendente?"}
+  A["Botão Virar mês"] --> B{"origem ou fixo Pendente?"}
   B -- sim --> C["Botão bloqueado, com aviso de quantos faltam"]
   B -- não --> D["Modal de confirmação"]
   D --> E["closeMonth"]
@@ -144,8 +175,8 @@ estava na última parcela é desativado e não aparece no mês seguinte.
 
 Ao navegar para outro mês, aparece o botão "Mover o mês atual para ...". A ação
 leva **todo o conteúdo do mês em aberto** para o mês escolhido: linhas de gastos
-fixos (com o valor e o status como estavam), linhas de categorias e lançamentos,
-cada documento com o mesmo id. É a correção para quem trabalhou o mês inteiro na
+fixos (com o valor e o status como estavam), linhas de categorias, linhas de
+origens (com o status) e lançamentos, cada documento com o mesmo id. É a correção para quem trabalhou o mês inteiro na
 referência errada.
 
 - Mês de destino sem conteúdo: uma confirmação.

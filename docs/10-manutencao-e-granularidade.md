@@ -6,20 +6,22 @@ Referência de setembro de 2026 (linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 1942 |
-| `components/MonthScreen.tsx` | 468 |
-| `components/ManageScreen.tsx` | 428 |
-| `components/ExpenseHistory.tsx` | 394 |
-| `services/expenses.ts` | 328 |
-| `components/AddExpenseScreen.tsx` | 328 |
-| `services/months.ts` | 317 |
-| `components/ManageOrigins.tsx` | 244 |
+| `styles.css` | 1984 |
+| `components/ExpenseHistory.tsx` | 661 |
+| `components/ManageScreen.tsx` | 503 |
+| `components/MonthScreen.tsx` | 494 |
+| `services/months.ts` | 457 |
+| `services/expenses.ts` | 412 |
+| `components/AddExpenseScreen.tsx` | 333 |
+| `components/ManageOrigins.tsx` | 284 |
 | `components/shared.tsx` | 240 |
-| `types.ts` | 192 |
-| `App.tsx` | 145 |
+| `types.ts` | 213 |
+| `services/origins.ts` | 181 |
+| `App.tsx` | 147 |
+| `components/ExpenseEditModal.tsx` | 140 |
 | demais | menos de 125 cada |
 
-O projeto inteiro tem cerca de 5,8 mil linhas. Esse tamanho é uma vantagem: dá para
+O projeto inteiro tem cerca de 7 mil linhas. Esse tamanho é uma vantagem: dá para
 ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 ## 10.2 Quando criar um arquivo novo
@@ -39,7 +41,9 @@ sobreviva à leitura do [01-arquitetura.md](01-arquitetura.md). A estrutura atua
 
 Sinais de que um arquivo deveria ser dividido: mais de uma tela usando um
 componente auxiliar privado, ou uma tela passando de 500 linhas com blocos
-independentes.
+independentes. Foi o que tirou o `ExpenseEditModal` de dentro do
+`ExpenseHistory`: o modal é um bloco fechado, com estado e validação próprios, e
+o histórico já passava das 650 linhas sem ele.
 
 ## 10.3 Evitar duplicata
 
@@ -71,9 +75,9 @@ Comente o porquê, não o quê. Um comentário bom descreve a decisão e o defei
 ela evita:
 
 ```ts
-// A descrição ocupa o espaço que sobra e quebra o texto quando não couber:
-// com "nowrap" ela viraria a largura mínima da célula e empurraria a tabela
-// inteira para fora da tela ao expandir a categoria.
+// min-width: 0 nas células que contêm texto: sem isso a largura mínima
+// automática do item flex (min-content) faz a célula crescer além da linha e a
+// tabela ganha rolagem horizontal.
 ```
 
 Comentário ruim:
@@ -98,7 +102,11 @@ truque levam comentário na seção.
    `services/months.ts` (`seedMonthEntries` e `syncMonthEntries`) se o campo
    entrar na linha do mês.
 4. Campo no `FixedExpenseModal` do `ManageScreen`.
-5. Exibição na aba Pagamento, se fizer sentido.
+5. Exibição nas listagens, se fizer sentido: lista da tela Gerenciar, tabela da
+   aba Pagamento e subaba Fixos do `ExpenseHistory`. Foi assim que a origem do
+   gasto fixo entrou, e o `saveFixedExpense` grava o cadastro inteiro: campo
+   esquecido em uma chamada é campo apagado no banco (ver o `inlineSaveFixed`
+   do `ManageScreen`, que repassa tudo antes do patch).
 6. Atualizar [06-banco-de-dados.md](06-banco-de-dados.md).
 
 ### Adicionar uma origem ao catálogo de ícones
@@ -142,7 +150,8 @@ recalculados.
 
 1. `npm run typecheck` (obrigatório) e `npm run build` quando mexer em build,
    dependência ou PWA.
-2. Conferência visual nos dois temas e nas duas larguras (360px e desktop).
+2. Conferência visual nas duas larguras (360px e desktop). O tema é único e
+   escuro, então não existe segunda conferência de tema.
 3. Sem travessão e sem seta no que foi escrito:
    `LC_ALL=C.UTF-8 grep -rnP "[\x{2014}\x{2013}\x{2192}\x{2190}]" <arquivos>`.
 4. Documentos desta pasta atualizados.

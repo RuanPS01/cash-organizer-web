@@ -26,6 +26,7 @@ compartments/{compartmentId}
   months/{YYYY-MM}
     fixedEntries/{fixedExpenseId}
     categoryEntries/{categoryId}
+    originEntries/{originId}
     expenses/{autoId}
 ```
 
@@ -54,14 +55,17 @@ mesmo texto de senha em compartimentos diferentes gera hashes diferentes.
 | `amount` | number | valor mensal em centavos |
 | `idealAmount` | number | se não informado, recebe o próprio `amount` |
 | `description` | string | comentário livre, `''` quando vazio |
+| `originId` | string ou null | origem escolhida no cadastro (coleção `origins`); `null` quando o gasto não tem origem |
+| `originName` | string | denormalizado, mantém a listagem legível se a origem for renomeada ou removida |
 | `installmentCurrent` | number ou null | parcela atual, começa em 1 |
 | `installmentTotal` | number ou null | total de parcelas; `null` significa gasto sem parcelamento |
 | `active` | boolean | `false` some dos próximos meses |
 | `createdAt` | number | ms |
 
 `normalizeFixedInput` em `services/expenses.ts` é quem garante o formato: faz
-trim, aplica o `amount` como ideal quando falta, e zera as parcelas para `null`
-quando não há `installmentTotal`.
+trim, aplica o `amount` como ideal quando falta, grava a origem como `null` mais
+nome em branco quando não há escolha, e zera as parcelas para `null` quando não
+há `installmentTotal`.
 
 ## 6.5 `categories/{id}` (cadastro de categoria variável)
 
@@ -79,9 +83,12 @@ pode ser transferido para outra categoria com `setDefaultCategory`.
 
 ## 6.5.1 `origins/{id}` (cadastro de origem do gasto)
 
-A origem é o segundo eixo de classificação do lançamento variável, ao lado da
-categoria: diz de onde o dinheiro saiu ("Cartão C6 (Crédito)", "Pix ou Transf.",
-"Cartão Nu"). Não gera linha de mês e não entra em `computeTotals`.
+A origem diz de onde o dinheiro saiu ("Cartão C6 (Crédito)", "Pix ou Transf.",
+"Cartão Nu"). No lançamento variável ela é o segundo eixo de classificação, ao
+lado da categoria; no gasto fixo ela faz parte do cadastro e é copiada para a
+linha do mês. O cadastro aqui é do compartimento; o que pertence ao mês é o
+status, que fica na linha `originEntries` (seção 6.7) e é por onde a aba
+Pagamento acompanha o que já foi pago.
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -96,14 +103,25 @@ categoria: diz de onde o dinheiro saiu ("Cartão C6 (Crédito)", "Pix ou Transf.
 A chave de ícone é gravada, não o desenho: trocar o glifo do lucide-react em
 [`components/OriginIcon.tsx`](../src/components/OriginIcon.tsx) não exige migrar
 dado. Compartimento nasce sem origem nenhuma; a primeira criada vira a padrão.
-Remover é desativar, e os lançamentos antigos seguem com `originName`.
+Origem criada com o mês em aberto já ganha a linha do mês; remover é desativar,
+e os lançamentos antigos seguem com `originName`.
 
 > **Coleção nova exige regra nova.** O Firestore nega tudo que não está
 > explicitamente liberado, e as regras vivem em `cash-organizer-functions`. Sem
 > o bloco `match /origins/{originId}`, o app não lista nem grava origem, e a
-> falha chega como `permission-denied`. O mesmo vale para operação nova em
-> coleção existente: a edição de valor e descrição no histórico só funciona
-> porque `expenses` passou a permitir `update` desses dois campos.
+> falha chega como `permission-denied`. O mesmo vale para campo novo em coleção
+> existente: a edição de valor e descrição no histórico só funciona porque
+> `expenses` passou a permitir `update` desses dois campos, e a origem do gasto
+> fixo depende de `originId` e `originName` estarem liberados na escrita de
+> `fixedExpenses` e de `fixedEntries`.
+>
+> Duas liberações a mais chegaram com a aba Pagamento por origem e com a edição
+> completa do lançamento:
+>
+> - `match /months/{ym}/originEntries/{originId}`, a subcoleção nova de linha de
+>   mês. Sem ela a aba Pagamento não lista nem grava status de origem;
+> - `createdAt` e `week` no `update` de `expenses`, que antes eram recusados. Sem
+>   isso a edição do lançamento funciona em tudo, menos quando a data muda.
 
 ## 6.6 `months/{YYYY-MM}`
 
@@ -142,7 +160,15 @@ passado.
 | `amount` | number | valor efetivo do mês, editável na aba Pagamento |
 | `idealAmount` | number | ideal do mês, editável |
 | `status` | `EntryStatus` | nasce `Pendente` |
+| `originId` | string ou null | copiado do cadastro; `null` quando o gasto não tem origem |
+| `originName` | string | denormalizado, como estava no cadastro na hora da cópia |
 | `installmentCurrent`, `installmentTotal` | number ou null | copiados do cadastro |
+
+Linha criada antes de um campo existir fica sem ele (é o caso da origem em meses
+que já estavam abertos): a linha recebe o campo quando o cadastro for salvo de
+novo, porque `saveFixedExpense` reflete no mês em aberto, ou na virada para o mês
+seguinte, que é semeado do cadastro. `syncMonthEntries` só cria linha que falta,
+nunca reescreve linha existente, para não desfazer o valor ajustado no mês.
 
 ### `categoryEntries/{categoryId}`
 
@@ -152,7 +178,23 @@ passado.
 | `idealAmount` | number | ideal do mês para a categoria |
 | `status` | `EntryStatus` | nasce `Pendente` |
 
-O gasto real da categoria não fica aqui: é a soma dos lançamentos.
+O gasto real da categoria não fica aqui: é a soma dos lançamentos. A linha de
+categoria não tem status na interface desde que a aba Pagamento passou a
+trabalhar por origem: ela existe pelo ideal, que alimenta `varIdeal`.
+
+### `originEntries/{originId}`
+
+Status de pagamento da origem no mês. É a linha que a aba Pagamento resolve
+primeiro: marcar "Cartão C6" como pago é dizer que tudo que saiu dele naquele
+mês está pago.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `name` | string | copiado do cadastro (o nome exibido vem do cadastro quando ele ainda existe) |
+| `status` | `EntryStatus` | nasce `Pendente` |
+
+Não tem valor próprio: o valor da linha é calculado na tela, somando os
+lançamentos variáveis daquela origem e os gastos fixos que saem dela.
 
 ### `expenses/{autoId}` (lançamento variável)
 
@@ -167,14 +209,16 @@ O gasto real da categoria não fica aqui: é a soma dos lançamentos.
 | `originId` | string ou null | id da origem escolhida; `null` quando não havia origem cadastrada |
 | `originName` | string | denormalizado, mantém o histórico legível se a origem for renomeada ou removida |
 
-O histórico do mês pode corrigir `amount` e `description` e reclassificar
-`categoryId`, `categoryName`, `originId` e `originName`, uma linha por vez ou em
-lote. `createdAt` e `week` nunca mudam: o mês do lançamento é a referência da
-fatura, e as regras do Firestore recusam a alteração dos dois.
+O modal de edição do histórico grava tudo de uma vez: `amount`, `description`,
+`categoryId`, `categoryName`, `originId`, `originName` e, quando a data muda,
+`createdAt` e `week` (a semana é sempre derivada da data). A reclassificação em
+lote continua tocando só a classificação. `createdAt` só é reescrito quando a
+data muda de dia, e leva a hora original junto, para os lançamentos do mesmo dia
+manterem a ordem de inclusão.
 
-Ao lançar em data passada, `createdAt` e `week` seguem a data escolhida, mas o
-lançamento continua no mês em aberto: o mês do app é a referência da fatura, não
-o calendário.
+O documento nunca muda de mês. Ao lançar (ou editar) com data de outro mês,
+`createdAt` e `week` seguem a data escolhida, mas o lançamento continua no mês em
+que foi feito: o mês do app é a referência da fatura, não o calendário.
 
 ## 6.8 Status de linha (`ENTRY_STATUSES`)
 
@@ -182,13 +226,21 @@ Ordem e significado, definidos em [`src/types.ts`](../src/types.ts):
 
 | Valor | Significado | Efeito na soma do mês |
 |---|---|---|
-| `Pendente` | ainda não resolvido | conta; **bloqueia a virada do mês** |
+| `Pendente` | ainda não resolvido | conta; **bloqueia a virada do mês** quando está em origem ou em gasto fixo |
 | `Parcialmente pago` | pago em parte | conta |
 | `Agendado/Automático` | débito programado | conta |
 | `Pago` | quitado | conta |
 | `Sem gasto` | não houve gasto no mês | conta (normalmente com valor zero) |
 | `Não disponível ainda` | a fatura ainda não fechou | conta |
 | `Ignorar` | deve ficar fora do custo somado | **não conta** no gasto; o ideal continua contando |
+
+Onde cada status vale:
+
+| Linha | Quem edita | O que o status faz |
+|---|---|---|
+| `originEntries` | aba Pagamento, card de cima | acompanha o pagamento da origem; `Pendente` segura a virada; `Ignorar` tira do gasto do mês tudo que saiu dela |
+| `fixedEntries` | aba Pagamento, card de baixo (e pela origem, em cascata) | acompanha o pagamento do gasto fixo; `Pendente` segura a virada; `Ignorar` tira o valor da linha do gasto |
+| `categoryEntries` | ninguém, desde que a aba Pagamento passou a trabalhar por origem | a linha existe pelo ideal; `Ignorar` marcado em meses antigos continua valendo no cálculo |
 
 `IGNORED_STATUS` exporta a constante `'Ignorar'`. Use a constante nos cálculos em
 vez da string solta. `STATUS_CLASS`, o mapa de status para classe de cor, também
@@ -203,12 +255,12 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 | Função | Quando roda | O que faz |
 |---|---|---|
 | `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês com as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
-| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries` e `categoryEntries` a partir dos cadastros ativos, tudo com status `Pendente` |
-| `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria só sai se não tiver lançamento) e cria linhas de cadastros que ainda não estão no mês |
-| `computeTotals` | a cada render das telas com dados do mês | soma ideais e gastos, ignorando linhas com status `Ignorar` no gasto |
-| `closeMonth` | botão "Virar mês" | recusa se houver `Pendente`, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
+| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries`, `categoryEntries` e `originEntries` a partir dos cadastros ativos, tudo com status `Pendente` |
+| `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês) e cria linhas de cadastros que ainda não estão no mês |
+| `computeTotals` | a cada render das telas com dados do mês | soma ideais e gastos, deixando de fora o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
+| `closeMonth` | botão "Virar mês" | recusa se houver `Pendente` em origem ou em gasto fixo, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
 | `advanceInstallments` | dentro de `closeMonth` | incrementa `installmentCurrent`; quem estava na última parcela é desativado |
-| `setOpenMonth` | ação "Mover o mês atual para..." | move o conteúdo do mês em aberto (linhas de fixos, linhas de categorias e lançamentos, com o mesmo id) para o mês escolhido, esvazia a origem, troca o `currentMonth` e reconcilia o destino com os cadastros. Com `replaceTarget`, apaga antes o que já existia no destino |
+| `setOpenMonth` | ação "Mover o mês atual para..." | move o conteúdo do mês em aberto (linhas de fixos, de categorias e de origens, mais os lançamentos, todos com o mesmo id) para o mês escolhido, esvazia o mês de partida, troca o `currentMonth` e reconcilia o destino com os cadastros. Com `replaceTarget`, apaga antes o que já existia no destino |
 
 ### Mover o mês de referência
 
@@ -220,7 +272,8 @@ apaga a origem. A ordem é proposital: se a rede cair no meio, o pior caso é o
 conteúdo aparecer nos dois meses, e nada se perde.
 
 Os cadastros (`fixedExpenses`, `categories` e `origins`) pertencem ao
-compartimento, não ao mês, então não são copiados: já valem para qualquer mês.
+compartimento, não ao mês, então não são copiados: já valem para qualquer mês. O
+que viaja é a linha de mês de cada um, com o status como estava.
 O `syncMonthEntries` do fim completa o destino com cadastro ativo que ainda não
 tinha linha.
 
@@ -230,18 +283,22 @@ O documento do mês de origem permanece, vazio: as regras não permitem apagar
 ## 6.10 Escritas em lote
 
 Operações que precisam ser atômicas usam `writeBatch`: criação do compartimento
-com a categoria padrão, seed do mês, reordenação de categorias (troca de
-`sortOrder` entre duas), troca da categoria padrão, fechamento do mês e
-reinicialização de mês.
+com a categoria padrão, seed do mês, reordenação de categorias e de origens
+(troca de `sortOrder` entre duas), troca da padrão, fechamento do mês,
+reinicialização de mês, reclassificação em lote de lançamentos e
+`setOriginStatus`, que grava o status da origem junto com o dos gastos fixos
+dela.
 
 ## 6.11 Índices e consultas
 
 O cadastro de origens é lido inteiro por `onSnapshot` (`useConfig`), sem filtro
 composto: o volume é de poucas dezenas de documentos.
 
-As consultas são simples de propósito. A única com filtro composto é a de
-`removeCategory` (`where('categoryId', '==', id)` mais `limit(1)` dentro de
-`expenses`), que o Firestore atende com índice de campo único. `listMonths` lê
+As consultas são simples de propósito. As únicas com filtro são as de
+desativação: `removeCategory` (`where('categoryId', '==', id)` mais `limit(1)`
+dentro de `expenses`) e `removeOrigin` (o mesmo com `originId`, em `expenses` e
+em `fixedEntries`, para saber se a linha do mês ainda tem uso). O Firestore
+atende as três com índice de campo único. `listMonths` lê
 todos os meses e ordena no cliente, porque `orderBy('__name__', 'desc')` não é
 suportado em key scan descendente e o volume é pequeno.
 

@@ -1,14 +1,29 @@
-import { addDoc, collection, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Origin, OriginColorKey, OriginIconKey } from '../types';
+import { expensesCol, fixedEntriesCol, isMonthOpen, originEntriesCol } from './months';
+import type { EntryStatus, Origin, OriginColorKey, OriginEntry, OriginIconKey } from '../types';
 
 // ---------------------------------------------------------------------------
 // Origens do gasto (cadastro do compartimento)
 //
-// A origem é o segundo eixo de classificação do lançamento variável, ao lado
-// da categoria: diz de onde o dinheiro saiu ("Cartão C6", "Pix"). Fica em
-// coleção própria porque o ciclo de vida é o do cadastro, não o do mês: a
-// origem não gera linha de mês nem entra no cálculo de totais.
+// A origem diz de onde o dinheiro saiu ("Cartão C6", "Pix"): classifica o
+// lançamento variável ao lado da categoria e acompanha o cadastro do gasto
+// fixo. O cadastro fica em coleção própria, do compartimento; o que pertence
+// ao mês é só o status, na linha `originEntries`, que a aba Pagamento usa para
+// acompanhar o que já foi pago em cada origem.
 // ---------------------------------------------------------------------------
 
 export function originsCol(compartmentId: string) {
@@ -23,10 +38,15 @@ export interface OriginInput {
   isDefault?: boolean;
 }
 
-export async function addOrigin(compartmentId: string, input: OriginInput): Promise<string> {
+export async function addOrigin(
+  compartmentId: string,
+  currentMonth: string,
+  input: OriginInput,
+): Promise<string> {
   const now = Date.now();
+  const name = input.name.trim();
   const ref = await addDoc(originsCol(compartmentId), {
-    name: input.name.trim(),
+    name,
     icon: input.icon,
     color: input.color,
     isDefault: input.isDefault ?? false,
@@ -34,20 +54,38 @@ export async function addOrigin(compartmentId: string, input: OriginInput): Prom
     active: true,
     createdAt: now,
   });
+  // Reflete no mês corrente, se ele estiver aberto: sem a linha, a origem nova
+  // só apareceria na aba Pagamento na próxima abertura do app.
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    await setDoc(doc(originEntriesCol(compartmentId, currentMonth), ref.id), {
+      name,
+      status: 'Pendente' satisfies EntryStatus,
+    } satisfies Omit<OriginEntry, 'id'>);
+  }
   return ref.id;
 }
 
-/** Grava nome, ícone e cor da origem (o papel de padrão não muda aqui). */
+/**
+ * Grava nome, ícone e cor da origem (o papel de padrão não muda aqui) e leva o
+ * nome novo para a linha do mês corrente em aberto.
+ */
 export async function saveOrigin(
   compartmentId: string,
+  currentMonth: string,
   id: string,
   input: OriginInput,
 ): Promise<void> {
+  const name = input.name.trim();
   await updateOrigin(compartmentId, id, {
-    name: input.name.trim(),
+    name,
     icon: input.icon,
     color: input.color,
   });
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    const entryRef = doc(originEntriesCol(compartmentId, currentMonth), id);
+    const entry = await getDoc(entryRef);
+    if (entry.exists()) await updateDoc(entryRef, { name });
+  }
 }
 
 export async function updateOrigin(
@@ -111,7 +149,28 @@ export async function setDefaultOrigin(
  * Desativa a origem. Os lançamentos que já a usaram continuam com o nome
  * gravado (`originName`), então o histórico segue legível; a origem apenas
  * some do seletor e dos filtros.
+ *
+ * A linha do mês em aberto some junto quando nada saiu dessa origem no mês:
+ * uma linha "Pendente" de origem que o usuário não vê mais no cadastro
+ * seguraria a virada do mês. Com gasto no mês, a linha fica até o mês virar,
+ * para o status do que já saiu dela continuar valendo.
  */
-export async function removeOrigin(compartmentId: string, id: string): Promise<void> {
+export async function removeOrigin(
+  compartmentId: string,
+  currentMonth: string,
+  id: string,
+): Promise<void> {
   await updateOrigin(compartmentId, id, { active: false });
+  if (!(await isMonthOpen(compartmentId, currentMonth))) return;
+  const [emLancamentos, emFixos] = await Promise.all([
+    getDocs(
+      query(expensesCol(compartmentId, currentMonth), where('originId', '==', id), limit(1)),
+    ),
+    getDocs(
+      query(fixedEntriesCol(compartmentId, currentMonth), where('originId', '==', id), limit(1)),
+    ),
+  ]);
+  if (emLancamentos.empty && emFixos.empty) {
+    await deleteDoc(doc(originEntriesCol(compartmentId, currentMonth), id));
+  }
 }
