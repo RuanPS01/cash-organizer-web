@@ -141,7 +141,7 @@ troca: a origem do gasto fixo vem do cadastro e muda na aba Gerenciar.
 
 **Edição do lançamento.** Cada linha de variável tem dois botões: o lápis abre o
 `ExpenseEditModal` (arquivo próprio, ao lado), com descrição, valor, data do
-gasto, categoria e origem em um formulário só; o X abre a confirmação de
+gasto, semana, categoria e origem em um formulário só; o X abre a confirmação de
 exclusão. Os
 selos de categoria e de origem são apenas leitura, e um lançamento sem origem
 mostra o selo apagado "sem origem". A data só vai para o patch quando muda de
@@ -165,13 +165,17 @@ com o mês em aberto.
 
 ### `components/ExpenseEditModal.tsx`
 
-`props: { expense, categories, origins, busy, saveError, onConfirm, onCancel }`
+`props: { expense, categories, origins, currentWeek, busy, saveError, onConfirm, onCancel }`
 
 Modal de edição completa de um lançamento variável: descrição, valor, data do
-gasto, categoria e origem, com um botão de salvar. Categoria ou origem que saiu
+gasto, semana do mês, categoria e origem, com um botão de salvar. O seletor de
+semana lista as quatro e marca a corrente com "(atual)"; ele existe porque a
+semana é contada pelo usuário, então um gasto lançado antes de virar a semana
+cai na anterior e precisa de conserto. Categoria ou origem que saiu
 do cadastro continua na lista enquanto o lançamento a usa, senão salvar qualquer
 campo trocaria a classificação dele. Devolve em `onConfirm` o patch do
-`updateVariableExpense`, com `date` presente só quando o dia muda.
+`updateVariableExpense`, com `date` presente só quando o dia muda e `week` só
+quando a semana muda.
 
 Saiu do `ExpenseHistory` para arquivo próprio quando o histórico passou de 790
 linhas (ver [10-manutencao-e-granularidade.md](10-manutencao-e-granularidade.md),

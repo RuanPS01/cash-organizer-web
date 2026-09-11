@@ -76,12 +76,19 @@ export type ExpenseClassification = {
 };
 
 /**
- * Edita um lançamento já gravado (histórico do mês): valor, descrição, data e
- * classificação. A semana não acompanha a data: ela é a semana do mês em que o
- * gasto foi lançado, contada pelo usuário. O mês do documento também não muda,
- * porque o mês do app é a referência da fatura e não o calendário.
+ * Edita um lançamento já gravado (histórico do mês): valor, descrição, data,
+ * semana e classificação. A semana não acompanha a data: ela é a semana do mês
+ * em que o gasto foi lançado, contada pelo usuário, e por isso tem campo
+ * próprio (é o conserto de quem lançou antes de virar a semana). O mês do
+ * documento não muda, porque o mês do app é a referência da fatura.
  */
-export type ExpenseEdit = Partial<{ amount: number; description: string; date: Date }> &
+export type ExpenseEdit = Partial<{
+  amount: number;
+  description: string;
+  date: Date;
+  /** Semana do mês (1 a 4). Corrigida à mão quando o gasto entrou na errada. */
+  week: number;
+}> &
   ExpenseClassification;
 
 export async function updateVariableExpense(
