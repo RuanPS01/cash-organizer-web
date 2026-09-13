@@ -6,7 +6,8 @@ import { MonthScreen } from './components/MonthScreen';
 import { ManageScreen } from './components/ManageScreen';
 import { BrandMark } from './components/shared';
 import { clearSession, restoreSession } from './services/session';
-import { setWeekCategory } from './services/compartments';
+import { setViewPrefs } from './services/compartments';
+import type { ViewPrefs } from './services/compartments';
 import { ensureMonth } from './services/months';
 import { useConfig, useMonthData } from './hooks/useMonthData';
 import type { Compartment } from './types';
@@ -18,17 +19,20 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
   const [currentMonth, setCurrentMonth] = useState(props.compartment.currentMonth);
   const { categories, fixedExpenses, origins } = useConfig(props.compartment.id);
   const monthData = useMonthData(props.compartment.id, currentMonth);
-  // A categoria acompanhada no card da semana vive aqui para não voltar à
-  // guardada no compartimento cada vez que o usuário troca de aba.
-  const [weekCategoryId, setWeekCategoryId] = useState<string | null>(
-    props.compartment.weekCategoryId ?? null,
-  );
+  // As preferências do card de estatísticas da aba Adicionar (aba aberta,
+  // categoria e origem acompanhadas) vivem aqui para não voltar às guardadas no
+  // compartimento cada vez que o usuário troca de tela.
+  const [prefs, setPrefs] = useState<ViewPrefs>({
+    weekCategoryId: props.compartment.weekCategoryId ?? null,
+    weekOriginId: props.compartment.weekOriginId ?? null,
+    addStatsTab: props.compartment.addStatsTab ?? 'month',
+  });
 
-  const changeWeekCategory = (categoryId: string) => {
-    setWeekCategoryId(categoryId);
+  const changePrefs = (patch: Partial<ViewPrefs>) => {
+    setPrefs((atual) => ({ ...atual, ...patch }));
     // É preferência de leitura: se a gravação falhar, a tela já está mostrando
-    // a categoria escolhida e a próxima abertura volta para a anterior.
-    setWeekCategory(props.compartment.id, categoryId).catch(() => undefined);
+    // a escolha e a próxima abertura volta para a anterior.
+    setViewPrefs(props.compartment.id, patch).catch(() => undefined);
   };
 
   return (
@@ -54,8 +58,8 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             categories={categories}
             origins={origins}
             data={monthData}
-            weekCategoryId={weekCategoryId}
-            onWeekCategoryChange={changeWeekCategory}
+            prefs={prefs}
+            onPrefsChange={changePrefs}
           />
         )}
         {view === 'stats' && (

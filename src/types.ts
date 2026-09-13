@@ -28,6 +28,15 @@ export const STATUS_CLASS: Record<EntryStatus, string> = {
   Ignorar: 'st-ignored',
 };
 
+/**
+ * Abas do card de estatísticas da tela Adicionar. A escolha do usuário fica
+ * gravada no compartimento, junto da categoria e da origem acompanhadas, para
+ * valer em qualquer aparelho que abrir o mesmo compartimento.
+ */
+export const ADD_STATS_TABS = ['month', 'category', 'origin'] as const;
+
+export type AddStatsTab = (typeof ADD_STATS_TABS)[number];
+
 /** Todos os valores monetários são armazenados em centavos (inteiro). */
 export interface Compartment {
   id: string;
@@ -41,6 +50,10 @@ export interface Compartment {
    * aparelho que abrir o mesmo compartimento.
    */
   weekCategoryId?: string | null;
+  /** Origem escolhida no mesmo card, pela mesma razão. */
+  weekOriginId?: string | null;
+  /** Aba aberta no card; ausente vale "month", que é o resumo do mês. */
+  addStatsTab?: AddStatsTab;
   createdAt: number;
 }
 

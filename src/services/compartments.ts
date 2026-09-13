@@ -2,7 +2,7 @@ import { collection, doc, getDoc, updateDoc, writeBatch } from 'firebase/firesto
 import { db } from '../firebase';
 import { hashPassword } from '../utils/crypto';
 import { monthKey } from '../utils/dates';
-import type { Compartment } from '../types';
+import type { AddStatsTab, Compartment } from '../types';
 
 /** Normaliza o nome do compartimento para usar como id do documento. */
 export function slugify(name: string): string {
@@ -41,15 +41,24 @@ export async function openCompartment(name: string, password: string): Promise<O
 }
 
 /**
- * Guarda a categoria que o card de acompanhamento da aba Adicionar está
- * mostrando. Fica no compartimento, e não no dispositivo, para a escolha valer
- * em qualquer aparelho que abrir o mesmo compartimento.
+ * Preferências de leitura do card de estatísticas da aba Adicionar: a
+ * categoria e a origem acompanhadas e a aba aberta. Ficam no compartimento, e
+ * não no dispositivo, para a escolha valer em qualquer aparelho que abrir o
+ * mesmo compartimento.
  */
-export async function setWeekCategory(
+// Declarado com `type` e não `interface` de propósito: o SDK exige um payload
+// com assinatura de índice, e só o alias de tipo ganha a implícita.
+export type ViewPrefs = {
+  weekCategoryId: string | null;
+  weekOriginId: string | null;
+  addStatsTab: AddStatsTab;
+};
+
+export async function setViewPrefs(
   compartmentId: string,
-  categoryId: string | null,
+  patch: Partial<ViewPrefs>,
 ): Promise<void> {
-  await updateDoc(compartmentRef(compartmentId), { weekCategoryId: categoryId });
+  await updateDoc(compartmentRef(compartmentId), patch);
 }
 
 /** Cria o compartimento junto com a categoria padrão "Avulso". */

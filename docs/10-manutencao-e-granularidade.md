@@ -6,22 +6,24 @@ Referência de setembro de 2026 (linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 2022 |
+| `styles.css` | 2018 |
 | `components/ExpenseHistory.tsx` | 664 |
-| `components/MonthScreen.tsx` | 521 |
+| `components/MonthScreen.tsx` | 575 |
+| `services/months.ts` | 548 |
 | `components/ManageScreen.tsx` | 503 |
-| `services/months.ts` | 496 |
-| `components/AddExpenseScreen.tsx` | 424 |
-| `services/expenses.ts` | 430 |
-| `components/ManageOrigins.tsx` | 284 |
+| `services/expenses.ts` | 452 |
+| `components/ManageOrigins.tsx` | 320 |
+| `components/AddStatsCard.tsx` | 315 |
+| `types.ts` | 278 |
+| `components/AddExpenseScreen.tsx` | 269 |
 | `components/shared.tsx` | 240 |
-| `types.ts` | 230 |
-| `services/origins.ts` | 176 |
-| `App.tsx` | 162 |
+| `services/origins.ts` | 183 |
+| `App.tsx` | 166 |
 | `components/ExpenseEditModal.tsx` | 161 |
+| `components/StatsView.tsx` | 154 |
 | demais | menos de 125 cada |
 
-O projeto inteiro tem cerca de 7,2 mil linhas. Esse tamanho é uma vantagem: dá para
+O projeto inteiro tem cerca de 7,6 mil linhas. Esse tamanho é uma vantagem: dá para
 ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 ## 10.2 Quando criar um arquivo novo
@@ -43,7 +45,10 @@ Sinais de que um arquivo deveria ser dividido: mais de uma tela usando um
 componente auxiliar privado, ou uma tela passando de 500 linhas com blocos
 independentes. Foi o que tirou o `ExpenseEditModal` de dentro do
 `ExpenseHistory`: o modal é um bloco fechado, com estado e validação próprios, e
-o histórico já passava das 650 linhas sem ele.
+o histórico já passava das 650 linhas sem ele. Pelo mesmo motivo o
+`AddStatsCard` saiu do `AddExpenseScreen` quando o card ganhou abas: o card tem
+estado próprio (aba, virada de semana) e o formulário de novo gasto voltou a
+caber em pouco mais de 250 linhas.
 
 ## 10.3 Evitar duplicata
 

@@ -10,9 +10,10 @@ que já existe é o erro mais comum neste repositório.
 Não é uma tela: é o container. Cuida de restaurar a sessão, exibir o
 `LoginScreen` quando não há compartimento, e montar o `Shell` (topbar com marca e
 botão Sair, área de conteúdo e navbar com quatro abas). Guarda `view`,
-`currentMonth` e a categoria acompanhada no card da semana (que nasce do
-compartimento e é gravada por `setWeekCategory`), e assina `useConfig` e
-`useMonthData` para repassar às telas.
+`currentMonth` e as preferências do card de estatísticas da aba Adicionar (aba
+aberta, categoria e origem acompanhadas, que nascem do compartimento e são
+gravadas por `setViewPrefs`), e assina `useConfig` e `useMonthData` para
+repassar às telas.
 
 ### `LoginScreen`
 
@@ -25,7 +26,7 @@ sessão, garante o mês corrente e chama `onEnter`.
 
 ### `AddExpenseScreen` (aba Adicionar)
 
-`props: { compartmentId, currentMonth, categories, origins, data, weekCategoryId, onWeekCategoryChange }`
+`props: { compartmentId, currentMonth, categories, origins, data, prefs, onPrefsChange }`
 
 Tela principal. Contém:
 
@@ -38,11 +39,7 @@ Tela principal. Contém:
 - linha de chips de **origem** (de onde o dinheiro saiu), com o glifo colorido
   de cada origem e a origem padrão pré-selecionada; a linha inteira some quando
   não há origem cadastrada;
-- card de acompanhamento da semana: título com a semana corrente do mês, botão
-  "Virar semana" (com confirmação), aviso de domingo quando a semana ainda não
-  virou no dia, seletor da categoria acompanhada e, para ela, restante da semana
-  e do mês com as barras de progresso, mais os totais de fixos e variáveis;
-- `MonthSummaryCard`;
+- `AddStatsCard`, o card de estatísticas com as três abas;
 - `ExpenseHistory` no rodapé, com o histórico do mês.
 
 O botão de calendário é um `div` com aparência de botão e um `input[type=date]`
@@ -121,15 +118,42 @@ campo vai dentro de um invólucro: `<span className="field"><input …/></span>`
 novo, use o invólucro em vez de estilizar o controle direto. Ver
 [03-identidade-visual.md](03-identidade-visual.md), seção 3.5.
 
+### `components/AddStatsCard.tsx`
+
+`props: { compartmentId, currentMonth, categories, origins, data, prefs, onPrefsChange }`
+
+Card de estatísticas da aba Adicionar, em um card só com três abas:
+
+- **Resumo do mês** (padrão): o `MonthSummaryCard` no modo `embedded`;
+- **Gasto por Categoria, Semana N**: seletor da categoria acompanhada e, para
+  ela, restante da semana e do mês com as barras;
+- **Gasto por Origem, Semana N**: o mesmo para a origem acompanhada. O gasto do
+  mês é o total da aba Pagamento (fixos da origem mais lançamentos), e a semana
+  conta só os lançamentos, porque gasto fixo é do mês inteiro; quando a origem
+  tem fixos, uma linha abaixo das barras explica a diferença. A aba some quando
+  não há origem cadastrada, e a leitura cai no resumo.
+
+Fora das abas ficam o título com a semana corrente, o botão "Virar semana" (com
+confirmação, em `ConfirmModal` irmão do card) e o aviso de domingo: o lembrete
+de virar a semana não pode depender de o usuário estar na aba certa.
+
+A aba aberta e o que cada uma acompanha vêm de `prefs` e voltam por
+`onPrefsChange`, que o `App` grava no compartimento com `setViewPrefs`: a tela
+reabre como o usuário deixou, em qualquer aparelho. O bloco de restante da
+semana e do mês é o mesmo para categoria e origem (`AcompanhamentoRows`,
+interno), porque os dois comparam gasto contra ideal.
+
 ### `components/MonthSummaryCard.tsx`
 
-`props: { viewMonth, data }`
+`props: { viewMonth, data, embedded? }`
 
 Card "Resumo do mês (total gasto x ideal)": uma linha só, a do mês visualizado,
 com gasto, ideal, percentual, barra e a descrição com fixos, variáveis e o
 restante (ou o excedido, em vermelho). Mês fechado usa os totais gravados; o mês
-em aberto é calculado ao vivo. Reutilizado pela aba Adicionar e pela aba
-Estatísticas: se precisar dele em outro lugar, reutilize em vez de copiar.
+em aberto é calculado ao vivo. Reutilizado pela aba Estatísticas (como card) e
+pelo `AddStatsCard` (com `embedded`, que devolve só o conteúdo, sem o card e sem
+o título, porque card dentro de card teria moldura dobrada). Se precisar dele em
+outro lugar, reutilize em vez de copiar.
 
 ### `components/ExpenseHistory.tsx`
 
@@ -248,8 +272,8 @@ Antes de escrever uma escrita nova, confira se ela já existe.
 
 `slugify`, `compartmentRef`, `fetchCompartment`, `openCompartment` (devolve
 `ok`, `not-found` ou `wrong-password`), `createCompartment` (já cria a categoria
-padrão "Avulso"), `setWeekCategory` (guarda a categoria acompanhada no card da
-semana).
+padrão "Avulso"), `setViewPrefs` (grava um patch de `ViewPrefs`: a categoria e a
+origem acompanhadas e a aba aberta no card de estatísticas da aba Adicionar).
 
 ### `services/session.ts`
 
