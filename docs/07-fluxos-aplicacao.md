@@ -122,11 +122,17 @@ Categoria: nome e ideal editáveis no lugar, setas para reordenar (a ordem vale
 para os chips da tela de novo gasto), "tornar padrão" para transferir o papel da
 categoria pré-selecionada e X para remover.
 
-Origem do gasto: modal com nome, grade de ícones (Pix, transferência, cartão,
-dinheiro, investimento, débito automático e boleto) e fileira de tons, que mostra
-o ícone escolhido em cada cor. A lista tem "tornar padrão", setas de ordem e
+Origem do gasto: modal com nome, gasto ideal do mês, grade de ícones (Pix,
+transferência, cartão, dinheiro, investimento, débito automático e boleto) e
+fileira de tons, que mostra o ícone escolhido em cada cor. O ideal também é
+editável direto na lista, que ainda tem "tornar padrão", setas de ordem e
 remoção. A primeira origem criada já vira a padrão. Remover desativa: os
 lançamentos que já usaram a origem seguem com o nome dela no histórico.
+
+O ideal da origem funciona como o da categoria: vale para todo mês, é copiado
+para a linha do mês em aberto e alimenta uma comparação própria na aba
+Estatísticas. Ele não entra no ideal do mês, porque origem e categoria são dois
+eixos do mesmo dinheiro e somar os dois contaria cada gasto duas vezes.
 
 Remoção é sempre desativação (`active: false`), com efeito no mês em aberto:
 
@@ -141,12 +147,15 @@ Meses fechados nunca são alterados por mudança de cadastro.
 A aba tem dois cards, na ordem em que o mês é resolvido:
 
 1. **Origens do gasto.** Uma linha por origem cadastrada, na ordem do cadastro,
-   com o total do mês daquela origem (os gastos fixos dela mais a soma dos
-   lançamentos variáveis, as duas parcelas visíveis ao lado) e o status. O total
-   é o valor da fatura: gasto fixo debitado no cartão entra na conta do cartão.
-   É a pergunta "esta fatura já foi paga?". Origem cadastrada aparece na tabela
-   mesmo antes de ter linha no mês, com o status `Pendente` que ela ganha ao
-   nascer; a linha é criada na primeira troca de status.
+   com o gasto ideal do mês, o total do mês daquela origem (os gastos fixos dela
+   mais a soma dos lançamentos variáveis, as duas parcelas visíveis ao lado) e o
+   status. O total é o valor da fatura: gasto fixo debitado no cartão entra na
+   conta do cartão. É a pergunta "esta fatura já foi paga?". O ideal é editável
+   no lugar, como o do gasto fixo, e muda só o mês visualizado: o cadastro segue
+   com o ideal que vale para os próximos meses. Origem cadastrada aparece na
+   tabela mesmo antes de ter linha no mês, com o status `Pendente` e o ideal do
+   cadastro, que é o que ela ganha ao nascer; a linha é criada na primeira
+   edição de status ou de ideal.
 2. **Gastos fixos.** Uma linha por gasto fixo, com ideal e valor editáveis no
    lugar, o selo da origem e o status.
 
@@ -154,9 +163,9 @@ Trocar o status de uma origem aplica o mesmo status aos gastos fixos que saem
 dela, em uma gravação só. Depois disso, cada gasto fixo ainda pode ser ajustado
 na tabela de baixo: a cascata é um atalho, não uma amarra.
 
-Lançamento sem origem aparece em uma linha "Sem origem", só de leitura: sem
-origem não há onde guardar status. Dar uma origem a ele no histórico o leva para
-a linha da origem escolhida.
+Lançamento sem origem aparece em uma linha "Sem origem", só de leitura e sem
+ideal: sem origem não há onde guardar status nem planejado. Dar uma origem a ele
+no histórico o leva para a linha da origem escolhida.
 
 Não existe card de categorias na aba: a categoria é orçamento (ideal e
 estatísticas), não forma de pagamento. O ideal por categoria é editado na tela
@@ -224,6 +233,12 @@ Parcelas não avançam: mover a referência é uma correção, não uma virada d
   vermelho). Mês fechado usa os totais gravados. O mesmo card aparece na aba
   Adicionar, com o mês em aberto.
 - **Categorias do mês**: gasto por categoria com o ideal e o percentual.
+- **Origens do mês**: gasto por origem com o ideal e o percentual, no mesmo
+  formato das categorias. O gasto da origem é o mesmo total da aba Pagamento
+  (os gastos fixos dela mais os lançamentos variáveis), e os dois blocos não se
+  somam: são o mesmo dinheiro visto por eixos diferentes (no que se gastou e
+  por onde se pagou). Mês fechado antes de existir o acompanhamento por origem
+  não tem a lista, e a seção diz isso.
 - **Semanas**: as quatro semanas do mês visualizado, cada uma com o gasto contra
   o ideal semanal (ideal das variáveis dividido por 4). A semana corrente ganha
   o selo "atual" enquanto o mês está em aberto.

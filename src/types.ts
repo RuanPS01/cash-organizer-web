@@ -132,6 +132,12 @@ export interface Origin {
   name: string;
   icon: OriginIconKey;
   color: OriginColorKey;
+  /**
+   * Gasto ideal do mês para a origem, em centavos: o quanto se planeja gastar
+   * naquela forma de pagamento. Opcional porque a origem cadastrada antes do
+   * campo existir não tem a chave; a leitura trata a ausência como zero.
+   */
+  idealAmount?: number;
   /** Origem padrão: pré-selecionada ao adicionar gasto (só uma por compartimento). */
   isDefault: boolean;
   /** Posição na listagem/chips (menor primeiro; ausente usa createdAt). */
@@ -148,12 +154,33 @@ export interface CategoryTotal {
   ignored?: boolean;
 }
 
+/**
+ * Uso de uma origem no mês: o que saiu dela (gastos fixos mais lançamentos
+ * variáveis, o mesmo total que a aba Pagamento mostra como a fatura da
+ * origem) contra o ideal dela. Não entra no ideal nem no gasto do mês, que
+ * são a soma de fixos e categorias: origem é o outro eixo do mesmo dinheiro,
+ * e somar os dois contaria cada real duas vezes.
+ */
+export interface OriginTotal {
+  name: string;
+  ideal: number;
+  actual: number;
+  /** Origem com status "Ignorar": o gasto dela fica fora do total do mês. */
+  ignored?: boolean;
+}
+
 export interface MonthTotals {
   fixedIdeal: number;
   fixedActual: number;
   varIdeal: number;
   varActual: number;
   byCategory: Record<string, CategoryTotal>;
+  /**
+   * Uso por origem. Opcional porque o mês fechado antes deste campo existir
+   * gravou os totais sem ele; a tela de estatísticas trata a ausência como
+   * "sem dados por origem neste mês".
+   */
+  byOrigin?: Record<string, OriginTotal>;
 }
 
 export interface MonthDoc {
@@ -192,12 +219,20 @@ export interface FixedEntry {
 
 /**
  * Linha de origem do gasto dentro de um mês: é por ela que a aba Pagamento
- * acompanha o que já foi pago em cada forma de pagamento. Não tem valor
- * próprio, porque o valor é a soma do que saiu daquela origem no mês.
+ * acompanha o que já foi pago em cada forma de pagamento. O gasto não fica
+ * aqui, porque é a soma do que saiu daquela origem no mês; o que a linha
+ * guarda, além do status, é o ideal do mês, que é planejamento e não soma.
  */
 export interface OriginEntry {
   id: string;
   name: string;
+  /**
+   * Gasto ideal do mês para a origem, copiado do cadastro e editável na aba
+   * Pagamento. Opcional porque a linha criada antes do campo existir não tem a
+   * chave: o `syncMonthEntries` a completa uma vez, e até lá a leitura trata a
+   * ausência como zero.
+   */
+  idealAmount?: number;
   status: EntryStatus;
 }
 

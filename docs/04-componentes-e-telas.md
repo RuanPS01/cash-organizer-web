@@ -59,17 +59,19 @@ O mesmo componente serve às duas abas. Cabeçalho com navegação de mês
 (anterior e próximo) e selo de aberto ou fechado. Com `mode="stats"` delega para
 `StatsView`. Com `mode="payment"` mostra, nesta ordem:
 
-- tabela de **origens** (nome com glifo, fixos, variáveis, total, status): uma
-  linha por origem **cadastrada**, na ordem do cadastro, mais as origens que
-  saíram do cadastro e ainda têm linha no mês. A lista vem do cadastro e não das
-  linhas do mês, que são só onde o status mora: origem recém criada apareceria
-  fora da tabela se dependesse da linha, e sem linha ainda o status exibido é
-  `Pendente`, que é com o que ela nasce. O total é a soma de fixos e variáveis,
-  que é o valor da fatura daquela origem no mês, e em telas estreitas as duas
-  parcelas descem para a sublinha `.cell-sub`. Trocar o status aplica o mesmo
-  status aos gastos fixos dela e grava a linha do mês, criando-a se ainda não
-  existir (`setOriginStatus`). Lançamento sem origem vira uma linha só de
-  leitura, porque não há onde guardar status;
+- tabela de **origens** (nome com glifo, ideal, fixos, variáveis, total,
+  status): uma linha por origem **cadastrada**, na ordem do cadastro, mais as
+  origens que saíram do cadastro e ainda têm linha no mês. A lista vem do cadastro e não das
+  linhas do mês, que são onde o status e o ideal moram: origem recém criada
+  apareceria fora da tabela se dependesse da linha, e sem linha ainda o status
+  exibido é `Pendente` e o ideal é o do cadastro, que é o que ela vai receber ao
+  nascer. O total é a soma de fixos e variáveis, que é o valor da fatura daquela
+  origem no mês, e em telas estreitas o ideal e as duas parcelas descem para a
+  sublinha `.cell-sub`. O ideal é editável no lugar e muda só a linha do mês
+  (`setOriginIdeal`), como o ideal do gasto fixo logo abaixo. Trocar o status
+  aplica o mesmo status aos gastos fixos dela e grava a linha do mês, criando-a
+  se ainda não existir (`setOriginStatus`). Lançamento sem origem vira uma linha
+  só de leitura, sem ideal, porque não há onde guardar status nem planejado;
 - tabela de gastos fixos (nome, ideal, valor, status), com ideal e valor
   editáveis no lugar e o selo da origem ao lado do nome (o glifo e o tom vêm do
   cadastro recebido em `origins`; a linha do mês guarda só o id e o nome);
@@ -92,7 +94,8 @@ Cadastro de gastos fixos (com modal completo: nome, descrição, valor, ideal,
 origem e parcela; a lista mostra o selo da origem ao lado do nome) e de
 categorias (nome editável, ideal editável, reordenação com as setas, "tornar
 padrão" e remoção). Mostra totais de cadastro por seção. A terceira seção, de
-origens do gasto, é delegada ao `ManageOrigins`.
+origens do gasto (com o gasto ideal do mês de cada uma), é delegada ao
+`ManageOrigins`.
 
 ## 4.2 Componentes reutilizáveis
 
@@ -186,9 +189,11 @@ seção 10.2).
 `props: { compartmentId, currentMonth, origins }`
 
 Seção "Origens do gasto" da tela Gerenciar mais o modal de criação e edição
-(nome, grade de ícones e fileira de tons, com prévia). A primeira origem criada
-já nasce como padrão. Criar, renomear e remover refletem na linha do mês em
-aberto (é ela que a aba Pagamento lista), daí o `currentMonth` nas props. Modais ficam fora do `.card` de propósito: `clip-path`
+(nome, gasto ideal do mês, grade de ícones e fileira de tons, com prévia). A
+lista mostra o ideal de cada origem, editável no lugar, e o total dos ideais na
+seção. A primeira origem criada já nasce como padrão. Criar, renomear, mudar o
+ideal e remover refletem na linha do mês em aberto (é ela que a aba Pagamento
+lista), daí o `currentMonth` nas props. Modais ficam fora do `.card` de propósito: `clip-path`
 recorta até descendente `position: fixed`.
 
 ### `components/OriginIcon.tsx`
@@ -206,9 +211,14 @@ removida do cadastro), cai na carteira em ouro.
 `props: { viewMonth, data }`
 
 Subtela de estatísticas: o resumo do mês, o uso por categoria no mês visualizado
-(com selo "ignorado" quando a categoria está fora da soma) e as quatro semanas
-do próprio mês, cada uma com o gasto contra o ideal semanal e o selo "atual" na
-semana corrente, quando o mês está em aberto.
+(com selo "ignorado" quando a categoria está fora da soma), o uso por origem no
+mesmo formato (gasto contra o ideal da origem, com o mesmo selo "ignorado") e as
+quatro semanas do próprio mês, cada uma com o gasto contra o ideal semanal e o
+selo "atual" na semana corrente, quando o mês está em aberto.
+
+O gasto da origem é o mesmo total da aba Pagamento (fixos mais variáveis dela),
+para as duas telas não discordarem. Mês fechado antes de `byOrigin` existir não
+tem a lista, e a seção diz isso em vez de fingir um mês sem origens.
 
 ### `StatusSelect` (interno do `MonthScreen`)
 
@@ -251,7 +261,7 @@ semana).
 `expensesCol`, `isMonthOpen`, `ensureMonth`, `setOpenMonth` (move o conteúdo do
 mês em aberto para outro mês e troca a referência), `computeTotals` (recebe
 também as linhas de origem, porque origem ignorada tira do gasto tudo que saiu
-dela), `closeMonth`, `monthWeek` (semana corrente do mês, 1 quando o campo não
+dela, e devolve o uso por categoria e por origem), `closeMonth`, `monthWeek` (semana corrente do mês, 1 quando o campo não
 existe) e `setCurrentWeek` (vira a semana e marca quando isso aconteceu).
 
 ### `services/origins.ts`
@@ -259,8 +269,9 @@ existe) e `setCurrentWeek` (vira a semana e marca quando isso aconteceu).
 `originsCol`, `addOrigin`, `saveOrigin`, `updateOrigin`, `moveOrigin`,
 `setDefaultOrigin`, `removeOrigin` (desativa; o histórico segue com o nome
 gravado no lançamento). `addOrigin`, `saveOrigin` e `removeOrigin` recebem o
-`currentMonth` e mantêm a linha `originEntries` do mês em aberto em dia; a
-remoção só apaga a linha quando nada saiu daquela origem no mês.
+`currentMonth` e mantêm a linha `originEntries` do mês em aberto em dia (nome e
+gasto ideal); a remoção só apaga a linha quando nada saiu daquela origem no
+mês. O `OriginInput` leva nome, ícone, cor e `idealAmount`.
 
 ### `services/expenses.ts`
 
@@ -274,7 +285,9 @@ origem inclusive, e refletem na linha do mês em aberto), `updateFixedExpense`,
 Categorias: `addCategory`, `updateCategory`, `renameCategory`,
 `saveCategoryIdeal`, `moveCategory`, `setDefaultCategory`, `removeCategory`.
 Linhas do mês: `updateFixedEntry`, `updateCategoryEntry`, `setOriginStatus`
-(status da origem mais o mesmo status nos gastos fixos dela, em um `writeBatch`).
+(status da origem mais o mesmo status nos gastos fixos dela, em um `writeBatch`)
+e `setOriginIdeal` (só o ideal do mês da origem). Os dois gravam a linha da
+origem inteira, porque ela pode ainda não existir.
 
 ## 4.5 Utilitários
 

@@ -402,15 +402,26 @@ export async function updateCategoryEntry(
 }
 
 /**
+ * Conteúdo completo da linha de origem do mês. A linha é sempre gravada
+ * inteira (`set`), e não alterada: a aba Pagamento lista as origens do
+ * cadastro, então a primeira edição pode ser justamente o que cria a linha do
+ * mês (mês reconciliado antes de a origem existir, por exemplo). A tela tem os
+ * três campos em mãos, então gravar tudo não perde nada, e o `?? 0` garante
+ * que o ideal ausente de uma linha antiga não vire `undefined` na escrita.
+ */
+function originEntryData(origin: OriginEntry): Omit<OriginEntry, 'id'> {
+  return {
+    name: origin.name,
+    idealAmount: origin.idealAmount ?? 0,
+    status: origin.status,
+  };
+}
+
+/**
  * Define o status da origem no mês e repassa o mesmo status aos gastos fixos
  * que saem dela (cada fixo ainda pode ser ajustado depois, na tabela dele).
  * Os dois vão no mesmo `writeBatch`: marcar a origem como paga e deixar os
  * fixos dela pendentes seria um estado que a tela mostraria como meio pago.
- *
- * A linha da origem é gravada inteira (`set`), não alterada: a tela lista as
- * origens do cadastro, então a primeira troca de status pode ser justamente o
- * que cria a linha do mês (mês reconciliado antes de a origem existir, por
- * exemplo). A linha só tem nome e status, então não há nada a preservar.
  */
 export async function setOriginStatus(
   compartmentId: string,
@@ -419,12 +430,23 @@ export async function setOriginStatus(
   fixedEntryIds: string[],
 ): Promise<void> {
   const batch = writeBatch(db);
-  batch.set(doc(originEntriesCol(compartmentId, ym), origin.id), {
-    name: origin.name,
-    status: origin.status,
-  } satisfies Omit<OriginEntry, 'id'>);
+  batch.set(doc(originEntriesCol(compartmentId, ym), origin.id), originEntryData(origin));
   for (const id of fixedEntryIds) {
     batch.update(doc(fixedEntriesCol(compartmentId, ym), id), { status: origin.status });
   }
   await batch.commit();
+}
+
+/**
+ * Define o gasto ideal da origem no mês (a linha recebida já vem com o valor
+ * novo). Só a linha do mês muda, como acontece com o ideal do gasto fixo
+ * editado na aba Pagamento: o cadastro segue com o ideal que vale para os
+ * próximos meses e é editado na tela Gerenciar.
+ */
+export async function setOriginIdeal(
+  compartmentId: string,
+  ym: string,
+  origin: OriginEntry,
+): Promise<void> {
+  await setDoc(doc(originEntriesCol(compartmentId, ym), origin.id), originEntryData(origin));
 }
