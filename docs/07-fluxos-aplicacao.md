@@ -47,17 +47,35 @@ sessão e cai no login. Enquanto isso, a tela mostra "Abrindo seu compartimento�
    e `week` vindo da semana corrente do mês, e mostra o flash de confirmação por
    2,5 segundos.
 
-O card abaixo do formulário atualiza sozinho (dados em tempo real) e mostra a
-semana corrente do mês, quanto resta na semana e no mês da categoria
-acompanhada, e os totais de fixos e variáveis. A categoria acompanhada tem
-seletor próprio, independente do chip que escolhe onde o gasto entra, e fica
-guardada no compartimento: quem abre em outro aparelho vê a mesma.
+### Card de estatísticas
+
+O card abaixo do formulário atualiza sozinho (dados em tempo real) e traz três
+abas:
+
+1. **Resumo do mês** (a padrão): o total gasto contra o ideal do mês, com fixos,
+   variáveis e o restante. É o mesmo card da aba Estatísticas, embutido aqui.
+2. **Gasto por Categoria, Semana N**: quanto resta na semana e no mês da
+   categoria acompanhada.
+3. **Gasto por Origem, Semana N**: o mesmo para a origem acompanhada. O gasto do
+   mês é o total que a aba Pagamento mostra para ela (os gastos fixos dela mais
+   os lançamentos), e a semana conta só os lançamentos, porque gasto fixo é do
+   mês inteiro e não tem semana; quando a origem tem fixos, uma linha explica a
+   diferença. Sem origem cadastrada a aba não aparece.
+
+A categoria e a origem acompanhadas têm seletor próprio, independente dos chips
+que escolhem onde o gasto entra. A aba aberta e os dois seletores ficam
+guardados no compartimento: a tela reabre como foi deixada, em qualquer
+aparelho.
+
+A semana corrente, o botão "Virar semana" e o aviso de domingo ficam fora das
+abas, no topo do card: o lembrete de virar a semana não pode depender de o
+usuário estar na aba certa.
 
 ### Virar a semana
 
 A semana do mês (1 a 4) é contada pelo usuário, não pelo dia do calendário. O
-mês nasce na semana 1 e só avança quando ele toca em "Virar semana", no card de
-acompanhamento, e confirma. Os gastos já lançados ficam na semana em que
+mês nasce na semana 1 e só avança quando ele toca em "Virar semana", no topo do
+card de estatísticas, e confirma. Os gastos já lançados ficam na semana em que
 entraram; só os próximos vão para a semana nova. Na semana 4 o botão fica
 desligado, porque a semana volta para 1 na virada do mês.
 
@@ -67,7 +85,7 @@ reversível, virar não.
 
 ## 7.3.1 Histórico do mês (aba Adicionar)
 
-No rodapé da aba Adicionar, abaixo dos dois cards de estatística, fica o
+No rodapé da aba Adicionar, abaixo do card de estatísticas, fica o
 histórico do mês em duas subabas:
 
 - **Variáveis** (padrão): todos os lançamentos do mês, do mais recente para o

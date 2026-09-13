@@ -45,6 +45,7 @@ src/
     MonthScreen.tsx         mês corrente: pagamento e estatísticas
     ManageScreen.tsx        cadastro de fixos e categorias
     StatsView.tsx           subtela de estatísticas usada pelo MonthScreen
+    AddStatsCard.tsx        card de estatísticas com abas da tela Adicionar
     MonthSummaryCard.tsx    card de resumo do mês (reutilizado)
     ExpenseHistory.tsx      histórico do mês (subabas variáveis e fixos)
     ManageOrigins.tsx       cadastro de origens do gasto e modal de ícone
@@ -53,7 +54,7 @@ src/
   hooks/
     useMonthData.ts         useMonthData e useConfig (assinaturas em tempo real)
   services/
-    compartments.ts         criar, abrir, buscar e preferência do compartimento
+    compartments.ts         criar, abrir, buscar e preferências do compartimento
     session.ts              sessão no localStorage
     months.ts               ciclo de vida do mês, semana corrente e totais
     expenses.ts             lançamentos, gastos fixos, categorias e linhas do mês

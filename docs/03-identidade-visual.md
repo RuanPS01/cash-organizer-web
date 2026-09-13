@@ -195,7 +195,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 
 | Elemento | Classe base | Variantes |
 |---|---|---|
-| Subaba de card | `.subtab` | `.active` (moldura de ouro e brilho) |
+| Subaba de card | `.subtab` | `.active` (moldura de ouro e brilho), `.stacked` (rótulo em duas linhas, com `.subtab-week`) |
 | Caixa de marcação | `.check-box` | `.checked` (ouro preenchido com o ícone Check) |
 | Barra de ação em lote | `.bulk-bar` | |
 | Escolha de ícone | `.icon-option` | `.selected` |
@@ -204,7 +204,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Botão de texto discreto | `.mini-btn` | usado em "tornar padrão" |
 | Campo | `.field` | `.plate` (placa de valor), `.inline` (edição em tabela) |
 | Chip de categoria ou de origem | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada); em modal a fileira quebra de linha em vez de rolar. O peso da fonte é o mesmo nos dois estados, senão o chip selecionado fica mais largo e a fileira se mexe a cada toque |
-| Card | `.card` | `.table-card`, `.totals-card`, `.info` (com `.info-head`, `.info-category` e `.week-hint` no card da semana) |
+| Card | `.card` | `.table-card`, `.totals-card`, `.info` (com `.info-head`, `.info-category` e `.week-hint` no card de estatísticas da aba Adicionar) |
 | Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status`, `.week` (semana corrente), `.empty` (sem origem) |
 | Glifo de origem | `.origin-icon` | tons `.oc-*`; `.origin-cell` põe o glifo ao lado do nome na tabela do mês |
 | Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-text`, `.history-meta`, `.history-value`, `.history-actions` (lápis mais excluir), `.history-filters`, `.history-summary` |

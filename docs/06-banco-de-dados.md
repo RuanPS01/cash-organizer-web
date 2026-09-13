@@ -42,7 +42,9 @@ uma comparação direta de ids.
 | `name` | string | nome digitado, com trim |
 | `passwordHash` | string | SHA-256 de `${id}::${senha}` em hexadecimal |
 | `currentMonth` | string | `YYYY-MM` do mês em aberto |
-| `weekCategoryId` | string ou null | categoria acompanhada no card da semana da aba Adicionar. Fica aqui, e não no dispositivo, para a escolha valer em qualquer aparelho |
+| `weekCategoryId` | string ou null | categoria acompanhada no card de estatísticas da aba Adicionar. Fica aqui, e não no dispositivo, para a escolha valer em qualquer aparelho |
+| `weekOriginId` | string ou null | origem acompanhada no mesmo card, pela mesma razão |
+| `addStatsTab` | `'month'`, `'category'` ou `'origin'` | aba aberta no mesmo card; ausente vale `month`, o resumo do mês |
 | `createdAt` | number | ms |
 
 A senha em texto puro nunca sai do dispositivo. O id entra como sal, então o
@@ -129,8 +131,10 @@ e os lançamentos antigos seguem com `originName`.
 >   mês. Sem ela a aba Pagamento não lista nem grava status de origem;
 > - `createdAt` e `week` no `update` de `expenses`, que antes eram recusados. Sem
 >   isso a edição do lançamento funciona em tudo, menos quando a data muda;
-> - `weekCategoryId` no `update` de `compartments`, que só aceitava
->   `currentMonth`. Sem isso a categoria acompanhada não fica guardada;
+> - `weekCategoryId`, `weekOriginId` e `addStatsTab` no `update` de
+>   `compartments`, que só aceitava `currentMonth`. São as preferências de
+>   leitura do card de estatísticas da aba Adicionar, e sem elas a escolha do
+>   usuário não fica guardada;
 > - `currentWeek` no documento do mês, validado de 1 a 4. Sem isso a virada de
 >   semana é recusada;
 > - `idealAmount` em `origins` e em `months/{ym}/originEntries`, validado como
