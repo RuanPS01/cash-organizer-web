@@ -87,19 +87,25 @@ pode ser transferido para outra categoria com `setDefaultCategory`.
 A origem diz de onde o dinheiro saiu ("Cartão C6 (Crédito)", "Pix ou Transf.",
 "Cartão Nu"). No lançamento variável ela é o segundo eixo de classificação, ao
 lado da categoria; no gasto fixo ela faz parte do cadastro e é copiada para a
-linha do mês. O cadastro aqui é do compartimento; o que pertence ao mês é o
-status, que fica na linha `originEntries` (seção 6.7) e é por onde a aba
-Pagamento acompanha o que já foi pago.
+linha do mês. O cadastro aqui é do compartimento; o que pertence ao mês são o
+status e o gasto ideal, que ficam na linha `originEntries` (seção 6.7): é por
+ela que a aba Pagamento acompanha o que já foi pago e qual era o planejado.
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `name` | string | com trim |
+| `idealAmount` | number | gasto ideal do mês para a origem, em centavos. Ausente na origem cadastrada antes do campo existir, e a leitura trata a ausência como zero |
 | `icon` | `OriginIconKey` | chave do catálogo em [`types.ts`](../src/types.ts): `pix`, `transfer`, `card`, `cash`, `investment`, `autodebit`, `boleto` |
 | `color` | `OriginColorKey` | tom do glifo: `gold`, `silver`, `graphite`, `copper`, `violet`, `teal`, `terracota` |
 | `isDefault` | boolean | só uma por compartimento; é a pré-selecionada no novo gasto |
 | `sortOrder` | number | posição nos chips e na lista; ausente usa `createdAt` |
 | `active` | boolean | `false` some do seletor e dos filtros |
 | `createdAt` | number | ms |
+
+O `idealAmount` segue o modelo do ideal da categoria: vale para todo mês e é
+copiado para a linha do mês, onde pode ser ajustado só naquele mês. Ele não
+entra em `varIdeal` nem em `fixedIdeal`, porque origem e categoria são dois
+eixos do mesmo dinheiro e somar os dois contaria cada real duas vezes.
 
 A chave de ícone é gravada, não o desenho: trocar o glifo do lucide-react em
 [`components/OriginIcon.tsx`](../src/components/OriginIcon.tsx) não exige migrar
@@ -126,7 +132,11 @@ e os lançamentos antigos seguem com `originName`.
 > - `weekCategoryId` no `update` de `compartments`, que só aceitava
 >   `currentMonth`. Sem isso a categoria acompanhada não fica guardada;
 > - `currentWeek` no documento do mês, validado de 1 a 4. Sem isso a virada de
->   semana é recusada.
+>   semana é recusada;
+> - `idealAmount` em `origins` e em `months/{ym}/originEntries`, validado como
+>   inteiro em centavos e opcional (o cadastro e a linha criados antes dele não
+>   têm a chave). Sem isso o gasto ideal da origem é recusado, e sem a folga do
+>   opcional até trocar a origem padrão passaria a falhar.
 
 ## 6.6 `months/{YYYY-MM}`
 
@@ -147,8 +157,17 @@ e os lançamentos antigos seguem com `originName`.
   varIdeal: number;
   varActual: number;
   byCategory: Record<categoryId, { name, ideal, actual, ignored? }>;
+  byOrigin?: Record<originId, { name, ideal, actual, ignored? }>;
 }
 ```
+
+`byCategory` e `byOrigin` são os dois eixos do mesmo dinheiro (no que se gastou
+e por onde se pagou), então nenhum dos dois entra em `varIdeal` nem em
+`varActual`: eles alimentam as duas listas da aba Estatísticas. O `actual` da
+origem é o mesmo total que a aba Pagamento mostra como a fatura dela (gastos
+fixos mais lançamentos variáveis). `byOrigin` é opcional porque o mês fechado
+antes do campo existir gravou os totais sem ele, e a tela distingue isso de um
+mês sem origem nenhuma.
 
 Gravar os totais no fechamento evita reler todos os lançamentos de todos os meses
 para montar o comparativo. Meses fechados leem `totals`; o mês visualizado é
@@ -175,8 +194,9 @@ Linha criada antes de um campo existir fica sem ele. Foi o caso da origem nos
 meses que já estavam abertos quando o gasto fixo ganhou origem: essas linhas
 caíam em "Sem origem" na aba Pagamento. Por isso o `syncMonthEntries` completa
 a linha de fixo que não tem a chave `originId`, uma vez, com o que está no
-cadastro. Fora esse preenchimento, ele só cria linha que falta e nunca reescreve
-valor ou status, que são do mês e não do cadastro.
+cadastro, e faz o mesmo com a linha de origem que não tem a chave `idealAmount`.
+Fora esses preenchimentos, ele só cria linha que falta e nunca reescreve valor
+ou status, que são do mês e não do cadastro.
 
 ### `categoryEntries/{categoryId}`
 
@@ -192,17 +212,24 @@ trabalhar por origem: ela existe pelo ideal, que alimenta `varIdeal`.
 
 ### `originEntries/{originId}`
 
-Status de pagamento da origem no mês. É a linha que a aba Pagamento resolve
-primeiro: marcar "Cartão C6" como pago é dizer que tudo que saiu dele naquele
-mês está pago.
+Status de pagamento e gasto ideal da origem no mês. É a linha que a aba
+Pagamento resolve primeiro: marcar "Cartão C6" como pago é dizer que tudo que
+saiu dele naquele mês está pago.
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `name` | string | copiado do cadastro (o nome exibido vem do cadastro quando ele ainda existe) |
+| `idealAmount` | number | ideal do mês, copiado do cadastro e editável na aba Pagamento. Ausente na linha criada antes do campo existir, até o `syncMonthEntries` completá-la |
 | `status` | `EntryStatus` | nasce `Pendente` |
 
-Não tem valor próprio: o valor da linha é calculado na tela, somando os
-lançamentos variáveis daquela origem e os gastos fixos que saem dela.
+Não tem valor gasto próprio: ele é calculado na tela, somando os lançamentos
+variáveis daquela origem e os gastos fixos que saem dela. O ideal fica gravado
+porque é planejamento, não soma, e o mês fechado precisa dele para a
+comparação continuar valendo.
+
+A linha é sempre gravada inteira (`set`), tanto em `setOriginStatus` quanto em
+`setOriginIdeal`: a aba Pagamento lista as origens do cadastro, então a
+primeira edição pode ser justamente o que cria a linha do mês.
 
 ### `expenses/{autoId}` (lançamento variável)
 
@@ -264,8 +291,8 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 | Função | Quando roda | O que faz |
 |---|---|---|
 | `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês na semana 1, com as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
-| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries`, `categoryEntries` e `originEntries` a partir dos cadastros ativos, tudo com status `Pendente` |
-| `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês), cria linhas de cadastros que ainda não estão no mês e completa a linha de fixo que ainda não tem o campo de origem |
+| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries`, `categoryEntries` e `originEntries` a partir dos cadastros ativos (com o ideal de cada um), tudo com status `Pendente` |
+| `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês), cria linhas de cadastros que ainda não estão no mês, completa a linha de fixo que ainda não tem o campo de origem e a linha de origem que ainda não tem o campo de ideal |
 | `computeTotals` | a cada render das telas com dados do mês | soma ideais e gastos, deixando de fora o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
 | `closeMonth` | botão "Virar mês" | recusa se houver `Pendente` em origem ou em gasto fixo, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
 | `advanceInstallments` | dentro de `closeMonth` | incrementa `installmentCurrent`; quem estava na última parcela é desativado |

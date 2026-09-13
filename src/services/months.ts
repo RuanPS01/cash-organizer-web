@@ -12,6 +12,7 @@ import type {
   MonthTotals,
   Origin,
   OriginEntry,
+  OriginTotal,
   VariableExpense,
 } from '../types';
 
@@ -50,7 +51,8 @@ async function fetchActive<T>(compartmentId: string, colName: string): Promise<(
  *   existem no mês (ex.: mês criado antes do cadastro, ou virada para um mês
  *   que já existia). É o que mantém os três cadastros ao virar o mês;
  * - completa a linha de fixo que ainda não tem o campo de origem, criada antes
- *   de o gasto fixo poder ter uma.
+ *   de o gasto fixo poder ter uma, e a linha de origem que ainda não tem o
+ *   campo de gasto ideal, criada antes de a origem poder ter um.
  */
 async function syncMonthEntries(compartmentId: string, ym: string): Promise<void> {
   const [fixedCad, catCad, originCad, fixedEntries, catEntries, originEntries, expenses] =
@@ -122,6 +124,18 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
     dirty = true;
   }
 
+  // Mesma ideia para a linha de origem criada antes de a origem ter gasto
+  // ideal: sem a chave, a aba Pagamento e as estatísticas mostrariam a origem
+  // como "sem ideal" mesmo depois de o usuário definir um no cadastro.
+  for (const entry of originEntries.docs) {
+    if ('idealAmount' in entry.data()) continue;
+    const cad = originCad.docs.find((d) => d.id === entry.id);
+    // Cadastro sumido ou desativado sem gasto no mês: a linha sai logo acima.
+    if (!cad || (cad.data().active === false && !usedOrigins.has(entry.id))) continue;
+    batch.update(entry.ref, { idealAmount: cad.data().idealAmount ?? 0 });
+    dirty = true;
+  }
+
   for (const cad of fixedCad.docs) {
     const f = cad.data();
     if (f.active === false || fixedEntryIds.has(cad.id)) continue;
@@ -153,6 +167,7 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
     if (o.active === false || originEntryIds.has(cad.id)) continue;
     batch.set(doc(originEntriesCol(compartmentId, ym), cad.id), {
       name: o.name,
+      idealAmount: o.idealAmount ?? 0,
       status: 'Pendente',
     } satisfies Omit<OriginEntry, 'id'>);
     dirty = true;
@@ -164,7 +179,7 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
 /**
  * Adiciona ao batch as linhas do mês a partir dos cadastros ativos (fixos
  * com valor/ideal/descrição/origem/parcela; categorias com o ideal; origens
- * apenas com o status, que é o que a aba Pagamento acompanha nelas).
+ * com o ideal e o status, que é o que a aba Pagamento acompanha nelas).
  */
 async function seedMonthEntries(
   compartmentId: string,
@@ -200,6 +215,7 @@ async function seedMonthEntries(
   for (const o of origins) {
     batch.set(doc(originEntriesCol(compartmentId, ym), o.id), {
       name: o.name,
+      idealAmount: o.idealAmount ?? 0,
       status: 'Pendente',
     } satisfies Omit<OriginEntry, 'id'>);
   }
@@ -387,6 +403,11 @@ export async function setOpenMonth(
  * (tira do mês tudo que saiu dela, que é como a aba Pagamento trabalha hoje) e
  * na linha de categoria, que não tem mais status na interface mas continua
  * valendo para os meses em que foi marcada.
+ *
+ * `byCategory` e `byOrigin` são os dois eixos do mesmo dinheiro: a categoria
+ * diz no que se gastou e a origem por onde se pagou. Por isso nenhum dos dois
+ * entra no ideal nem no gasto do mês, que são a soma de fixos e categorias;
+ * eles alimentam as estatísticas, cada um contra o próprio ideal.
  */
 export function computeTotals(
   fixedEntries: FixedEntry[],
@@ -418,6 +439,36 @@ export function computeTotals(
     if (e.originId && ignoredOrigins.has(e.originId)) continue;
     cat.actual += e.amount;
   }
+  // Uso por origem: o mesmo total que a aba Pagamento mostra como a fatura da
+  // origem (os gastos fixos dela mais os lançamentos variáveis), para as duas
+  // telas nunca discordarem do valor. Origem ignorada mantém o gasto visível
+  // aqui, marcada, como acontece com a categoria ignorada.
+  const byOrigin: Record<string, OriginTotal> = {};
+  for (const o of originEntries) {
+    byOrigin[o.id] = {
+      name: o.name,
+      ideal: o.idealAmount ?? 0,
+      actual: 0,
+      ignored: o.status === IGNORED_STATUS,
+    };
+  }
+  const addToOrigin = (
+    item: { originId?: string | null; originName?: string },
+    amount: number,
+  ) => {
+    // Gasto sem origem fica de fora: não há linha, ideal nem status para ele.
+    if (!item.originId) return;
+    const origin = (byOrigin[item.originId] ??= {
+      name: item.originName || 'Origem removida',
+      ideal: 0,
+      actual: 0,
+      ignored: false,
+    });
+    origin.actual += amount;
+  };
+  for (const f of fixedEntries) addToOrigin(f, f.amount);
+  for (const e of expenses) addToOrigin(e, e.amount);
+
   return {
     fixedIdeal: fixedEntries.reduce((s, f) => s + f.idealAmount, 0),
     fixedActual: fixedEntries
@@ -428,6 +479,7 @@ export function computeTotals(
       .filter((c) => !c.ignored)
       .reduce((s, c) => s + c.actual, 0),
     byCategory,
+    byOrigin,
   };
 }
 

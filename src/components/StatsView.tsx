@@ -23,8 +23,9 @@ function weeklySums(expenses: VariableExpense[]): number[] {
 }
 
 /**
- * Subtela de estatísticas: o resumo do mês, o uso por categoria e as semanas
- * do próprio mês visualizado, cada uma contra o ideal semanal.
+ * Subtela de estatísticas: o resumo do mês, o uso por categoria, o uso por
+ * origem e as semanas do próprio mês visualizado, cada uma contra o ideal
+ * semanal.
  */
 export function StatsView(props: { viewMonth: string; data: MonthData }) {
   const { viewMonth, data } = props;
@@ -44,6 +45,11 @@ export function StatsView(props: { viewMonth: string; data: MonthData }) {
   const monthOpen = data.month?.status === 'open';
 
   const categories = Object.entries(viewTotals.byCategory).sort(
+    (a, b) => b[1].actual - a[1].actual,
+  );
+  // Mês fechado antes de o campo existir não tem `byOrigin`, e isso é
+  // diferente de um mês sem origem nenhuma: a mensagem abaixo separa os dois.
+  const origins = Object.entries(viewTotals.byOrigin ?? {}).sort(
     (a, b) => b[1].actual - a[1].actual,
   );
 
@@ -71,6 +77,41 @@ export function StatsView(props: { viewMonth: string; data: MonthData }) {
               </span>
             </div>
             <ProgressBar ratio={c.ideal > 0 ? c.actual / c.ideal : c.actual > 0 ? 1 : 0} />
+          </div>
+        ))}
+      </section>
+
+      <section className="card">
+        <h3>Origens em {monthLabel(viewMonth)}</h3>
+        <p className="muted small">
+          O gasto da origem é o mesmo total da aba Pagamento: os gastos fixos dela mais os
+          lançamentos variáveis. É o outro eixo do mesmo dinheiro das categorias, então os dois
+          não se somam.
+        </p>
+        {origins.length === 0 && (
+          <p className="muted">
+            {viewTotals.byOrigin
+              ? 'Sem origens neste mês.'
+              : 'Este mês foi fechado antes de existir o acompanhamento por origem.'}
+          </p>
+        )}
+        {origins.map(([id, o]) => (
+          <div key={id} className="stat-row">
+            <div className="stat-head">
+              <span>
+                {o.name}
+                {/* Origem ignorada: o gasto aparece aqui, mas está fora do
+                    total do mês. */}
+                {o.ignored && <span className="badge ignored">ignorado</span>}
+              </span>
+              <span>
+                <strong>{formatBRL(o.actual)}</strong>
+                {o.ideal > 0 && (
+                  <span className="muted"> / {formatBRL(o.ideal)} · {pct(o.actual, o.ideal)}</span>
+                )}
+              </span>
+            </div>
+            <ProgressBar ratio={o.ideal > 0 ? o.actual / o.ideal : o.actual > 0 ? 1 : 0} />
           </div>
         ))}
       </section>

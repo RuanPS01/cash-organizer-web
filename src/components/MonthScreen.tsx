@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { closeMonth, computeTotals, setOpenMonth } from '../services/months';
-import { setOriginStatus, updateFixedEntry } from '../services/expenses';
+import { setOriginIdeal, setOriginStatus, updateFixedEntry } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { monthLabel, nextMonthKey, prevMonthKey } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
@@ -10,7 +10,25 @@ import { ConfirmModal, EditableMoney } from './shared';
 import { StatsView } from './StatsView';
 import { OriginIcon } from './OriginIcon';
 import { ENTRY_STATUSES, IGNORED_STATUS, STATUS_CLASS } from '../types';
-import type { EntryStatus, Origin } from '../types';
+import type { EntryStatus, Origin, OriginColorKey, OriginIconKey } from '../types';
+
+/**
+ * Linha da tabela de origens da aba Pagamento: a origem (do cadastro ou de uma
+ * linha de mês órfã), o ideal e o status do mês e o que saiu dela. Nomeada
+ * porque as ações de status e de ideal recebem a linha inteira.
+ */
+type OriginRow = {
+  id: string;
+  name: string;
+  /** Ausentes na origem que saiu do cadastro: sobra só o que a linha gravou. */
+  icon?: OriginIconKey;
+  color?: OriginColorKey;
+  ideal: number;
+  status: EntryStatus;
+  fixed: number;
+  variable: number;
+  total: number;
+};
 
 function StatusSelect(props: {
   value: EntryStatus;
@@ -93,21 +111,25 @@ export function MonthScreen(props: {
       return { variable, fixed, total: variable + fixed };
     };
     const porLinha = new Map(data.originEntries.map((e) => [e.id, e]));
-    const cadastradas = origins.map((o) => ({
+    // Sem linha no mês, o ideal exibido é o do cadastro, pela mesma razão do
+    // status "Pendente": é o que a linha vai receber quando for criada.
+    const cadastradas: OriginRow[] = origins.map((o) => ({
       id: o.id,
       name: o.name,
       icon: o.icon,
       color: o.color,
+      ideal: porLinha.get(o.id)?.idealAmount ?? o.idealAmount ?? 0,
       status: porLinha.get(o.id)?.status ?? ('Pendente' satisfies EntryStatus),
       ...linha(o.id),
     }));
-    const removidas = data.originEntries
+    const removidas: OriginRow[] = data.originEntries
       .filter((e) => !originById.has(e.id))
       .map((e) => ({
         id: e.id,
         name: e.name,
         icon: undefined,
         color: undefined,
+        ideal: e.idealAmount ?? 0,
         status: e.status,
         ...linha(e.id),
       }));
@@ -129,15 +151,26 @@ export function MonthScreen(props: {
     promise.catch((err) => setError(writeErrorMessage(err)));
   };
 
-  // O status da origem desce para os gastos fixos que saem dela; o nome e os
-  // ids saem daqui porque a tela já tem o cadastro e as linhas do mês.
-  const changeOriginStatus = (origin: { id: string; name: string }, status: EntryStatus) =>
+  // O status da origem desce para os gastos fixos que saem dela; o nome, o
+  // ideal e os ids saem daqui porque a tela já tem o cadastro e as linhas do
+  // mês, e a linha da origem é gravada inteira (ela pode ainda não existir).
+  const changeOriginStatus = (origin: OriginRow, status: EntryStatus) =>
     setOriginStatus(
       compartmentId,
       viewMonth,
-      { id: origin.id, name: origin.name, status },
+      { id: origin.id, name: origin.name, idealAmount: origin.ideal, status },
       data.fixedEntries.filter((f) => f.originId === origin.id).map((f) => f.id),
     );
+
+  // Só o ideal do mês muda aqui, como no ideal do gasto fixo logo abaixo: o
+  // cadastro da origem continua com o ideal que vale para os próximos meses.
+  const changeOriginIdeal = (origin: OriginRow, idealAmount: number) =>
+    setOriginIdeal(compartmentId, viewMonth, {
+      id: origin.id,
+      name: origin.name,
+      idealAmount,
+      status: origin.status,
+    });
 
   const doCloseMonth = async () => {
     setBusy(true);
@@ -219,14 +252,17 @@ export function MonthScreen(props: {
             <h3>Origens do gasto</h3>
             <p className="card-hint">
               O total da origem é tudo que saiu dela no mês: os gastos fixos dela mais os
-              lançamentos variáveis. Ao trocar o status, os gastos fixos daquela origem recebem o
-              mesmo status, e cada um ainda pode ser ajustado na tabela de baixo.
+              lançamentos variáveis. O ideal é o gasto planejado para a origem no mês, editável
+              aqui como o do gasto fixo (o cadastro segue com o que vale para os próximos meses).
+              Ao trocar o status, os gastos fixos daquela origem recebem o mesmo status, e cada um
+              ainda pode ser ajustado na tabela de baixo.
             </p>
             <div className="table-scroll">
               <table>
                 <thead>
                   <tr>
                     <th>Origem</th>
+                    <th className="num hide-narrow">Ideal</th>
                     <th className="num hide-narrow">Fixos</th>
                     <th className="num hide-narrow">Variáveis</th>
                     <th className="num">Total</th>
@@ -242,9 +278,24 @@ export function MonthScreen(props: {
                           {o.name}
                         </span>
                         <span className="cell-sub">
-                          fixos <span className="sub-value">{formatBRL(o.fixed)}</span> · variáveis{' '}
-                          <span className="sub-value">{formatBRL(o.variable)}</span>
+                          ideal
+                          <EditableMoney
+                            valueCents={o.ideal}
+                            disabled={!editable}
+                            muted
+                            onSave={(v) => run(changeOriginIdeal(o, v))}
+                          />
+                          · fixos <span className="sub-value">{formatBRL(o.fixed)}</span> ·
+                          variáveis <span className="sub-value">{formatBRL(o.variable)}</span>
                         </span>
+                      </td>
+                      <td className="num hide-narrow">
+                        <EditableMoney
+                          valueCents={o.ideal}
+                          disabled={!editable}
+                          muted
+                          onSave={(v) => run(changeOriginIdeal(o, v))}
+                        />
                       </td>
                       <td className="num hide-narrow">{formatBRL(o.fixed)}</td>
                       <td className="num hide-narrow">{formatBRL(o.variable)}</td>
@@ -274,6 +325,9 @@ export function MonthScreen(props: {
                           <span className="sub-value">{formatBRL(noOrigin.variable)}</span>
                         </span>
                       </td>
+                      {/* Sem origem não há cadastro nem linha de mês, então
+                          não há ideal para comparar nem onde gravar um. */}
+                      <td className="num hide-narrow muted">sem ideal</td>
                       <td className="num hide-narrow">{formatBRL(noOrigin.fixed)}</td>
                       <td className="num hide-narrow">{formatBRL(noOrigin.variable)}</td>
                       <td className="num">
@@ -286,7 +340,7 @@ export function MonthScreen(props: {
                   )}
                   {originRows.length === 0 && noOrigin.total === 0 && (
                     <tr>
-                      <td colSpan={5} className="muted">
+                      <td colSpan={6} className="muted">
                         Nenhuma origem cadastrada.
                       </td>
                     </tr>

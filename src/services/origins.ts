@@ -22,8 +22,8 @@ import type { EntryStatus, Origin, OriginColorKey, OriginEntry, OriginIconKey } 
 // A origem diz de onde o dinheiro saiu ("Cartão C6", "Pix"): classifica o
 // lançamento variável ao lado da categoria e acompanha o cadastro do gasto
 // fixo. O cadastro fica em coleção própria, do compartimento; o que pertence
-// ao mês é só o status, na linha `originEntries`, que a aba Pagamento usa para
-// acompanhar o que já foi pago em cada origem.
+// ao mês são o status e o gasto ideal, na linha `originEntries`, que a aba
+// Pagamento usa para acompanhar o que já foi pago em cada origem.
 // ---------------------------------------------------------------------------
 
 export function originsCol(compartmentId: string) {
@@ -34,6 +34,8 @@ export interface OriginInput {
   name: string;
   icon: OriginIconKey;
   color: OriginColorKey;
+  /** Gasto ideal do mês para a origem, em centavos (zero quando não definido). */
+  idealAmount: number;
   /** Marca a origem como a pré-selecionada; usado na primeira origem criada. */
   isDefault?: boolean;
 }
@@ -49,6 +51,7 @@ export async function addOrigin(
     name,
     icon: input.icon,
     color: input.color,
+    idealAmount: input.idealAmount,
     isDefault: input.isDefault ?? false,
     sortOrder: now,
     active: true,
@@ -59,6 +62,7 @@ export async function addOrigin(
   if (await isMonthOpen(compartmentId, currentMonth)) {
     await setDoc(doc(originEntriesCol(compartmentId, currentMonth), ref.id), {
       name,
+      idealAmount: input.idealAmount,
       status: 'Pendente' satisfies EntryStatus,
     } satisfies Omit<OriginEntry, 'id'>);
   }
@@ -66,8 +70,9 @@ export async function addOrigin(
 }
 
 /**
- * Grava nome, ícone e cor da origem (o papel de padrão não muda aqui) e leva o
- * nome novo para a linha do mês corrente em aberto.
+ * Grava nome, ícone, cor e gasto ideal da origem (o papel de padrão não muda
+ * aqui) e leva o nome e o ideal novos para a linha do mês corrente em aberto,
+ * do mesmo jeito que a categoria faz com o dela.
  */
 export async function saveOrigin(
   compartmentId: string,
@@ -80,11 +85,12 @@ export async function saveOrigin(
     name,
     icon: input.icon,
     color: input.color,
+    idealAmount: input.idealAmount,
   });
   if (await isMonthOpen(compartmentId, currentMonth)) {
     const entryRef = doc(originEntriesCol(compartmentId, currentMonth), id);
     const entry = await getDoc(entryRef);
-    if (entry.exists()) await updateDoc(entryRef, { name });
+    if (entry.exists()) await updateDoc(entryRef, { name, idealAmount: input.idealAmount });
   }
 }
 
@@ -95,6 +101,7 @@ export async function updateOrigin(
     name: string;
     icon: OriginIconKey;
     color: OriginColorKey;
+    idealAmount: number;
     active: boolean;
   }>,
 ): Promise<void> {

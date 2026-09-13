@@ -8,7 +8,8 @@ import {
   setDefaultOrigin,
 } from '../services/origins';
 import type { OriginInput } from '../services/origins';
-import { ConfirmModal } from './shared';
+import { formatBRL } from '../utils/money';
+import { ConfirmModal, EditableMoney, MoneyInput } from './shared';
 import { writeErrorMessage } from '../utils/errors';
 import {
   ORIGIN_COLOR_LABELS,
@@ -20,10 +21,10 @@ import {
 import type { Origin, OriginColorKey, OriginIconKey } from '../types';
 
 /**
- * Modal de criação e edição da origem: nome, grade de ícones e fileira de
- * tons. A fileira mostra o próprio ícone escolhido em cada tom, para o
- * usuário ver o resultado antes de salvar (é assim que se diferencia um
- * cartão de outro na lista).
+ * Modal de criação e edição da origem: nome, gasto ideal do mês, grade de
+ * ícones e fileira de tons. A fileira mostra o próprio ícone escolhido em cada
+ * tom, para o usuário ver o resultado antes de salvar (é assim que se
+ * diferencia um cartão de outro na lista).
  */
 function OriginModal(props: {
   initial: Origin | null;
@@ -37,6 +38,7 @@ function OriginModal(props: {
   const [name, setName] = useState(initial?.name ?? '');
   const [icon, setIcon] = useState<OriginIconKey>(initial?.icon ?? 'card');
   const [color, setColor] = useState<OriginColorKey>(initial?.color ?? 'gold');
+  const [ideal, setIdeal] = useState(initial?.idealAmount ?? 0);
   const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
@@ -45,7 +47,7 @@ function OriginModal(props: {
       setError('Informe o nome da origem.');
       return;
     }
-    props.onSave({ name, icon, color });
+    props.onSave({ name, icon, color, idealAmount: ideal });
   };
 
   return (
@@ -65,6 +67,12 @@ function OriginModal(props: {
             onChange={(e) => setName(e.target.value)}
           />
         </span>
+
+        <MoneyInput
+          valueCents={ideal}
+          onChange={setIdeal}
+          placeholder="Gasto ideal do mês (opcional)"
+        />
 
         <span className="origin-preview">
           <OriginIcon icon={icon} color={color} size={18} />
@@ -125,6 +133,7 @@ export function ManageOrigins(props: {
   origins: Origin[];
 }) {
   const { compartmentId, currentMonth, origins } = props;
+  const idealTotal = origins.reduce((s, o) => s + (o.idealAmount ?? 0), 0);
   const [modal, setModal] = useState<'closed' | 'new' | Origin>('closed');
   const [removeTarget, setRemoveTarget] = useState<Origin | null>(null);
   const [busy, setBusy] = useState(false);
@@ -172,6 +181,17 @@ export function ManageOrigins(props: {
     setModal(target);
   };
 
+  // A edição do ideal no lugar reaproveita o save completo: a origem tem
+  // poucos campos, e reenviar os outros como estão evita um serviço a mais só
+  // para este valor (o mesmo caminho do gasto fixo na lista de cima).
+  const saveIdeal = (o: Origin, idealAmount: number) =>
+    saveOrigin(compartmentId, currentMonth, o.id, {
+      name: o.name,
+      icon: o.icon,
+      color: o.color,
+      idealAmount,
+    });
+
   return (
     // O modal fica fora do .card de propósito: clip-path recorta qualquer
     // descendente, inclusive position: fixed, e o modal apareceria cortado
@@ -182,9 +202,16 @@ export function ManageOrigins(props: {
         <p className="card-hint">
           A origem diz de onde o dinheiro saiu (cartão, Pix, dinheiro), aparece no seletor da tela
           de novo gasto e no cadastro do gasto fixo, e é por ela que a aba Pagamento acompanha o
-          que já foi pago no mês. A origem <strong>padrão</strong> vem pré-selecionada; use
-          "tornar padrão" para trocar.
+          que já foi pago no mês. O <strong>gasto ideal do mês</strong> é o quanto você planeja
+          gastar naquela origem, e vira uma comparação própria na aba Estatísticas. A origem{' '}
+          <strong>padrão</strong> vem pré-selecionada; use "tornar padrão" para trocar.
         </p>
+        <div className="section-totals">
+          <span>
+            <span className="muted small">Total ideal</span>
+            <strong>{formatBRL(idealTotal)}</strong>
+          </span>
+        </div>
         <ul className="manage-list">
           {origins.map((o, i) => (
             <li key={o.id}>
@@ -203,6 +230,15 @@ export function ManageOrigins(props: {
                       tornar padrão
                     </button>
                   )}
+                </span>
+                <span className="values">
+                  <span className="pair">
+                    <span className="muted small">ideal</span>
+                    <EditableMoney
+                      valueCents={o.idealAmount ?? 0}
+                      onSave={(v) => saveIdeal(o, v)}
+                    />
+                  </span>
                 </span>
               </div>
               {/* Os quatro botões vão num grupo só: em telas estreitas eles
