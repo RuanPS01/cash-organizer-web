@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { hashPassword } from '../utils/crypto';
+import { isMonthOpen, monthRef } from './months';
 import { monthKey } from '../utils/dates';
 import type { AddStatsTab, Compartment } from '../types';
 
@@ -61,6 +62,23 @@ export async function setViewPrefs(
   await updateDoc(compartmentRef(compartmentId), patch);
 }
 
+/**
+ * Renda mensal líquida do compartimento, em centavos. Grava no cadastro (que
+ * vale para os meses que ainda vão nascer) e reflete no mês corrente em
+ * aberto, que é de onde o resumo do mês lê. Mês já fechado fica com a renda
+ * que tinha: o restante dele não pode mudar depois do fechamento.
+ */
+export async function setMonthlyIncome(
+  compartmentId: string,
+  currentMonth: string,
+  cents: number,
+): Promise<void> {
+  await updateDoc(compartmentRef(compartmentId), { monthlyIncome: cents });
+  if (await isMonthOpen(compartmentId, currentMonth)) {
+    await updateDoc(monthRef(compartmentId, currentMonth), { income: cents });
+  }
+}
+
 /** Cria o compartimento junto com a categoria padrão "Avulso". */
 export async function createCompartment(name: string, password: string): Promise<Compartment> {
   const id = slugify(name);
@@ -74,6 +92,9 @@ export async function createCompartment(name: string, password: string): Promise
     name: name.trim(),
     passwordHash,
     currentMonth,
+    // Renda ainda não informada: o resumo do mês compara o gasto com o ideal
+    // planejado até o usuário preencher a renda na tela Gerenciar.
+    monthlyIncome: 0,
     createdAt: now,
   });
   const avulsoRef = doc(collection(db, 'compartments', id, 'categories'));
@@ -86,5 +107,5 @@ export async function createCompartment(name: string, password: string): Promise
   });
   await batch.commit();
 
-  return { id, name: name.trim(), passwordHash, currentMonth, createdAt: now };
+  return { id, name: name.trim(), passwordHash, currentMonth, monthlyIncome: 0, createdAt: now };
 }

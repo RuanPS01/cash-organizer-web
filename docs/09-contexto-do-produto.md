@@ -25,10 +25,18 @@ o produto a esse cenário de confiança mútua.
 senha. Funciona como login. Serve para separar contextos ("casa", "pessoal",
 "viagem") sem misturar dados.
 
+**Renda mensal líquida.** O que entra por mês, já descontado o que não chega na
+conta. É configuração do compartimento, editada na tela Gerenciar, e é a
+referência do restante do mês: restante é renda menos total gasto. Cada mês
+guarda uma cópia da renda que valia nele, para o mês fechado continuar
+comparável. Não informada (zero), o resumo do mês volta a comparar o gasto com
+o previsto.
+
 **Gasto fixo.** Conta que se repete todo mês (aluguel, internet, mensalidade). O
-valor cadastrado vale como gasto ideal automaticamente, a menos que se defina
-outro. Pode ser parcelado ("2 de 4"), e nesse caso a parcela avança a cada virada
-de mês e o gasto sai sozinho depois da última.
+valor cadastrado é o previsto dele: gasto fixo não tem gasto ideal separado,
+porque uma conta que se repete já é o próprio planejamento. Pode ser parcelado
+("2 de 4"), e nesse caso a parcela avança a cada virada de mês e o gasto sai
+sozinho depois da última.
 
 **Categoria de gasto variável.** Agrupa lançamentos avulsos (mercado, gasolina).
 Tem um gasto ideal do mês, e o ideal da semana é esse valor dividido por 4. Todo
@@ -46,10 +54,10 @@ de quem paga) e uma delas é a padrão, já escolhida ao adicionar gasto e ao
 cadastrar um fixo.
 
 **Gasto ideal.** O planejado, não o limite rígido. Nada impede o usuário de
-gastar acima: a interface apenas mostra o excesso em vermelho. Existe no gasto
-fixo, na categoria e na origem; o do mês é a soma dos fixos e das categorias, e
-o da origem é uma comparação à parte, porque é o mesmo dinheiro pelo outro
-eixo.
+gastar acima: a interface apenas mostra o excesso em vermelho. Existe na
+categoria e na origem, não no gasto fixo. O previsto do mês é a soma dos valores
+dos fixos com o ideal das categorias, e o da origem é uma comparação à parte,
+porque é o mesmo dinheiro pelo outro eixo.
 
 **Mês.** Unidade de tudo. O mês em aberto é o único que recebe lançamentos e
 edições. Os anteriores ficam consultáveis, congelados.
@@ -82,14 +90,19 @@ linha `Pendente`.
 | Histórico do mês na aba Adicionar | é onde o usuário está depois de lançar; conferir e corrigir o gasto recém-incluído não deveria exigir trocar de tela |
 | Data do lançamento livre, mas sempre dentro do mês em aberto | o mês do app é a referência da fatura, não o calendário |
 | Trocar o mês de referência move o conteúdo junto | quem percebe no meio do mês que estava lançando na referência errada quer corrigir, não recomeçar; os cadastros não se movem porque já valem para todos os meses |
-| Status `Ignorar` tira do gasto, mas não do ideal | serve para gasto que não deve entrar na conta do mês (reembolso, pagamento de terceiro) sem mexer no orçamento planejado |
+| Status `Ignorar` tira do gasto, mas não do previsto | serve para gasto que não deve entrar na conta do mês (reembolso, pagamento de terceiro) sem mexer no orçamento planejado |
+| Restante do mês é contra a renda, não contra o previsto | o previsto cresce junto com cada gasto fixo novo (o valor da conta é o previsto dela), então o restante contra o previsto nunca se mexia ao incluir um fixo. Contra a renda, gasto novo diminui o restante na hora, que é a pergunta "quanto ainda tenho" |
+| Gasto fixo sem gasto ideal próprio | o valor da conta já é o previsto do mês; um segundo número para a mesma coisa só criava a ilusão de orçamento nos fixos |
+| Renda copiada para dentro do mês | mudar a renda de hoje não pode reescrever o restante de um mês já fechado, pela mesma razão que o ideal da categoria fica na linha do mês |
+| Fixos em ouro e variáveis em prata na barra do mês | as duas metades do gasto respondem a perguntas diferentes (conta que chega e escolha do dia), e a linha de detalhe abaixo da barra já era a legenda natural das duas cores |
 | Tema único e escuro, sem botão de troca | a identidade é ouro sobre preto puro; uma versão clara exigiria uma segunda paleta e não traria nada ao uso no celular |
 
 ## 9.5 O que o produto não faz (e não deveria fazer sem decisão explícita)
 
 - não tem múltiplos usuários, permissões nem trilha de auditoria;
 - não importa extrato bancário nem OCR de nota;
-- não tem receitas ou saldo, só gastos;
+- não tem lançamento de receita, extrato nem saldo acumulado: a renda é um
+  número só, configurado no compartimento, que serve de referência do mês;
 - não tem metas de longo prazo, investimentos nem relatórios exportáveis;
 - não faz conversão de moeda: tudo é BRL;
 - não tem recuperação de senha.
@@ -106,7 +119,9 @@ linha `Pendente`.
 | Lançamento | `VariableExpense`, subcoleção `expenses` |
 | Origem do gasto (cadastro) | `Origin`, coleção `origins` |
 | Origem do gasto (linha do mês) | `OriginEntry`, subcoleção `originEntries` |
-| Gasto ideal (do fixo, da categoria ou da origem) | `idealAmount` |
+| Gasto ideal (da categoria ou da origem) | `idealAmount` |
+| Renda mensal líquida (cadastro) | `compartment.monthlyIncome` |
+| Renda mensal líquida (do mês) | `month.income` |
 | Valor | `amount` |
 | Mês em aberto | `compartment.currentMonth` com `month.status === 'open'` |
 | Virar mês | `closeMonth` |

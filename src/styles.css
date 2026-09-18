@@ -43,6 +43,14 @@
   --gold-lettering: linear-gradient(180deg, #fff8dc, #e7c95f 45%, #b78f24);
   --gold-bar: linear-gradient(90deg, #8a6a1f, #e7c95f 40%, #fff4c6 60%, #d4af37);
 
+  /* Prata: o segundo tom da barra do resumo do mês (gasto variável ao lado do
+     fixo, que fica em ouro). Fora dessa leitura e do glifo de origem, a
+     identidade continua sendo ouro sobre preto. */
+  --silver: #cfd4dc;
+  --silver-soft: #b6bcc7;
+  --silver-bar: linear-gradient(90deg, #6f757f, #b9c0cb 40%, #eef1f5 60%, #cfd4dc);
+  --silver-fill: linear-gradient(180deg, #eef1f5, #b9c0cb 45%, #8b929d);
+
   /* Texto */
   --text: #f0ead8;
   --text-strong: #e8e2d0;
@@ -966,10 +974,14 @@ select option:checked { color: var(--gold-soft); }
   height: 7px;
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1px var(--line);
+  /* Flex porque a barra do resumo do mês tem duas faixas lado a lado (fixos e
+     variáveis); com uma faixa só o resultado é o mesmo de antes. */
+  display: flex;
 }
 
 .progress-fill {
   height: 100%;
+  flex: none;
   background: var(--gold-bar);
   box-shadow: 0 0 12px rgba(212, 175, 55, 0.45);
   transition: width 0.25s ease;
@@ -978,6 +990,22 @@ select option:checked { color: var(--gold-soft); }
 .progress-fill.over {
   background: var(--danger-bar);
   box-shadow: 0 0 12px rgba(199, 74, 42, 0.4);
+}
+
+/* Faixa dos gastos variáveis no resumo do mês. */
+.progress-fill.silver {
+  background: var(--silver-bar);
+  box-shadow: 0 0 12px rgba(207, 212, 220, 0.32);
+}
+
+/* Barra dividida que passou da referência: as duas cores continuam, porque
+   são a legenda de quanto é fixo e quanto é variável, e quem avisa do excesso
+   é a moldura vermelha. */
+.progress.over {
+  /* Contorno, e não sombra interna: as faixas cobrem o miolo da barra e uma
+     inset ficaria escondida atrás delas. */
+  outline: 1.5px solid var(--danger);
+  box-shadow: 0 0 12px rgba(199, 74, 42, 0.35);
 }
 
 /* --------------------------------------------------------------------------
@@ -1241,6 +1269,42 @@ tr.row-ignored td { opacity: 0.7; }
   letter-spacing: 0.04em;
 }
 
+/* Linha de detalhe do resumo do mês: os valores de fixos e variáveis são a
+   própria legenda das cores da barra, então cada item leva o chanfro da cor
+   ao lado e não se parte no meio quando a linha quebra em 360px. */
+.summary-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.85rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  white-space: nowrap;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  clip-path: polygon(
+    2px 0,
+    100% 0,
+    100% calc(100% - 2px),
+    calc(100% - 2px) 100%,
+    0 100%,
+    0 2px
+  );
+}
+
+/* Gradiente vertical no chanfro, e não o da barra: em 9px o gradiente
+   horizontal deixaria metade do quadrado quase preto e a legenda ilegível. */
+.legend-dot.gold { background: var(--gold-fill-soft); }
+.legend-dot.silver { background: var(--silver-fill); }
+
 /* --------------------------------------------------------------------------
    Gerenciar
    -------------------------------------------------------------------------- */
@@ -1322,7 +1386,10 @@ tr.row-ignored td { opacity: 0.7; }
   --frame-w: 1px;
   --frame-fill: linear-gradient(180deg, #0c0c0c, #050505);
   display: flex;
-  gap: 1.75rem;
+  /* Quebra porque o card de renda tem três números e eles não cabem lado a
+     lado em 360px. */
+  flex-wrap: wrap;
+  gap: 0.6rem 1.75rem;
   padding: 0.7rem 1rem;
   margin-bottom: 0.9rem;
 }
@@ -1342,6 +1409,15 @@ tr.row-ignored td { opacity: 0.7; }
 .section-totals strong {
   font-size: 1.05rem;
   color: var(--gold-soft);
+}
+
+/* Valor editável entre os totais (a renda mensal): sem isto ele sairia menor e
+   mais apagado que o número ao lado, como se fosse o dado menos importante do
+   card. */
+.section-totals .money-cell {
+  font-size: 1.05rem;
+  color: var(--gold-soft);
+  padding-left: 0;
 }
 
 /* Grupo de botões de ação da linha: mantém os quatro juntos quando a linha
@@ -1995,7 +2071,7 @@ td .badge.origin { margin-left: 0.4rem; }
   .money-cell { font-size: 0.8rem; }
 
 
-  .section-totals { gap: 1.25rem; }
+  .section-totals { gap: 0.6rem 1.25rem; }
   .money-input.big { font-size: 1.9rem; }
 
   /* Histórico e escolha de ícone em 360px: as peças encolhem, mas a grade de

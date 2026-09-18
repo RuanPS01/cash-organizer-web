@@ -142,7 +142,6 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
     batch.set(doc(fixedEntriesCol(compartmentId, ym), cad.id), {
       name: f.name,
       amount: f.amount,
-      idealAmount: f.idealAmount || f.amount,
       status: 'Pendente',
       description: f.description ?? '',
       originId: f.originId ?? null,
@@ -196,7 +195,6 @@ async function seedMonthEntries(
     batch.set(doc(fixedEntriesCol(compartmentId, ym), f.id), {
       name: f.name,
       amount: f.amount,
-      idealAmount: f.idealAmount || f.amount,
       status: 'Pendente',
       description: f.description ?? '',
       originId: f.originId ?? null,
@@ -247,6 +245,16 @@ export async function setCurrentWeek(
   });
 }
 
+/**
+ * Renda mensal líquida gravada no cadastro do compartimento, em centavos.
+ * Cadastro sem a chave (compartimento criado antes da renda existir) vale
+ * zero, que é o mesmo que "renda não informada".
+ */
+async function compartmentIncome(compartmentId: string): Promise<number> {
+  const snap = await getDoc(doc(db, 'compartments', compartmentId));
+  return (snap.data()?.monthlyIncome as number | undefined) ?? 0;
+}
+
 /** O mês existe e está aberto? É a condição para um cadastro refletir nele. */
 export async function isMonthOpen(compartmentId: string, ym: string): Promise<boolean> {
   const month = await getDoc(monthRef(compartmentId, ym));
@@ -254,10 +262,10 @@ export async function isMonthOpen(compartmentId: string, ym: string): Promise<bo
 }
 
 /**
- * Garante que o mês existe: se não existir, cria o documento do mês e as
- * linhas de gastos fixos (com valor/ideal preenchidos a partir do cadastro),
- * de categorias (apenas o ideal; o gasto real vem dos lançamentos) e de
- * origens (apenas o status).
+ * Garante que o mês existe: se não existir, cria o documento do mês (com a
+ * renda líquida copiada do cadastro) e as linhas de gastos fixos (com o valor
+ * do cadastro), de categorias (apenas o ideal; o gasto real vem dos
+ * lançamentos) e de origens (apenas o status).
  * Se já existir e estiver aberto, reconcilia as linhas com os cadastros.
  */
 export async function ensureMonth(compartmentId: string, ym: string): Promise<void> {
@@ -273,10 +281,14 @@ export async function ensureMonth(compartmentId: string, ym: string): Promise<vo
     return;
   }
 
+  // A renda do mês é uma cópia do cadastro, tirada no momento em que o mês
+  // nasce: mudar a renda depois vale do mês em aberto para a frente e não
+  // reescreve o restante de um mês já fechado.
+  const income = await compartmentIncome(compartmentId);
   const batch = writeBatch(db);
   // Mês novo começa na semana 1, seja ele criado pela virada de mês ou pela
   // primeira abertura do app em um mês novo.
-  batch.set(ref, { status: 'open', currentWeek: 1 } satisfies Omit<MonthDoc, 'id'>);
+  batch.set(ref, { status: 'open', currentWeek: 1, income } satisfies Omit<MonthDoc, 'id'>);
   await seedMonthEntries(compartmentId, ym, batch);
   await batch.commit();
 }
@@ -355,15 +367,20 @@ export async function setOpenMonth(
     }
   }
   // set sem merge sobrescreve o doc do mês, limpando closedAt e totals de um
-  // mês que já tinha sido fechado. A semana corrente viaja junto com o
-  // conteúdo: mover a referência é corrigir o mês de lugar, não recomeçá-lo.
+  // mês que já tinha sido fechado. A semana corrente e a renda viajam junto
+  // com o conteúdo: mover a referência é corrigir o mês de lugar, não
+  // recomeçá-lo. Mês de origem sem renda gravada (criado antes do campo) pega
+  // a do cadastro, que é a mesma que o destino receberia se nascesse agora.
   const semana = monthWeek(
     fromMonth.exists() ? ({ id: fromYm, ...fromMonth.data() } as MonthDoc) : null,
   );
+  const income =
+    (fromMonth.data()?.income as number | undefined) ?? (await compartmentIncome(compartmentId));
   prepara.push((b) =>
     b.set(monthRef(compartmentId, toYm), {
       status: 'open',
       currentWeek: semana,
+      income,
     } satisfies Omit<MonthDoc, 'id'>),
   );
   await commitInChunks(prepara);
@@ -470,7 +487,10 @@ export function computeTotals(
   for (const e of expenses) addToOrigin(e, e.amount);
 
   return {
-    fixedIdeal: fixedEntries.reduce((s, f) => s + f.idealAmount, 0),
+    // Gasto fixo não tem ideal separado: o valor da conta é o próprio
+    // previsto. Os ignorados entram aqui e ficam fora do gasto, que é o que
+    // mantém o "Ignorar" tirando do gasto sem mexer no planejado.
+    fixedIdeal: fixedEntries.reduce((s, f) => s + f.amount, 0),
     fixedActual: fixedEntries
       .filter((f) => f.status !== IGNORED_STATUS)
       .reduce((s, f) => s + f.amount, 0),

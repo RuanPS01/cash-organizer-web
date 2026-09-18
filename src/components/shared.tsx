@@ -226,9 +226,50 @@ export function EditableText(props: {
 // Barra de progresso simples (usada nas estatísticas e no informe)
 // ---------------------------------------------------------------------------
 
-export function ProgressBar(props: { ratio: number; danger?: boolean }) {
+/** Cor de uma faixa da barra: ouro para gasto fixo, prata para variável. */
+export type ProgressTone = 'gold' | 'silver';
+
+/** Faixa do preenchimento, com a fração dela sobre o total da barra. */
+export interface ProgressPart {
+  key: string;
+  ratio: number;
+  tone: ProgressTone;
+}
+
+export function ProgressBar(props: {
+  ratio: number;
+  danger?: boolean;
+  /**
+   * Divide o preenchimento em faixas de cores diferentes (o resumo do mês usa
+   * ouro para os fixos e prata para os variáveis). Cada fração é sobre o mesmo
+   * total da barra, e as faixas somam `ratio`.
+   *
+   * No excesso, as faixas encolhem na mesma proporção para caber em 100% e
+   * quem avisa é a moldura vermelha da barra: trocar as duas cores por uma só
+   * apagaria justamente a leitura de quanto é fixo e quanto é variável.
+   */
+  parts?: ProgressPart[];
+}) {
   const pct = Math.max(0, Math.min(1, props.ratio)) * 100;
   const over = props.danger ?? props.ratio > 1;
+
+  if (props.parts) {
+    const fracoes = props.parts.map((p) => ({ ...p, ratio: Math.max(0, p.ratio) }));
+    const soma = fracoes.reduce((s, p) => s + p.ratio, 0);
+    const escala = soma > 1 ? 1 / soma : 1;
+    return (
+      <div className={`progress${over ? ' over' : ''}`}>
+        {fracoes.map((p) => (
+          <span
+            key={p.key}
+            className={`progress-fill ${p.tone}`}
+            style={{ width: `${p.ratio * escala * 100}%` }}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="progress">
       <div

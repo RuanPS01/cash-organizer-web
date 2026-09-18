@@ -357,7 +357,6 @@ export function MonthScreen(props: {
                 <thead>
                   <tr>
                     <th>Nome</th>
-                    <th className="num hide-narrow">Ideal</th>
                     <th className="num">Valor</th>
                     <th>Status</th>
                   </tr>
@@ -383,35 +382,6 @@ export function MonthScreen(props: {
                           {f.description && (
                             <span className="row-desc muted small">{f.description}</span>
                           )}
-                          <span className="cell-sub">
-                            ideal
-                            <EditableMoney
-                              valueCents={f.idealAmount}
-                              disabled={!editable}
-                              muted
-                              onSave={(v) =>
-                                run(
-                                  updateFixedEntry(compartmentId, viewMonth, f.id, {
-                                    idealAmount: v,
-                                  }),
-                                )
-                              }
-                            />
-                          </span>
-                        </td>
-                        <td className="num hide-narrow">
-                          <EditableMoney
-                            valueCents={f.idealAmount}
-                            disabled={!editable}
-                            muted
-                            onSave={(v) =>
-                              run(
-                                updateFixedEntry(compartmentId, viewMonth, f.id, {
-                                  idealAmount: v,
-                                }),
-                              )
-                            }
-                          />
                         </td>
                         <td className="num">
                           <EditableMoney
@@ -449,7 +419,10 @@ export function MonthScreen(props: {
           <section className="card totals-card">
             <div className="totals-grid">
               <div>
-                <span className="muted">Ideal (fixos + variáveis)</span>
+                {/* "Previsto", e não "ideal": o gasto fixo não tem mais ideal
+                    próprio, o valor dele é o previsto do mês. O que sobra de
+                    ideal aqui é o das categorias. */}
+                <span className="muted">Previsto (fixos + variáveis)</span>
                 <strong>{formatBRL(totals.fixedIdeal + totals.varIdeal)}</strong>
               </div>
               <div>

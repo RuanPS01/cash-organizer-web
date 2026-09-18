@@ -572,7 +572,6 @@ export function ExpenseHistory(props: {
                       origin={f.originId ? originById.get(f.originId) : undefined}
                     />
                   ) : null}
-                  <span className="when">ideal {formatBRL(f.idealAmount)}</span>
                 </span>
                 <span className="history-value">
                   <EditableMoney

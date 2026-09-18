@@ -69,11 +69,12 @@ O mesmo componente serve às duas abas. Cabeçalho com navegação de mês
   aplica o mesmo status aos gastos fixos dela e grava a linha do mês, criando-a
   se ainda não existir (`setOriginStatus`). Lançamento sem origem vira uma linha
   só de leitura, sem ideal, porque não há onde guardar status nem planejado;
-- tabela de gastos fixos (nome, ideal, valor, status), com ideal e valor
-  editáveis no lugar e o selo da origem ao lado do nome (o glifo e o tom vêm do
-  cadastro recebido em `origins`; a linha do mês guarda só o id e o nome);
-- card de totais (ideal, atual, fixos, variáveis) e o botão "Virar mês", liberado
-  só quando não há origem nem gasto fixo em `Pendente`;
+- tabela de gastos fixos (nome, valor, status), com o valor editável no lugar e
+  o selo da origem ao lado do nome (o glifo e o tom vêm do cadastro recebido em
+  `origins`; a linha do mês guarda só o id e o nome). Não há coluna de ideal: o
+  valor da conta já é o previsto do mês;
+- card de totais (previsto, atual, fixos, variáveis) e o botão "Virar mês",
+  liberado só quando não há origem nem gasto fixo em `Pendente`;
 - fluxo de dupla confirmação para definir outro mês como o mês em aberto.
 
 Não há tabela de categorias: categoria é orçamento, não forma de pagamento. O
@@ -85,12 +86,18 @@ Edição só é permitida quando o mês visualizado é o corrente e está aberto
 
 ### `ManageScreen` (aba Gerenciar)
 
-`props: { compartmentId, currentMonth, fixedExpenses, categories, origins, monthData }`
+`props: { compartmentId, currentMonth, fixedExpenses, categories, origins, monthlyIncome, monthData }`
 
-Cadastro de gastos fixos (com modal completo: nome, descrição, valor, ideal,
-origem e parcela; a lista mostra o selo da origem ao lado do nome) e de
+Primeira seção: **renda mensal líquida**, a configuração principal do
+compartimento. O valor é editável no lugar (`EditableMoney` dentro dos totais da
+seção) e salvo por `setMonthlyIncome`, ao lado do previsto de gastos (valor dos
+fixos mais o ideal das categorias) e da sobra prevista.
+
+Depois vêm o cadastro de gastos fixos (com modal completo: nome, descrição,
+valor, origem e parcela; a lista mostra o selo da origem ao lado do nome e não
+tem mais campo de ideal, porque o valor do fixo já é o previsto) e o de
 categorias (nome editável, ideal editável, reordenação com as setas, "tornar
-padrão" e remoção). Mostra totais de cadastro por seção. A terceira seção, de
+padrão" e remoção). Mostra totais de cadastro por seção. A quarta seção, de
 origens do gasto (com o gasto ideal do mês de cada uma), é delegada ao
 `ManageOrigins`.
 
@@ -104,7 +111,7 @@ origens do gasto (com o gasto ideal do mês de cada uma), é delegada ao
 | `MoneyInput` | `{ valueCents, onChange, placeholder?, big?, autoFocus?, id? }` | entrada de valor em centavos, sempre formatada enquanto digita |
 | `EditableMoney` | `{ valueCents, onSave, disabled?, muted? }` | valor que vira input ao toque e salva no blur ou Enter |
 | `EditableText` | `{ value, onSave, disabled?, placeholder?, allowEmpty? }` | texto que vira input ao toque; vazio cancela, a menos que `allowEmpty` (usado na descrição do lançamento, que pode ser apagada). `placeholder` é o texto exibido quando o valor está vazio |
-| `ProgressBar` | `{ ratio, danger? }` | barra de progresso; passa de 1 fica com a classe `over` |
+| `ProgressBar` | `{ ratio, danger?, parts? }` | barra de progresso; passa de 1 fica com a classe `over`. Com `parts` (`{ key, ratio, tone }`, tom `gold` ou `silver`) o preenchimento sai dividido em faixas, que é como o resumo do mês separa fixos de variáveis; no excesso as faixas encolhem para caber e o aviso vira o contorno terracota do trilho |
 | `BrandMark` | `{ big? }` | marca do app, igual ao ícone do PWA. Use sempre este componente em vez de desenhar a marca de novo |
 
 Esses componentes não conhecem domínio: recebem valores e devolvem eventos.
@@ -147,10 +154,22 @@ interno), porque os dois comparam gasto contra ideal.
 
 `props: { viewMonth, data, embedded? }`
 
-Card "Resumo do mês (total gasto x ideal)": uma linha só, a do mês visualizado,
-com gasto, ideal, percentual, barra e a descrição com fixos, variáveis e o
-restante (ou o excedido, em vermelho). Mês fechado usa os totais gravados; o mês
-em aberto é calculado ao vivo. Reutilizado pela aba Estatísticas (como card) e
+Card "Resumo do mês": uma linha só, a do mês visualizado, com gasto,
+referência, percentual, barra e a linha de detalhe com fixos, variáveis e o
+restante (ou o quanto passou, em vermelho).
+
+A referência é a **renda líquida do mês** (`month.income`) quando ela está
+informada, e é isso que o título diz ("total gasto x renda"). É a renda que
+responde "quanto sobrou": gasto fixo novo aumenta o gasto sem aumentar a renda,
+então o restante cai na hora. Sem renda informada, a referência volta a ser o
+ideal planejado (soma dos valores dos fixos mais o ideal das categorias) e o
+título volta a dizer "total gasto x ideal".
+
+A barra é dividida em duas faixas, ouro para os fixos e prata para os variáveis,
+e a linha de detalhe abaixo é a legenda das duas cores.
+
+Mês fechado usa os totais gravados e a renda gravada no próprio mês; o mês em
+aberto é calculado ao vivo. Reutilizado pela aba Estatísticas (como card) e
 pelo `AddStatsCard` (com `embedded`, que devolve só o conteúdo, sem o card e sem
 o título, porque card dentro de card teria moldura dobrada). Se precisar dele em
 outro lugar, reutilize em vez de copiar.
@@ -259,10 +278,12 @@ Ambos em [`src/hooks/useMonthData.ts`](../src/hooks/useMonthData.ts).
 | Hook | Retorno | O que assina |
 |---|---|---|
 | `useMonthData(compartmentId, ym)` | `{ loading, month, fixedEntries, categoryEntries, originEntries, expenses }` | documento do mês e as quatro subcoleções, em tempo real |
-| `useConfig(compartmentId)` | `{ fixedExpenses, categories, origins }` | cadastros do compartimento, já filtrados por `active` e ordenados |
+| `useConfig(compartmentId)` | `{ fixedExpenses, categories, origins, monthlyIncome }` | cadastros do compartimento, já filtrados por `active` e ordenados, mais a renda mensal líquida (documento do compartimento) |
 
 `useConfig` ordena categorias e origens por `sortOrder ?? createdAt`, que é a
-ordem exibida nos chips e na tela Gerenciar. Fixos vêm ordenados por nome.
+ordem exibida nos chips e na tela Gerenciar. Fixos vêm ordenados por nome. A
+renda vem por assinatura, e não da sessão guardada, para a tela Gerenciar
+mostrar na hora o que foi salvo em outro aparelho.
 
 ## 4.4 Serviços disponíveis
 
@@ -273,7 +294,9 @@ Antes de escrever uma escrita nova, confira se ela já existe.
 `slugify`, `compartmentRef`, `fetchCompartment`, `openCompartment` (devolve
 `ok`, `not-found` ou `wrong-password`), `createCompartment` (já cria a categoria
 padrão "Avulso"), `setViewPrefs` (grava um patch de `ViewPrefs`: a categoria e a
-origem acompanhadas e a aba aberta no card de estatísticas da aba Adicionar).
+origem acompanhadas e a aba aberta no card de estatísticas da aba Adicionar) e
+`setMonthlyIncome` (grava a renda no cadastro e reflete no mês corrente em
+aberto; mês fechado fica com a renda que tinha).
 
 ### `services/session.ts`
 
@@ -282,7 +305,8 @@ origem acompanhadas e a aba aberta no card de estatísticas da aba Adicionar).
 ### `services/months.ts`
 
 `monthRef`, `fixedEntriesCol`, `categoryEntriesCol`, `originEntriesCol`,
-`expensesCol`, `isMonthOpen`, `ensureMonth`, `setOpenMonth` (move o conteúdo do
+`expensesCol`, `isMonthOpen`, `ensureMonth` (cria o mês já com a renda copiada
+do cadastro), `setOpenMonth` (move o conteúdo do
 mês em aberto para outro mês e troca a referência), `computeTotals` (recebe
 também as linhas de origem, porque origem ignorada tira do gasto tudo que saiu
 dela, e devolve o uso por categoria e por origem), `closeMonth`, `monthWeek` (semana corrente do mês, 1 quando o campo não
