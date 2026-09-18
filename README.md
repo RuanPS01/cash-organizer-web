@@ -1,7 +1,8 @@
 # Cash Organizer — Web
 
 Web app responsivo (mobile-first) para organizar gastos fixos e variáveis por mês, com
-adição rápida de gastos, limites baseados em "gasto ideal", virada de mês e estatísticas.
+adição rápida de gastos, renda mensal líquida como referência do restante, limites
+baseados em "gasto ideal" por categoria, virada de mês e estatísticas.
 
 Frontend em **Vite + React + TypeScript**, conversando **diretamente com o Firestore**
 (sem backend próprio). As rules e functions do Firebase ficam no repositório
@@ -21,8 +22,12 @@ manutenção. Agentes de IA devem começar por
   "login" com nome + senha). É criado na primeira entrada (com confirmação) e fica
   salvo no `localStorage` — a senha é cifrada com AES-GCM (Web Crypto) usando uma
   chave gerada no dispositivo; no Firestore só é guardado o hash SHA-256.
-- **Gastos fixos**: valor fixo mensal; o valor é usado como *gasto ideal*
-  automaticamente, a menos que o usuário defina outro.
+- **Renda mensal líquida**: configuração do compartimento (tela Gerenciar). É a
+  referência do resumo do mês: o restante é a renda menos o total gasto. Cada mês
+  guarda a renda que valia nele, então mudar a renda hoje não reescreve um mês
+  fechado. Sem renda informada, o resumo compara o gasto com o previsto.
+- **Gastos fixos**: valor fixo mensal, que é o próprio previsto do mês (não há
+  gasto ideal separado para o fixo).
 - **Categorias de gastos variáveis**: sempre existe ao menos a categoria **Avulso**.
   Cada categoria tem um gasto ideal do mês (o limite semanal é o ideal ÷ 4).
 - **Mês**: todos os gastos são referentes ao mês corrente do compartimento. Cada linha
@@ -41,16 +46,17 @@ manutenção. Agentes de IA devem começar por
 3. **Mês**: tabela de fixos, categorias com soma (expansível para ver os lançamentos),
    totais ideais × atuais, status por linha e botão "Virar mês". Inclui a subtela
    **Estatísticas** (comparativo mensal, uso por categoria e semanas × mês anterior).
-4. **Gerenciar**: cadastro de gastos fixos e categorias com seus valores ideais.
+4. **Gerenciar**: renda mensal líquida, cadastro de gastos fixos (valor, origem e
+   parcela) e de categorias com seus valores ideais.
 
 ## Modelo de dados (Firestore)
 
 ```
-compartments/{id}                    nome, hash da senha, mês corrente
+compartments/{id}                    nome, hash da senha, mês corrente, renda mensal
   fixedExpenses/{id}                 cadastro dos gastos fixos
   categories/{id}                    cadastro das categorias (Avulso é padrão)
-  months/{YYYY-MM}                   status open/closed + totais ao fechar
-    fixedEntries/{fixedId}           snapshot do fixo no mês (valor, ideal, status)
+  months/{YYYY-MM}                   status open/closed, renda do mês + totais ao fechar
+    fixedEntries/{fixedId}           snapshot do fixo no mês (valor, status)
     categoryEntries/{categoryId}     categoria no mês (ideal, status)
     expenses/{autoId}                lançamentos variáveis (valor, descrição, semana)
 ```

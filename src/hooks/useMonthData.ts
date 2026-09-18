@@ -9,6 +9,7 @@ import {
   originEntriesCol,
 } from '../services/months';
 import { originsCol } from '../services/origins';
+import { compartmentRef } from '../services/compartments';
 import type {
   Category,
   CategoryEntry,
@@ -78,14 +79,23 @@ export function useMonthData(compartmentId: string, ym: string): MonthData {
   return { loading: !monthLoaded, month, fixedEntries, categoryEntries, originEntries, expenses };
 }
 
-/** Assina os cadastros de gastos fixos, categorias e origens do compartimento. */
+/**
+ * Assina os cadastros de gastos fixos, categorias e origens do compartimento e
+ * a renda mensal líquida, que é configuração do compartimento e não de um mês.
+ * A renda vem por assinatura, e não da sessão guardada, para a tela Gerenciar
+ * mostrar na hora o que foi salvo em outro aparelho.
+ */
 export function useConfig(compartmentId: string) {
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
 
   useEffect(() => {
     const unsubs = [
+      onSnapshot(compartmentRef(compartmentId), (snap) => {
+        setMonthlyIncome((snap.data()?.monthlyIncome as number | undefined) ?? 0);
+      }),
       onSnapshot(
         query(collection(db, 'compartments', compartmentId, 'fixedExpenses'), orderBy('name')),
         (snap) => {
@@ -119,5 +129,5 @@ export function useConfig(compartmentId: string) {
     return () => unsubs.forEach((u) => u());
   }, [compartmentId]);
 
-  return { fixedExpenses, categories, origins };
+  return { fixedExpenses, categories, origins, monthlyIncome };
 }

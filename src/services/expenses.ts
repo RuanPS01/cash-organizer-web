@@ -146,8 +146,8 @@ export async function deleteVariableExpense(
 
 export interface FixedExpenseInput {
   name: string;
+  /** Valor da conta no mês; é também o previsto, e não há ideal separado. */
   amount: number;
-  idealAmount?: number;
   description?: string;
   /** Origem do gasto (de onde o dinheiro sai); sem origem escolhida, fica null. */
   originId?: string | null;
@@ -160,7 +160,6 @@ function normalizeFixedInput(input: FixedExpenseInput) {
   return {
     name: input.name.trim(),
     amount: input.amount,
-    idealAmount: input.idealAmount || input.amount,
     description: input.description?.trim() ?? '',
     // O nome vai junto do id (denormalizado, como no lançamento variável) para
     // a listagem continuar legível se a origem for renomeada ou removida.
@@ -218,7 +217,7 @@ export async function saveFixedExpense(
 export async function updateFixedExpense(
   compartmentId: string,
   id: string,
-  patch: Partial<{ name: string; amount: number; idealAmount: number; active: boolean }>,
+  patch: Partial<{ name: string; amount: number; active: boolean }>,
 ): Promise<void> {
   await updateDoc(doc(db, 'compartments', compartmentId, 'fixedExpenses', id), patch);
 }
@@ -383,7 +382,6 @@ export async function updateFixedEntry(
   entryId: string,
   patch: Partial<{
     amount: number;
-    idealAmount: number;
     status: EntryStatus;
     /** Só a linha do mês muda; o cadastro segue com a descrição original. */
     description: string;

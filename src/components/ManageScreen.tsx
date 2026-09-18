@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Plus, X } from 'lucide-react';
+import { setMonthlyIncome } from '../services/compartments';
 import {
   addCategory,
   addFixedExpense,
@@ -40,7 +41,6 @@ function FixedExpenseModal(props: {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [amount, setAmount] = useState(initial?.amount ?? 0);
-  const [ideal, setIdeal] = useState(initial?.idealAmount ?? 0);
   // Mesma regra do lançamento variável: a origem padrão já vem escolhida em um
   // cadastro novo. Na edição vale o que está gravado, para que salvar um gasto
   // antigo (sem origem) não passe a marcar a padrão sem o usuário pedir.
@@ -94,7 +94,6 @@ function FixedExpenseModal(props: {
     props.onSave({
       name,
       amount,
-      idealAmount: ideal || undefined,
       description: description || undefined,
       originId: origin?.id ?? null,
       originName: origin?.name ?? '',
@@ -127,10 +126,7 @@ function FixedExpenseModal(props: {
             onChange={(e) => setDescription(e.target.value)}
           />
         </span>
-        <div className="inline-pair">
-          <MoneyInput valueCents={amount} onChange={setAmount} placeholder="Valor" />
-          <MoneyInput valueCents={ideal} onChange={setIdeal} placeholder="Ideal (opcional)" />
-        </div>
+        <MoneyInput valueCents={amount} onChange={setAmount} placeholder="Valor do mês" />
 
         {originOptions.length > 0 && (
           <div className="origin-picker">
@@ -198,19 +194,32 @@ export function ManageScreen(props: {
   fixedExpenses: FixedExpense[];
   categories: Category[];
   origins: Origin[];
+  /** Renda mensal líquida do cadastro, em centavos (zero: ainda não informada). */
+  monthlyIncome: number;
   monthData: MonthData;
 }) {
-  const { compartmentId, currentMonth, fixedExpenses, categories, origins, monthData } = props;
+  const {
+    compartmentId,
+    currentMonth,
+    fixedExpenses,
+    categories,
+    origins,
+    monthlyIncome,
+    monthData,
+  } = props;
 
-  const totals = useMemo(
-    () => ({
-      fixedAmount: fixedExpenses.reduce((s, f) => s + f.amount, 0),
-      fixedIdeal: fixedExpenses.reduce((s, f) => s + (f.idealAmount || f.amount), 0),
-      varIdeal: categories.reduce((s, c) => s + c.idealAmount, 0),
+  const totals = useMemo(() => {
+    const fixedAmount = fixedExpenses.reduce((s, f) => s + f.amount, 0);
+    const varIdeal = categories.reduce((s, c) => s + c.idealAmount, 0);
+    return {
+      fixedAmount,
+      varIdeal,
       varSpent: monthData.expenses.reduce((s, e) => s + e.amount, 0),
-    }),
-    [fixedExpenses, categories, monthData.expenses],
-  );
+      // Previsto do mês: o valor dos fixos (que é o próprio previsto deles)
+      // mais o ideal das categorias. É o que a renda precisa cobrir.
+      planned: fixedAmount + varIdeal,
+    };
+  }, [fixedExpenses, categories, monthData.expenses]);
 
   // A linha guarda o id e o nome da origem; o cadastro é quem tem o ícone e o
   // tom, então o mapa liga um ao outro sem varrer a lista a cada gasto fixo.
@@ -242,7 +251,6 @@ export function ManageScreen(props: {
     saveFixedExpense(compartmentId, currentMonth, f.id, {
       name: f.name,
       amount: f.amount,
-      idealAmount: f.idealAmount,
       description: f.description,
       originId: f.originId,
       originName: f.originName,
@@ -286,20 +294,52 @@ export function ManageScreen(props: {
       </header>
 
       <section className="card">
+        <h3>Renda mensal líquida</h3>
+        <p className="card-hint">
+          O que entra por mês, já descontado o que não chega na sua conta. É a referência do
+          resumo do mês: o restante passa a ser a renda menos o total gasto, então gasto fixo
+          novo diminui o restante na hora. Sem renda informada, o resumo volta a comparar o
+          gasto com o ideal planejado. O valor salvo vale para o mês corrente em aberto e para
+          os próximos; meses já fechados ficam com a renda que tinham.
+        </p>
+        <div className="section-totals">
+          <span>
+            <span className="muted small">Renda</span>
+            <EditableMoney
+              valueCents={monthlyIncome}
+              onSave={(v) => setMonthlyIncome(compartmentId, currentMonth, v)}
+            />
+          </span>
+          <span>
+            <span className="muted small">Previsto de gastos</span>
+            <strong>{formatBRL(totals.planned)}</strong>
+          </span>
+          {monthlyIncome > 0 && (
+            <span>
+              <span className="muted small">Sobra prevista</span>
+              <strong className={monthlyIncome - totals.planned < 0 ? 'neg' : ''}>
+                {formatBRL(monthlyIncome - totals.planned)}
+              </strong>
+            </span>
+          )}
+        </div>
+        <p className="card-hint">
+          O previsto soma os gastos fixos (o valor deles já é o previsto) com o gasto ideal das
+          categorias variáveis.
+        </p>
+      </section>
+
+      <section className="card">
         <h3>Gastos fixos</h3>
         <p className="card-hint">
-          O valor fixo é usado como gasto ideal automaticamente, a menos que você defina outro
-          ideal. A origem diz de onde o dinheiro sai e acompanha o gasto na listagem, no
-          histórico e na aba Pagamento. Novos fixos entram no mês corrente em aberto.
+          O valor do gasto fixo é o próprio previsto do mês: conta que se repete não tem gasto
+          ideal separado. A origem diz de onde o dinheiro sai e acompanha o gasto na listagem,
+          no histórico e na aba Pagamento. Novos fixos entram no mês corrente em aberto.
         </p>
         <div className="section-totals">
           <span>
             <span className="muted small">Total valor</span>
             <strong>{formatBRL(totals.fixedAmount)}</strong>
-          </span>
-          <span>
-            <span className="muted small">Total ideal</span>
-            <strong>{formatBRL(totals.fixedIdeal)}</strong>
           </span>
         </div>
         <ul className="manage-list">
@@ -328,14 +368,6 @@ export function ManageScreen(props: {
                       <EditableMoney
                         valueCents={f.amount}
                         onSave={(v) => inlineSaveFixed(f, { amount: v })}
-                      />
-                    </span>
-                    <span className="pair">
-                      <span className="muted small">ideal</span>
-                      <EditableMoney
-                        valueCents={f.idealAmount}
-                        muted
-                        onSave={(v) => inlineSaveFixed(f, { idealAmount: v })}
                       />
                     </span>
                   </span>

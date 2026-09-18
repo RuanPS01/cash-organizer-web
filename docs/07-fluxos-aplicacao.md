@@ -52,8 +52,9 @@ sessão e cai no login. Enquanto isso, a tela mostra "Abrindo seu compartimento�
 O card abaixo do formulário atualiza sozinho (dados em tempo real) e traz três
 abas:
 
-1. **Resumo do mês** (a padrão): o total gasto contra o ideal do mês, com fixos,
-   variáveis e o restante. É o mesmo card da aba Estatísticas, embutido aqui.
+1. **Resumo do mês** (a padrão): o total gasto contra a renda líquida do mês
+   (ou contra o previsto, quando não há renda informada), com fixos, variáveis
+   e o restante. É o mesmo card da aba Estatísticas, embutido aqui.
 2. **Gasto por Categoria, Semana N**: quanto resta na semana e no mês da
    categoria acompanhada.
 3. **Gasto por Origem, Semana N**: o mesmo para a origem acompanhada. O gasto do
@@ -127,14 +128,21 @@ são alterados, e a edição só é liberada com o mês em aberto.
 
 ## 7.4 Gerenciar cadastros
 
-Gasto fixo: modal com nome, descrição, valor, ideal, origem e parcela ("2 de 4").
+Renda mensal líquida: primeira seção da tela, editável no lugar. Salvar grava no
+compartimento e reflete no mês corrente em aberto (`setMonthlyIncome`); meses já
+fechados ficam com a renda que tinham, e os próximos nascem com a nova. Ao lado
+da renda a seção mostra o previsto de gastos (valor dos fixos mais o ideal das
+categorias) e a sobra prevista, em vermelho quando o previsto passa da renda.
+
+Gasto fixo: modal com nome, descrição, valor, origem e parcela ("2 de 4").
 A origem usa a mesma fileira de chips do novo gasto, com a origem padrão já
 escolhida em um cadastro novo e o chip "Sem origem" para deixar o gasto sem uma.
 Na edição vale o que está gravado, e origem que foi removida do cadastro continua
 na fileira para não ser apagada sem querer. Ao salvar, o cadastro é atualizado e o
 mês corrente em aberto recebe o reflexo (a linha é criada se ainda não existir).
-Valor e ideal também podem ser editados direto na lista, que mostra o selo da
-origem ao lado do nome.
+O valor também pode ser editado direto na lista, que mostra o selo da origem ao
+lado do nome. Não há campo de ideal: conta que se repete todo mês já é o próprio
+planejamento, então o valor do fixo é o previsto dele.
 
 Categoria: nome e ideal editáveis no lugar, setas para reordenar (a ordem vale
 para os chips da tela de novo gasto), "tornar padrão" para transferir o papel da
@@ -174,8 +182,8 @@ A aba tem dois cards, na ordem em que o mês é resolvido:
    tabela mesmo antes de ter linha no mês, com o status `Pendente` e o ideal do
    cadastro, que é o que ela ganha ao nascer; a linha é criada na primeira
    edição de status ou de ideal.
-2. **Gastos fixos.** Uma linha por gasto fixo, com ideal e valor editáveis no
-   lugar, o selo da origem e o status.
+2. **Gastos fixos.** Uma linha por gasto fixo, com o valor editável no lugar, o
+   selo da origem e o status. Sem coluna de ideal: o valor já é o previsto.
 
 Trocar o status de uma origem aplica o mesmo status aos gastos fixos que saem
 dela, em uma gravação só. Depois disso, cada gasto fixo ainda pode ser ajustado
@@ -219,7 +227,8 @@ flowchart TD
 `advanceInstallments` incrementa a parcela atual dos gastos parcelados; quem
 estava na última parcela é desativado e não aparece no mês seguinte. O mês novo
 nasce na semana 1, qualquer que seja o dia do calendário em que a virada
-aconteceu.
+aconteceu, e com a renda líquida copiada do cadastro do compartimento: o mês que
+acabou de fechar fica com a renda que tinha.
 
 ## 7.7 Mover o mês de referência
 
@@ -246,10 +255,13 @@ Parcelas não avançam: mover a referência é uma correção, não uma virada d
 
 ## 7.8 Estatísticas
 
-- **Resumo do mês**: o mês visualizado com gasto, ideal, percentual, barra e a
-  linha de detalhe com fixos, variáveis e o restante (ou o excedido, em
-  vermelho). Mês fechado usa os totais gravados. O mesmo card aparece na aba
-  Adicionar, com o mês em aberto.
+- **Resumo do mês**: o mês visualizado com gasto, referência, percentual, barra
+  e a linha de detalhe com fixos, variáveis e o restante (ou o quanto passou, em
+  vermelho). A referência é a renda líquida do mês quando ela está informada, e
+  o ideal planejado quando não está. A barra sai em duas faixas, ouro para os
+  fixos e prata para os variáveis, e a linha de detalhe é a legenda das duas
+  cores. Mês fechado usa os totais e a renda gravados no mês. O mesmo card
+  aparece na aba Adicionar, com o mês em aberto.
 - **Categorias do mês**: gasto por categoria com o ideal e o percentual.
 - **Origens do mês**: gasto por origem com o ideal e o percentual, no mesmo
   formato das categorias. O gasto da origem é o mesmo total da aba Pagamento

@@ -43,7 +43,7 @@ src/
     LoginScreen.tsx         entrada e criação de compartimento
     AddExpenseScreen.tsx    tela principal de novo gasto
     MonthScreen.tsx         mês corrente: pagamento e estatísticas
-    ManageScreen.tsx        cadastro de fixos e categorias
+    ManageScreen.tsx        renda mensal, cadastro de fixos e categorias
     StatsView.tsx           subtela de estatísticas usada pelo MonthScreen
     AddStatsCard.tsx        card de estatísticas com abas da tela Adicionar
     MonthSummaryCard.tsx    card de resumo do mês (reutilizado)
@@ -54,7 +54,7 @@ src/
   hooks/
     useMonthData.ts         useMonthData e useConfig (assinaturas em tempo real)
   services/
-    compartments.ts         criar, abrir, buscar e preferências do compartimento
+    compartments.ts         criar, abrir, buscar, preferências e renda do compartimento
     session.ts              sessão no localStorage
     months.ts               ciclo de vida do mês, semana corrente e totais
     expenses.ts             lançamentos, gastos fixos, categorias e linhas do mês
@@ -89,7 +89,8 @@ Não existe Redux, Zustand, Context nem React Query. O estado vem de três lugar
 1. **Tempo real do Firestore.** `useMonthData` assina o documento do mês e as
    quatro subcoleções (`fixedEntries`, `categoryEntries`, `originEntries`,
    `expenses`); `useConfig` assina os cadastros de `fixedExpenses`, `categories`
-   e `origins`. Como a escrita vai direto ao
+   e `origins`, mais a renda mensal líquida do documento do compartimento. Como
+   a escrita vai direto ao
    Firestore, a tela se atualiza sozinha depois de qualquer serviço, sem
    invalidação manual de cache.
 2. **Estado local de tela.** `useState` dentro de cada componente para formulário,

@@ -61,7 +61,21 @@ bloco dourado. **Preenchimento de moldura tem que ser opaco.**
 | `--gold-fill` | preenchimento do botão primário |
 | `--gold-fill-soft` | preenchimento do chip selecionado e do selo padrão |
 | `--gold-lettering` | texto vazado em ouro (marca, títulos de tela, valor grande) |
-| `--gold-bar` | barra de progresso dentro do ideal |
+| `--gold-bar` | barra de progresso dentro da referência, e faixa dos gastos fixos no resumo do mês |
+
+### Prata
+
+Segundo tom da barra do resumo do mês: os gastos variáveis ficam em prata ao
+lado dos fixos em ouro, e a linha de detalhe abaixo da barra é a legenda das
+duas cores. Fora dessa leitura e do glifo de origem, a identidade continua
+sendo ouro sobre preto.
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--silver` | `#cfd4dc` | prata base |
+| `--silver-soft` | `#b6bcc7` | prata apagada |
+| `--silver-bar` | gradiente horizontal | faixa dos gastos variáveis na barra |
+| `--silver-fill` | gradiente vertical | chanfro da legenda (em 9px o gradiente horizontal deixaria metade quase preta) |
 
 ### Texto
 
@@ -209,7 +223,8 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Glifo de origem | `.origin-icon` | tons `.oc-*`; `.origin-cell` põe o glifo ao lado do nome na tabela do mês |
 | Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-text`, `.history-meta`, `.history-value`, `.history-actions` (lápis mais excluir), `.history-filters`, `.history-summary` |
 | Marca | `.brand-mark` (via `BrandMark`) | `.big` (login e abertura) |
-| Barra de progresso | `.progress` mais `.progress-fill` | `.over` troca para o gradiente terracota |
+| Barra de progresso | `.progress` mais `.progress-fill` | `.over` no preenchimento troca para o gradiente terracota. Com faixas (resumo do mês), `.progress-fill.gold` e `.progress-fill.silver` dividem a barra e o excesso vira `.progress.over`, um contorno terracota no trilho, porque as duas cores são a legenda e não podem sumir |
+| Legenda de cor | `.legend-item` mais `.legend-dot` | `.gold` e `.silver`; vive dentro da `.summary-detail`, a linha de detalhe do resumo do mês |
 | Valor editável | `.money-cell` | `.muted`, `.text-cell` |
 | Status | `.status-frame` mais `.status-select` | classes `.st-*` da tabela abaixo |
 | Caixa de erro | `.form-error` | moldura terracota |

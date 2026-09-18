@@ -45,6 +45,7 @@ uma comparação direta de ids.
 | `weekCategoryId` | string ou null | categoria acompanhada no card de estatísticas da aba Adicionar. Fica aqui, e não no dispositivo, para a escolha valer em qualquer aparelho |
 | `weekOriginId` | string ou null | origem acompanhada no mesmo card, pela mesma razão |
 | `addStatsTab` | `'month'`, `'category'` ou `'origin'` | aba aberta no mesmo card; ausente vale `month`, o resumo do mês |
+| `monthlyIncome` | number | renda mensal líquida em centavos, editada na tela Gerenciar. Ausente (compartimento criado antes do campo) ou zero significa renda não informada. Cada mês guarda a própria cópia em `months/{ym}.income` |
 | `createdAt` | number | ms |
 
 A senha em texto puro nunca sai do dispositivo. O id entra como sal, então o
@@ -55,8 +56,7 @@ mesmo texto de senha em compartimentos diferentes gera hashes diferentes.
 | Campo | Tipo | Notas |
 |---|---|---|
 | `name` | string | com trim |
-| `amount` | number | valor mensal em centavos |
-| `idealAmount` | number | se não informado, recebe o próprio `amount` |
+| `amount` | number | valor mensal em centavos. É também o previsto do mês: gasto fixo não tem gasto ideal separado |
 | `description` | string | comentário livre, `''` quando vazio |
 | `originId` | string ou null | origem escolhida no cadastro (coleção `origins`); `null` quando o gasto não tem origem |
 | `originName` | string | denormalizado, mantém a listagem legível se a origem for renomeada ou removida |
@@ -66,9 +66,13 @@ mesmo texto de senha em compartimentos diferentes gera hashes diferentes.
 | `createdAt` | number | ms |
 
 `normalizeFixedInput` em `services/expenses.ts` é quem garante o formato: faz
-trim, aplica o `amount` como ideal quando falta, grava a origem como `null` mais
-nome em branco quando não há escolha, e zera as parcelas para `null` quando não
-há `installmentTotal`.
+trim, grava a origem como `null` mais nome em branco quando não há escolha, e
+zera as parcelas para `null` quando não há `installmentTotal`.
+
+O cadastro gravado antes de o gasto fixo perder o ideal próprio ainda carrega a
+chave `idealAmount`. Ela não é mais lida nem escrita por lugar nenhum do app, e
+continua aceita pelas regras do Firestore só para esses documentos antigos não
+serem recusados em uma edição.
 
 ## 6.5 `categories/{id}` (cadastro de categoria variável)
 
@@ -141,6 +145,18 @@ e os lançamentos antigos seguem com `originName`.
 >   inteiro em centavos e opcional (o cadastro e a linha criados antes dele não
 >   têm a chave). Sem isso o gasto ideal da origem é recusado, e sem a folga do
 >   opcional até trocar a origem padrão passaria a falhar.
+>
+> A renda mensal líquida e o fim do ideal do gasto fixo mexeram nas regras de
+> novo, e as duas mudanças são obrigatórias:
+>
+> - `monthlyIncome` entrou na lista de campos que o `update` de `compartments`
+>   aceita (a regra usa `hasOnly`, então campo fora da lista é recusado) e
+>   `income` passou a ser validado no documento do mês, os dois como inteiro em
+>   centavos e opcionais;
+> - `idealAmount` virou opcional em `fixedExpenses` e em
+>   `months/{ym}/fixedEntries`, onde era obrigatório. Sem isso **toda** gravação
+>   de gasto fixo passa a ser recusada, inclusive a criação das linhas de um mês
+>   novo, porque o app não escreve mais esse campo.
 
 ## 6.6 `months/{YYYY-MM}`
 
@@ -149,6 +165,7 @@ e os lançamentos antigos seguem com `originName`.
 | `status` | `'open'` ou `'closed'` | só o mês corrente do compartimento fica aberto |
 | `currentWeek` | number | semana corrente, de 1 a 4. O mês nasce em 1 e só avança no botão "Virar semana"; mês sem o campo vale como semana 1 |
 | `weekChangedAt` | number | ms da última virada de semana; serve para não sugerir a virada duas vezes no mesmo domingo |
+| `income` | number | renda líquida deste mês em centavos, copiada de `compartments.monthlyIncome` quando o mês nasce e atualizada enquanto ele está em aberto. Mês criado antes do campo não tem a chave, e a leitura trata a ausência como zero |
 | `closedAt` | number | gravado ao virar o mês |
 | `totals` | `MonthTotals` | snapshot gravado ao fechar, usado nas estatísticas |
 
@@ -164,6 +181,14 @@ e os lançamentos antigos seguem com `originName`.
   byOrigin?: Record<originId, { name, ideal, actual, ignored? }>;
 }
 ```
+
+`fixedIdeal` é o previsto do lado fixo: a soma dos valores dos gastos fixos do
+mês, inclusive os que estão em `Ignorar` (o status tira do gasto, não do
+planejado). Mês fechado antes de o gasto fixo perder o ideal próprio gravou aqui
+a soma daqueles ideais, e segue sendo lido como está.
+
+A renda não entra em `totals`: ela fica no próprio documento do mês (`income`),
+que é lido tanto no mês aberto quanto no fechado.
 
 `byCategory` e `byOrigin` são os dois eixos do mesmo dinheiro (no que se gastou
 e por onde se pagou), então nenhum dos dois entra em `varIdeal` nem em
@@ -187,8 +212,7 @@ passado.
 | Campo | Tipo | Notas |
 |---|---|---|
 | `name`, `description` | string | copiados do cadastro |
-| `amount` | number | valor efetivo do mês, editável na aba Pagamento |
-| `idealAmount` | number | ideal do mês, editável |
+| `amount` | number | valor efetivo do mês, editável na aba Pagamento. É também o previsto: a linha não tem ideal separado, como o cadastro |
 | `status` | `EntryStatus` | nasce `Pendente` |
 | `originId` | string ou null | copiado do cadastro; `null` quando o gasto não tem origem |
 | `originName` | string | denormalizado, como estava no cadastro na hora da cópia |
@@ -201,6 +225,10 @@ a linha de fixo que não tem a chave `originId`, uma vez, com o que está no
 cadastro, e faz o mesmo com a linha de origem que não tem a chave `idealAmount`.
 Fora esses preenchimentos, ele só cria linha que falta e nunca reescreve valor
 ou status, que são do mês e não do cadastro.
+
+A linha gravada antes de o gasto fixo perder o ideal próprio ainda tem a chave
+`idealAmount`, pelo mesmo motivo do cadastro: ninguém lê, ninguém escreve, e as
+regras continuam aceitando para não recusar a edição de uma linha antiga.
 
 ### `categoryEntries/{categoryId}`
 
@@ -294,10 +322,11 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 
 | Função | Quando roda | O que faz |
 |---|---|---|
-| `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês na semana 1, com as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
-| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries`, `categoryEntries` e `originEntries` a partir dos cadastros ativos (com o ideal de cada um), tudo com status `Pendente` |
+| `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês na semana 1, com a renda copiada do cadastro e as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
+| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries` (só o valor, que já é o previsto), `categoryEntries` e `originEntries` (com o ideal de cada um) a partir dos cadastros ativos, tudo com status `Pendente` |
 | `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês), cria linhas de cadastros que ainda não estão no mês, completa a linha de fixo que ainda não tem o campo de origem e a linha de origem que ainda não tem o campo de ideal |
-| `computeTotals` | a cada render das telas com dados do mês | soma ideais e gastos, deixando de fora o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
+| `computeTotals` | a cada render das telas com dados do mês | soma previsto e gasto, deixando de fora do gasto o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
+| `setMonthlyIncome` | campo de renda da tela Gerenciar (`services/compartments.ts`) | grava `monthlyIncome` no compartimento e reflete em `income` no mês corrente, se ele estiver aberto |
 | `closeMonth` | botão "Virar mês" | recusa se houver `Pendente` em origem ou em gasto fixo, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
 | `advanceInstallments` | dentro de `closeMonth` | incrementa `installmentCurrent`; quem estava na última parcela é desativado |
 | `monthWeek` | a cada render das telas que mostram a semana | semana corrente do mês, de 1 a 4; mês sem o campo vale 1 |
@@ -308,15 +337,16 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 
 `setOpenMonth(compartmentId, fromYm, toYm, replaceTarget)` grava em três fases,
 cada uma em lotes de até 400 operações: prepara o destino (apaga o conteúdo
-antigo quando pedido e grava `{ status: 'open' }`, o que limpa `closedAt` e
-`totals` de um mês que já foi fechado), copia o conteúdo da origem e só então
+antigo quando pedido e grava `{ status: 'open' }` com a semana e a renda do mês
+de partida, o que limpa `closedAt` e `totals` de um mês que já foi fechado), copia o conteúdo da origem e só então
 apaga a origem. A ordem é proposital: se a rede cair no meio, o pior caso é o
 conteúdo aparecer nos dois meses, e nada se perde.
 
 Os cadastros (`fixedExpenses`, `categories` e `origins`) pertencem ao
 compartimento, não ao mês, então não são copiados: já valem para qualquer mês. O
-que viaja é a linha de mês de cada um, com o status como estava, e a semana
-corrente do mês: mover a referência é corrigir o mês de lugar, não recomeçá-lo.
+que viaja é a linha de mês de cada um, com o status como estava, mais a semana
+corrente e a renda do mês: mover a referência é corrigir o mês de lugar, não
+recomeçá-lo.
 O `syncMonthEntries` do fim completa o destino com cadastro ativo que ainda não
 tinha linha.
 

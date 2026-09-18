@@ -36,8 +36,11 @@ container:
 - o nome ocupa a linha inteira (`td:first-child { flex: 1 1 100% }`);
 - valor e status ficam na linha de baixo, com o status empurrado para a direita
   por `td:last-child { margin-left: auto }`;
-- a coluna "Ideal" ganha `.hide-narrow` e some, mas o valor ideal continua
-  editável na sublinha `.cell-sub`, que só aparece nesse breakpoint.
+- na tabela de origens, as colunas "Ideal", "Fixos" e "Variáveis" ganham
+  `.hide-narrow` e somem, mas os três valores continuam na sublinha `.cell-sub`,
+  que só aparece nesse breakpoint, com o ideal ainda editável. A tabela de
+  gastos fixos não precisa disso: ela tem só nome, valor e status, porque o
+  valor do fixo já é o previsto dele.
 
 Cuidado que já causou defeito: **item flex precisa de `min-width: 0`** nas
 células com texto. Sem isso a largura mínima automática (`min-content`) estoura a

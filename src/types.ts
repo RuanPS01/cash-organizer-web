@@ -54,16 +54,26 @@ export interface Compartment {
   weekOriginId?: string | null;
   /** Aba aberta no card; ausente vale "month", que é o resumo do mês. */
   addStatsTab?: AddStatsTab;
+  /**
+   * Renda mensal líquida, em centavos: o que entra todo mês, já descontado o
+   * que não chega na conta. É a referência do restante do mês, e cada mês
+   * guarda a própria cópia (`MonthDoc.income`) para o mês fechado continuar
+   * comparável. Ausente ou zero, o resumo do mês volta a comparar o gasto com
+   * o ideal planejado, que é como o app funcionava antes da renda existir.
+   */
+  monthlyIncome?: number;
   createdAt: number;
 }
 
 export interface FixedExpense {
   id: string;
   name: string;
-  /** Valor fixo mensal, em centavos. */
+  /**
+   * Valor fixo mensal, em centavos. É também o valor previsto do gasto: conta
+   * que se repete todo mês já é o próprio planejamento, então o gasto fixo não
+   * tem gasto ideal separado (a categoria e a origem têm).
+   */
   amount: number;
-  /** Gasto ideal; por padrão igual ao valor fixo. */
-  idealAmount: number;
   /** Comentário/descrição livre. */
   description?: string;
   /**
@@ -183,6 +193,12 @@ export interface OriginTotal {
 }
 
 export interface MonthTotals {
+  /**
+   * Previsto do lado fixo: a soma dos valores dos gastos fixos do mês,
+   * inclusive os ignorados, porque `Ignorar` tira do gasto e não do planejado.
+   * Mês fechado antes de o gasto fixo perder o ideal próprio gravou aqui a
+   * soma daqueles ideais, e continua sendo lido como está.
+   */
   fixedIdeal: number;
   fixedActual: number;
   varIdeal: number;
@@ -208,6 +224,14 @@ export interface MonthDoc {
   currentWeek?: number;
   /** Quando a semana foi virada, para não sugerir a virada duas vezes no mesmo dia. */
   weekChangedAt?: number;
+  /**
+   * Renda líquida deste mês, copiada do compartimento quando o mês nasce e
+   * atualizada enquanto ele está em aberto. Fica no mês, e não só no cadastro,
+   * porque mudar a renda de hoje não pode reescrever o restante de um mês já
+   * fechado. Mês criado antes do campo existir não tem a chave, e a leitura
+   * trata a ausência como zero.
+   */
+  income?: number;
   /** Preenchido ao fechar o mês, para estatísticas baratas. */
   totals?: MonthTotals;
 }
@@ -219,7 +243,7 @@ export const MONTH_WEEKS = 4;
 export interface FixedEntry {
   id: string;
   name: string;
-  idealAmount: number;
+  /** Valor do gasto no mês; é também o previsto, como no cadastro. */
   amount: number;
   status: EntryStatus;
   description?: string;

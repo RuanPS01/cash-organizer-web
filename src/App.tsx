@@ -17,7 +17,7 @@ type View = 'add' | 'stats' | 'payment' | 'manage';
 function Shell(props: { compartment: Compartment; onLogout: () => void }) {
   const [view, setView] = useState<View>('add');
   const [currentMonth, setCurrentMonth] = useState(props.compartment.currentMonth);
-  const { categories, fixedExpenses, origins } = useConfig(props.compartment.id);
+  const { categories, fixedExpenses, origins, monthlyIncome } = useConfig(props.compartment.id);
   const monthData = useMonthData(props.compartment.id, currentMonth);
   // As preferências do card de estatísticas da aba Adicionar (aba aberta,
   // categoria e origem acompanhadas) vivem aqui para não voltar às guardadas no
@@ -87,6 +87,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             fixedExpenses={fixedExpenses}
             categories={categories}
             origins={origins}
+            monthlyIncome={monthlyIncome}
             monthData={monthData}
           />
         )}
