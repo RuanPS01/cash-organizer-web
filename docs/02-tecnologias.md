@@ -105,6 +105,11 @@ Configurado em [`vite.config.ts`](../vite.config.ts) com `VitePWA`:
   `main.tsx`: cada deploy novo é aplicado sozinho.
 - Manifest em pt-BR, `display: standalone`, `orientation: portrait`,
   `theme_color: #000000`, `background_color: #000000`.
+- Meta viewport do [`index.html`](../index.html) com `viewport-fit=cover`, para
+  o app desenhar sob as barras do sistema, e `interactive-widget=resizes-content`,
+  para o teclado do Android encolher o viewport de layout em vez de deixar a
+  navegação fixa fora de lugar (ver
+  [08-responsividade-mobile.md](08-responsividade-mobile.md), seção 8.2.1).
 - Ícones em `public/icons/` (192, 512, 512 maskable e apple-touch), em preto
   com a carteira em ouro. Ver [03-identidade-visual.md](03-identidade-visual.md),
   seção 3.9.

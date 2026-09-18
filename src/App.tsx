@@ -10,6 +10,7 @@ import { setViewPrefs } from './services/compartments';
 import type { ViewPrefs } from './services/compartments';
 import { ensureMonth } from './services/months';
 import { useConfig, useMonthData } from './hooks/useMonthData';
+import { useKeyboardInset } from './hooks/useKeyboardInset';
 import type { Compartment } from './types';
 
 type View = 'add' | 'stats' | 'payment' | 'manage';
@@ -126,6 +127,9 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
 export default function App() {
   const [compartment, setCompartment] = useState<Compartment | null>(null);
   const [restoring, setRestoring] = useState(true);
+  // Precisa ficar aqui, e não no Shell: o hook mede o viewport da janela toda e
+  // vale desde o login, onde o teclado também abre.
+  useKeyboardInset();
 
   useEffect(() => {
     restoreSession()

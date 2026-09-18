@@ -53,6 +53,7 @@ src/
     shared.tsx              componentes genéricos reutilizáveis
   hooks/
     useMonthData.ts         useMonthData e useConfig (assinaturas em tempo real)
+    useKeyboardInset.ts     mede o teclado virtual e publica --keyboard-inset
   services/
     compartments.ts         criar, abrir, buscar, preferências e renda do compartimento
     session.ts              sessão no localStorage
@@ -75,7 +76,7 @@ public/icons/               ícones do PWA
 | Aplicação | `App.tsx` | restaurar sessão, escolher a tela, guardar o mês corrente | ler ou escrever no Firestore direto |
 | Telas | `components/*Screen.tsx` | estado de formulário, chamadas a serviços, montagem visual | montar query do Firestore |
 | Componentes genéricos | `components/shared.tsx` | UI sem conhecimento de domínio | importar serviços ou tipos de domínio |
-| Hooks | `hooks/useMonthData.ts` | assinar coleções com `onSnapshot` e devolver estado | escrever no banco |
+| Hooks | `hooks/*.ts` | assinar coleções com `onSnapshot` e devolver estado, ou observar o ambiente do navegador | escrever no banco |
 | Serviços | `services/*.ts` | toda leitura e escrita no Firestore, regras de consistência | renderizar JSX |
 | Utilitários | `utils/*.ts` | funções puras, sem React e sem Firestore | acessar `db` |
 

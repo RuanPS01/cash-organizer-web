@@ -94,6 +94,18 @@
   /* Chanfro padrão de cada tamanho de peça */
   --c: 8px;
 
+  /* Faixa de baixo ocupada pelo sistema (barra de gestos do Android, indicador
+     do iPhone). O teto de 2.25rem existe porque o Chrome do Android não
+     recalcula o inset seguro no ciclo de abrir e fechar o teclado: sem o limite
+     ele pode ficar preso em um valor alto e a navegação passa a exibir uma faixa
+     vazia embaixo. 2.25rem cobre os dois casos reais (24px da barra de gestos do
+     Android e 34px do indicador do iPhone). */
+  --safe-bottom: min(env(safe-area-inset-bottom, 0px), 2.25rem);
+
+  /* Altura da janela coberta pelo teclado virtual. Fica em 0 com o teclado
+     fechado; quem atualiza é o hook useKeyboardInset. */
+  --keyboard-inset: 0px;
+
   color-scheme: dark;
 }
 
@@ -581,18 +593,24 @@ select option:checked { color: var(--gold-soft); }
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  padding: 1rem 1rem 5.5rem;
+  /* A reserva de baixo é a altura da navbar fixa mais a faixa do sistema, que a
+     própria navbar usa de padding: sem somar, o último item da lista termina
+     escondido atrás dela. */
+  padding: 1rem 1rem calc(5.5rem + var(--safe-bottom));
 }
 
 .navbar {
   position: fixed;
-  bottom: 0;
+  /* Apoiada na borda de baixo que está mesmo visível, e não na do viewport de
+     layout: com o teclado aberto o useKeyboardInset levanta a barra em vez de
+     deixá-la embaixo do teclado, e com o teclado fechado o valor é 0. */
+  bottom: var(--keyboard-inset);
   left: 0;
   right: 0;
   display: flex;
   background: linear-gradient(180deg, #060606, #000);
   border-top: 1px solid rgba(212, 175, 55, 0.25);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--safe-bottom);
   z-index: 10;
 }
 
