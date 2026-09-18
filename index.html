@@ -2,7 +2,15 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- interactive-widget=resizes-content: sem ele o Chrome do Android usa
+      resizes-visual, em que o teclado encolhe apenas o viewport visual e deixa o
+      de layout (o que posiciona `position: fixed`) do tamanho da tela. Depois do
+      primeiro teclado os dois ficam fora de sincronia e a navegação fixa passa a
+      flutuar acima da borda de baixo, com uma faixa vazia embaixo. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

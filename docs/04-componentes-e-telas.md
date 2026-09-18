@@ -273,12 +273,20 @@ usa o `STATUS_CLASS` direto.
 
 ## 4.3 Hooks
 
-Ambos em [`src/hooks/useMonthData.ts`](../src/hooks/useMonthData.ts).
+Os dois de dados ficam em
+[`src/hooks/useMonthData.ts`](../src/hooks/useMonthData.ts).
 
 | Hook | Retorno | O que assina |
 |---|---|---|
 | `useMonthData(compartmentId, ym)` | `{ loading, month, fixedEntries, categoryEntries, originEntries, expenses }` | documento do mês e as quatro subcoleções, em tempo real |
 | `useConfig(compartmentId)` | `{ fixedExpenses, categories, origins, monthlyIncome }` | cadastros do compartimento, já filtrados por `active` e ordenados, mais a renda mensal líquida (documento do compartimento) |
+
+`useKeyboardInset`, em
+[`src/hooks/useKeyboardInset.ts`](../src/hooks/useKeyboardInset.ts), não devolve
+nada: chamado uma vez no `App`, ele acompanha o `visualViewport` e mantém em
+`--keyboard-inset` a altura que o teclado virtual cobre da base da janela, que é
+o que apoia a `.navbar` na borda visível. O motivo está em
+[08-responsividade-mobile.md](08-responsividade-mobile.md), seção 8.2.1.
 
 `useConfig` ordena categorias e origens por `sortOrder ?? createdAt`, que é a
 ordem exibida nos chips e na tela Gerenciar. Fixos vêm ordenados por nome. A
