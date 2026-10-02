@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CalendarSync } from 'lucide-react';
-import { monthWeek, setCurrentWeek } from '../services/months';
+import { fixedEntryAmount, monthWeek, setCurrentWeek } from '../services/months';
 import type { ViewPrefs } from '../services/compartments';
 import { formatBRL } from '../utils/money';
 import { dayKey, isSunday } from '../utils/dates';
@@ -130,7 +130,7 @@ export function AddStatsCard(props: {
     const fixed = viewOrigin
       ? data.fixedEntries
           .filter((f) => f.originId === viewOrigin.id)
-          .reduce((s, f) => s + f.amount, 0)
+          .reduce((s, f) => s + fixedEntryAmount(f), 0)
       : 0;
     return {
       ideal,

@@ -183,13 +183,6 @@ function FixedExpenseModal(props: {
           Em gastos parcelados, a parcela avança a cada virada de mês; após a última, o gasto sai
           dos próximos meses automaticamente.
         </p>
-        {initial?.planId && (
-          <p className="card-hint">
-            Este é um <strong>gasto fixo de planejamento</strong>: o nome, o valor e as parcelas
-            vêm do planejamento, e salvar o planejamento de novo na aba Planejamento volta a
-            usar os valores dele.
-          </p>
-        )}
         {error && <p className="form-error">{error}</p>}
       </div>
     </ConfirmModal>
@@ -376,28 +369,44 @@ export function ManageScreen(props: {
                   <span className="values">
                     <span className="pair">
                       <span className="muted small">valor</span>
-                      <EditableMoney
-                        valueCents={f.amount}
-                        onSave={(v) => inlineSaveFixed(f, { amount: v })}
-                      />
+                      {f.planId ? (
+                        <span className="plan-amount">{formatBRL(f.amount)}</span>
+                      ) : (
+                        <EditableMoney
+                          valueCents={f.amount}
+                          onSave={(v) => inlineSaveFixed(f, { amount: v })}
+                        />
+                      )}
                     </span>
                   </span>
                   {f.description && <span className="row-desc muted small">{f.description}</span>}
+                  {f.planId && (
+                    <span className="row-desc muted small">
+                      Gerenciado na aba Planejamento: valor, parcelas e remoção são feitos lá.
+                    </span>
+                  )}
                 </div>
-                <button
-                  className="btn icon"
-                  title="Editar gasto fixo"
-                  onClick={() => setFixedModal(f)}
-                >
-                  <Pencil size={15} aria-hidden />
-                </button>
-                <button
-                  className="btn icon danger"
-                  title="Remover gasto fixo"
-                  onClick={() => setRemoveTarget({ kind: 'fixed', item: f })}
-                >
-                  <X size={16} aria-hidden />
-                </button>
+                {/* O gasto fixo de planejamento não tem edição aqui: ele espelha o
+                    plano, e uma mudança direta o faria discordar do plano até a
+                    próxima gravação dele. */}
+                {!f.planId && (
+                  <>
+                    <button
+                      className="btn icon"
+                      title="Editar gasto fixo"
+                      onClick={() => setFixedModal(f)}
+                    >
+                      <Pencil size={15} aria-hidden />
+                    </button>
+                    <button
+                      className="btn icon danger"
+                      title="Remover gasto fixo"
+                      onClick={() => setRemoveTarget({ kind: 'fixed', item: f })}
+                    >
+                      <X size={16} aria-hidden />
+                    </button>
+                  </>
+                )}
               </li>
             );
           })}

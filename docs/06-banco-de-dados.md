@@ -152,6 +152,12 @@ e os lançamentos antigos seguem com `originName`.
 >   têm a chave). Sem isso o gasto ideal da origem é recusado, e sem a folga do
 >   opcional até trocar a origem padrão passaria a falhar.
 >
+> O plano em curso trouxe mais três campos, liberados e validados nas regras:
+> `trackedFrom` (`YYYY-MM` ou `null`) e `progress` (mapa) em `plans`, e
+> `paidAmount` (inteiro em centavos ou `null`) em `months/{ym}/fixedEntries`.
+> Os três são opcionais, porque plano e linha gravados antes deles não têm as
+> chaves.
+>
 > O planejamento financeiro trouxe mais duas liberações, obrigatórias:
 >
 > - `match /compartments/{id}/plans/{planId}`, a coleção nova, com a validação
@@ -196,6 +202,8 @@ o valor for guardado todo mês.
 | `cdiRate` | number | CDI ao ano no modo `cdi`, em centésimos de ponto percentual |
 | `cdiPercent` | number | percentual do CDI no modo `cdi` (`10000` é 100%) |
 | `incomeTax` | boolean | desconta o imposto de renda da tabela regressiva no resgate |
+| `trackedFrom` | string ou null | `YYYY-MM` em que o plano entrou nos gastos fixos e passou a estar em curso. `null` ou ausente: plano que nunca entrou (ou que foi tirado dos gastos fixos) |
+| `progress` | map | `{ "YYYY-MM": { planned, paid } }`, o planejado e o guardado de cada mês fechado desde `trackedFrom`, em centavos, gravado na virada do mês |
 | `active` | boolean | remoção é desativação |
 | `createdAt` | number | ms |
 
@@ -214,11 +222,43 @@ chega ao alvo (líquido, quando o imposto está ligado), arredondado para cima
 no centavo.
 
 **O vínculo com o mês** é o gasto fixo de planejamento: um `fixedExpenses`
-comum com `planId`, valor igual ao mensal do plano e parcelas (`installmentCurrent`
-é a posição do mês em aberto no prazo, `installmentTotal` é o prazo). Ele avança
-na virada do mês e sai depois da última parcela como qualquer gasto parcelado.
-Salvar o plano reflete nome, valor e parcelas nele; se o mês em aberto sair do
-prazo, ele sai do mês. Excluir o plano também o tira do mês.
+com `planId`, o valor do mês do plano e parcelas (`installmentCurrent` é a
+posição do mês em aberto no prazo, `installmentTotal` é o prazo, já com os meses
+extras). Ele só existe depois de "Incluir em gastos fixos": o plano sozinho não
+mexe no mês. Avança na virada e sai depois da última parcela como qualquer
+gasto parcelado, mas só muda pela aba Planejamento (a tela Gerenciar e o
+histórico o mostram sem edição).
+
+**O plano em curso.** Incluir grava `trackedFrom` (meses do plano antes dele
+contam como guardados). Cada mês, a linha do gasto fixo no Pagamento diz o que
+foi guardado (`planRecordOf`):
+
+| Status da linha | Guardado no mês |
+|---|---|
+| `Ignorar` ou `Sem gasto` | zero: mês pulado |
+| `Parcialmente pago` | `paidAmount` da linha |
+| qualquer outro (inclusive `Pendente` no mês em aberto) | o valor da linha, inteiro |
+
+Na virada, `closeMonth` grava `progress[ym]` com o planejado e o guardado e, a
+partir da projeção em curso (`projectPlanInProgress`), acerta o gasto fixo:
+parcela do mês fechado, total de parcelas e valor do próximo mês. Só então
+`advanceInstallments` avança a parcela ou desativa o gasto que terminou. Cada
+plano é tratado à parte e a falha de um não segura a virada.
+
+O que faltou vai para o fim. No "quanto vou juntar" o plano é guardar o
+planejado de cada mês do prazo original, então a soma do que faltou vira meses
+extras com o valor mensal, o último com o resto: um mês pulado acrescenta
+exatamente um mês. No "quanto guardar por mês" os meses extras seguem até a
+meta, e o último leva só o que falta; com rendimento, pular um mês pode custar
+mais de um, porque o depósito pulado deixou de render. O prazo nunca encurta.
+A mudança no Pagamento já vale no mês em aberto: `syncPlanFixedExpenses` acerta
+as parcelas na hora, e o histórico gravado na virada guarda o resultado.
+
+Salvar o plano reflete nome, valor e parcelas no gasto fixo. Tirar dos gastos
+fixos apaga `trackedFrom` e `progress` (o plano deixa de estar em curso e volta
+ao planejado). Excluir o plano também tira o gasto fixo. Plano que terminou
+(gasto fixo desativado na última parcela) fica com o histórico e aparece como
+concluído.
 
 ## 6.6 `months/{YYYY-MM}`
 
@@ -280,6 +320,12 @@ passado.
 | `originName` | string | denormalizado, como estava no cadastro na hora da cópia |
 | `installmentCurrent`, `installmentTotal` | number ou null | copiados do cadastro |
 | `planId` | string ou null | copiado do cadastro; marca a linha como gasto fixo de planejamento |
+| `paidAmount` | number ou null | só no gasto fixo de planejamento em `Parcialmente pago`: quanto foi guardado, menor que `amount`. `null` nos outros status |
+
+No gasto fixo de planejamento, o que a linha tira do mês (`fixedEntryAmount`) é
+o guardado e não o `amount`: `Sem gasto` é zero e `Parcialmente pago` é o
+`paidAmount`. `computeTotals`, a fatura da origem na aba Pagamento e o card da
+aba Adicionar usam esse valor; o previsto do mês continua sendo o `amount`.
 
 Linha criada antes de um campo existir fica sem ele. Foi o caso da origem nos
 meses que já estavam abertos quando o gasto fixo ganhou origem: essas linhas
@@ -390,7 +436,7 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 | `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês), cria linhas de cadastros que ainda não estão no mês, completa a linha de fixo que ainda não tem o campo de origem e a linha de origem que ainda não tem o campo de ideal |
 | `computeTotals` | a cada render das telas com dados do mês | soma previsto e gasto, deixando de fora do gasto o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
 | `setMonthlyIncome` | campo de renda da tela Gerenciar (`services/compartments.ts`) | grava `monthlyIncome` no compartimento e reflete em `income` no mês corrente, se ele estiver aberto |
-| `closeMonth` | botão "Virar mês" | recusa se houver `Pendente` em origem ou em gasto fixo, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, avança parcelas e garante o mês seguinte |
+| `closeMonth` | botão "Virar mês" | recusa se houver `Pendente` em origem ou em gasto fixo, grava `totals` e `closedAt`, marca `closed`, avança `currentMonth`, grava o mês nos planos em curso e acerta os gastos fixos de planejamento (`recordPlanMonths`), avança parcelas e garante o mês seguinte |
 | `advanceInstallments` | dentro de `closeMonth` | incrementa `installmentCurrent`; quem estava na última parcela é desativado |
 | `monthWeek` | a cada render das telas que mostram a semana | semana corrente do mês, de 1 a 4; mês sem o campo vale 1 |
 | `setCurrentWeek` | botão "Virar semana" | grava a semana nova e o `weekChangedAt`, que evita sugerir a virada duas vezes no mesmo dia |

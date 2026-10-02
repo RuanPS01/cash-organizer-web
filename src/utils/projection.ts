@@ -1,5 +1,5 @@
 import { addMonthsKey, monthsBetween } from './dates';
-import type { Plan } from '../types';
+import type { Plan, PlanMonthRecord } from '../types';
 
 /**
  * Cálculo dos planejamentos financeiros: projeção mês a mês do que se guarda,
@@ -128,12 +128,29 @@ export function monthlyDepositOf(p: PlanParams): number {
   return Math.ceil(falta / fatores - 1e-6);
 }
 
+/**
+ * Situação de um mês do plano:
+ * - `planned`: mês que ainda vai acontecer, com o depósito planejado;
+ * - `assumed`: mês antes de o plano entrar nos gastos fixos, contado como feito;
+ * - `paid`: mês fechado em que o depósito saiu inteiro;
+ * - `open`: mês em aberto, ainda com o depósito inteiro previsto;
+ * - `partial`: pago em parte (fechado ou em aberto);
+ * - `skipped`: pulado, nada guardado (ignorado, sem gasto ou fora do mês).
+ */
+export type PlanMonthState = 'planned' | 'assumed' | 'paid' | 'open' | 'partial' | 'skipped';
+
 /** Um mês da projeção. Todos os valores em centavos. */
 export interface ProjectionMonth {
   /** Posição no plano, de 1 ao prazo. */
   index: number;
   ym: string;
+  /** Depósito considerado na conta (o feito, nos meses que já aconteceram). */
   deposit: number;
+  /** Depósito planejado; maior que `deposit` no mês pulado ou pago em parte. */
+  planned: number;
+  state: PlanMonthState;
+  /** Mês depois do prazo original, acrescentado para repor o que faltou. */
+  extra: boolean;
   /** Rendimento bruto do mês. */
   interest: number;
   /** Total depositado até aqui, com o valor inicial. */
@@ -157,38 +174,50 @@ export interface Projection {
   netBalance: number;
   /** Meta (`goal`) já coberta pelo valor inicial, sem depósito nenhum. */
   goalReached: boolean;
+  /** Último mês do prazo original, antes de qualquer prorrogação. */
+  originalEnd: string;
+  /** Meses acrescentados ao fim para repor o que foi pulado ou pago em parte. */
+  extraMonths: number;
+  /** Meses pulados ou pagos em parte. */
+  shortMonths: number;
 }
 
-/**
- * Projeção mês a mês do plano. O rendimento de cada mês é a diferença entre os
- * saldos arredondados, e não o juro arredondado sozinho: assim a coluna fecha
- * exatamente (saldo anterior mais depósito mais rendimento igual ao saldo).
- */
-export function projectPlan(p: PlanParams): Projection {
-  const n = clampMonths(p.durationMonths);
-  const annualRate = annualRateOf(p);
-  const i = monthlyRateOf(annualRate);
-  const deposit = monthlyDepositOf(p);
+/** Mês de entrada da conta: o que foi (ou vai ser) depositado e em que situação. */
+type MonthInput = Pick<ProjectionMonth, 'ym' | 'deposit' | 'planned' | 'state' | 'extra'>;
 
+/**
+ * Saldos, rendimento e imposto a partir da lista de depósitos, um por mês. O
+ * rendimento de cada mês é a diferença entre os saldos arredondados, e não o
+ * juro arredondado sozinho: assim a coluna fecha exatamente (saldo anterior
+ * mais depósito mais rendimento igual ao saldo).
+ */
+function buildProjection(
+  p: PlanParams,
+  entradas: MonthInput[],
+  monthlyDeposit: number,
+  annualRate: number,
+): Projection {
+  const i = monthlyRateOf(annualRate);
+  const n = clampMonths(p.durationMonths);
   const months: ProjectionMonth[] = [];
   let saldo = p.initialAmount;
   let anterior = p.initialAmount;
   let depositado = p.initialAmount;
-  for (let k = 1; k <= n; k++) {
-    saldo = saldo * (1 + i) + deposit;
-    depositado += deposit;
+  entradas.forEach((e, k) => {
+    saldo = saldo * (1 + i) + e.deposit;
+    depositado += e.deposit;
     const balance = Math.round(saldo);
     months.push({
-      index: k,
-      ym: addMonthsKey(p.startMonth, k - 1),
-      deposit,
-      interest: balance - anterior - deposit,
+      ...e,
+      index: k + 1,
+      interest: balance - anterior - e.deposit,
       deposited: depositado,
       balance,
     });
     anterior = balance;
-  }
+  });
 
+  const total = entradas.length;
   const grossBalance = Math.round(saldo);
   let tax = 0;
   if (p.incomeTax && i > 0) {
@@ -196,13 +225,15 @@ export function projectPlan(p: PlanParams): Projection {
     // que aquele depósito ficou aplicado até o resgate no fim do prazo.
     const ganho = (valor: number, meses: number) =>
       valor * ((1 + i) ** meses - 1) * incomeTaxRate(meses);
-    let total = ganho(p.initialAmount, n);
-    for (let k = 1; k <= n; k++) total += ganho(deposit, n - k);
-    tax = Math.round(total);
+    let soma = ganho(p.initialAmount, total);
+    entradas.forEach((e, k) => {
+      soma += ganho(e.deposit, total - (k + 1));
+    });
+    tax = Math.round(soma);
   }
 
   return {
-    monthlyDeposit: deposit,
+    monthlyDeposit,
     annualRate,
     months,
     deposited: depositado,
@@ -210,8 +241,131 @@ export function projectPlan(p: PlanParams): Projection {
     interest: grossBalance - depositado,
     tax,
     netBalance: grossBalance - tax,
-    goalReached: p.kind === 'goal' && deposit === 0,
+    goalReached: p.kind === 'goal' && monthlyDeposit === 0,
+    originalEnd: addMonthsKey(p.startMonth, n - 1),
+    extraMonths: Math.max(0, total - n),
+    shortMonths: months.filter((m) => m.state === 'partial' || m.state === 'skipped').length,
   };
+}
+
+/** Projeção do plano como foi planejado: o mesmo depósito em todos os meses do prazo. */
+export function projectPlan(p: PlanParams): Projection {
+  const n = clampMonths(p.durationMonths);
+  const deposit = monthlyDepositOf(p);
+  const entradas: MonthInput[] = Array.from({ length: n }, (_, k) => ({
+    ym: addMonthsKey(p.startMonth, k),
+    deposit,
+    planned: deposit,
+    state: 'planned',
+    extra: false,
+  }));
+  return buildProjection(p, entradas, deposit, annualRateOf(p));
+}
+
+/** O que o plano em curso sabe dos meses que já aconteceram. */
+export interface PlanTrack {
+  /** Mês em que o plano entrou nos gastos fixos. */
+  trackedFrom: string;
+  /** Meses fechados, gravados na virada do mês. */
+  progress: Record<string, PlanMonthRecord>;
+  /** Mês em aberto do app. */
+  currentMonth: string;
+  /**
+   * O plano está nos gastos fixos. Fora deles (concluído) não há mês por vir,
+   * e a conta para no último mês que aconteceu.
+   */
+  ongoing: boolean;
+  /**
+   * O mês em aberto quando o Pagamento já disse que ele ficou pulado ou pago em
+   * parte. Ausente, o mês em aberto conta com o depósito planejado inteiro.
+   */
+  current?: PlanMonthRecord;
+}
+
+/**
+ * Projeção do plano em curso: os meses que já aconteceram entram com o que foi
+ * guardado de fato, e o que faltou (mês pulado ou pago em parte) vai para o fim,
+ * prorrogando o prazo.
+ *
+ * - "Quanto vou juntar": o plano é guardar o valor planejado de cada mês do
+ *   prazo. O que faltou vira meses extras no fim, com o valor mensal, e o último
+ *   leva só o resto. Pular um mês acrescenta exatamente um mês.
+ * - "Quanto guardar por mês": o plano é chegar à meta. Os meses extras seguem
+ *   com o valor mensal até a meta ser alcançada, e o último leva só o que falta.
+ *   Com rendimento, pular um mês pode custar mais de um mês, porque o depósito
+ *   pulado também deixou de render.
+ *
+ * Sem nada pulado ou parcial, o resultado é o mesmo de `projectPlan`. O prazo
+ * nunca encurta: os meses extras só existem para repor.
+ */
+export function projectPlanInProgress(p: PlanParams, track: PlanTrack): Projection {
+  const n = clampMonths(p.durationMonths);
+  const annualRate = annualRateOf(p);
+  const i = monthlyRateOf(annualRate);
+  const deposit = monthlyDepositOf(p);
+  const atual = monthsBetween(p.startMonth, track.currentMonth) + 1;
+  const emCurso = track.ongoing;
+
+  // A conta não para antes do último mês que aconteceu de verdade.
+  let ultimoReal = emCurso ? atual : 0;
+  for (const ym of Object.keys(track.progress)) {
+    ultimoReal = Math.max(ultimoReal, monthsBetween(p.startMonth, ym) + 1);
+  }
+
+  const entradas: MonthInput[] = [];
+  // Valor líquido no resgate, no fim do mês `k`, de tudo depositado até ali.
+  const liquidoEm = (k: number) => {
+    let v = p.initialAmount * netFactor(k, i, p.incomeTax);
+    entradas.forEach((e, j) => {
+      v += e.deposit * netFactor(k - (j + 1), i, p.incomeTax);
+    });
+    return v;
+  };
+
+  let devido = 0;
+  for (let k = 1; k <= n + MAX_PLAN_MONTHS; k++) {
+    const ym = addMonthsKey(p.startMonth, k - 1);
+    const extra = k > n;
+    let planned = deposit;
+    if (extra) {
+      const falta =
+        p.kind === 'accumulate' ? devido : Math.ceil(p.targetAmount - liquidoEm(k) - 1e-6);
+      planned = Math.min(deposit, Math.max(0, falta));
+    }
+
+    const rec = track.progress[ym];
+    let paid = planned;
+    let state: PlanMonthState = 'planned';
+    if (ym < track.trackedFrom) {
+      state = 'assumed';
+    } else if (rec) {
+      planned = rec.planned;
+      paid = rec.paid;
+      state = paid >= planned ? 'paid' : paid > 0 ? 'partial' : 'skipped';
+    } else if (k === atual && emCurso) {
+      if (track.current) {
+        planned = track.current.planned;
+        paid = track.current.paid;
+      }
+      state = paid >= planned ? 'open' : paid > 0 ? 'partial' : 'skipped';
+    } else if (k < atual) {
+      // Mês que já fechou sem o plano nele: nada foi guardado.
+      paid = 0;
+      state = 'skipped';
+    }
+
+    entradas.push({ ym, deposit: paid, planned, state, extra });
+    // No prazo original o que faltou entra na dívida; nos meses extras, o que
+    // foi depositado a abate.
+    devido += (extra ? 0 : planned) - paid;
+
+    if (k < n || k < ultimoReal) continue;
+    const cumprido =
+      p.kind === 'accumulate' ? devido <= 0 : liquidoEm(k) >= p.targetAmount - 1e-6;
+    if (cumprido || !emCurso || deposit <= 0) break;
+  }
+
+  return buildProjection(p, entradas, deposit, annualRate);
 }
 
 /** Prazo por extenso: "3 anos" quando foi digitado em anos e fecha a conta, senão em meses. */
@@ -241,19 +395,4 @@ export function remainingMonthsLabel(current: number, total: number): string {
   const faltam = Math.max(0, total - current);
   if (faltam === 0) return 'último mês';
   return faltam === 1 ? 'falta 1 mês' : `faltam ${faltam} meses`;
-}
-
-/**
- * Posição de um mês do app dentro do plano: `before` antes do primeiro mês,
- * `after` depois do último e, durante, o índice de 1 ao prazo (que é a parcela
- * do gasto fixo de planejamento naquele mês).
- */
-export function planMonthPosition(
-  p: Pick<PlanParams, 'startMonth' | 'durationMonths'>,
-  ym: string,
-): { kind: 'before' } | { kind: 'after' } | { kind: 'during'; index: number } {
-  const index = monthsBetween(p.startMonth, ym) + 1;
-  if (index < 1) return { kind: 'before' };
-  if (index > clampMonths(p.durationMonths)) return { kind: 'after' };
-  return { kind: 'during', index };
 }

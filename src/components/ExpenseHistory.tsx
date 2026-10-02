@@ -8,7 +8,7 @@ import {
   updateVariableExpenses,
 } from '../services/expenses';
 import type { ExpenseClassification, ExpenseEdit } from '../services/expenses';
-import { monthWeek } from '../services/months';
+import { fixedEntryAmount, monthWeek } from '../services/months';
 import { formatBRL } from '../utils/money';
 import { dateFromDayKey, dayLabel } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
@@ -230,7 +230,7 @@ export function ExpenseHistory(props: {
       ? expenses.reduce((s, e) => s + e.amount, 0)
       : fixedEntries
           .filter((f) => f.status !== IGNORED_STATUS)
-          .reduce((s, f) => s + f.amount, 0);
+          .reduce((s, f) => s + fixedEntryAmount(f), 0);
 
   // Só o que está visível entra na conta: sem isso, filtrar depois de marcar
   // aplicaria a troca em lançamentos que sumiram da tela.
@@ -552,15 +552,21 @@ export function ExpenseHistory(props: {
                       </span>
                     ) : null}
                   </span>
-                  <EditableText
-                    value={f.description ?? ''}
-                    placeholder="Sem descrição"
-                    allowEmpty
-                    disabled={!editable}
-                    onSave={(description) =>
-                      run(updateFixedEntry(compartmentId, ym, f.id, { description }))
-                    }
-                  />
+                  {/* O gasto fixo de planejamento é só de leitura fora da aba
+                      Planejamento, para não discordar do plano. */}
+                  {f.planId ? (
+                    <span className="history-plan-note">Gerenciado na aba Planejamento</span>
+                  ) : (
+                    <EditableText
+                      value={f.description ?? ''}
+                      placeholder="Sem descrição"
+                      allowEmpty
+                      disabled={!editable}
+                      onSave={(description) =>
+                        run(updateFixedEntry(compartmentId, ym, f.id, { description }))
+                      }
+                    />
+                  )}
                 </span>
                 <span className="history-meta">
                   <span className={`badge status ${STATUS_CLASS[f.status]}`}>{f.status}</span>
@@ -578,13 +584,19 @@ export function ExpenseHistory(props: {
                   ) : null}
                 </span>
                 <span className="history-value">
-                  <EditableMoney
-                    valueCents={f.amount}
-                    disabled={!editable}
-                    onSave={(amount) => run(updateFixedEntry(compartmentId, ym, f.id, { amount }))}
-                  />
+                  {f.planId ? (
+                    <strong>{formatBRL(fixedEntryAmount(f))}</strong>
+                  ) : (
+                    <EditableMoney
+                      valueCents={f.amount}
+                      disabled={!editable}
+                      onSave={(amount) =>
+                        run(updateFixedEntry(compartmentId, ym, f.id, { amount }))
+                      }
+                    />
+                  )}
                 </span>
-                {editable && (
+                {editable && !f.planId && (
                   <button
                     type="button"
                     className="btn icon danger"

@@ -261,6 +261,13 @@ export interface FixedEntry {
   installmentTotal?: number | null;
   /** Copiado do cadastro: marca a linha como gasto fixo de planejamento. */
   planId?: string | null;
+  /**
+   * Quanto foi guardado de fato no mês, em centavos, quando o gasto fixo de
+   * planejamento ficou "Parcialmente pago". O `amount` continua sendo o
+   * planejado; a diferença é o que o plano empurra para o fim do prazo.
+   * `null` ou ausente em qualquer outro status.
+   */
+  paidAmount?: number | null;
 }
 
 /**
@@ -334,10 +341,22 @@ export const PLAN_DURATION_UNITS = ['months', 'years'] as const;
 export type PlanDurationUnit = (typeof PLAN_DURATION_UNITS)[number];
 
 /**
+ * Mês do planejamento em curso já resolvido no Pagamento: quanto estava
+ * planejado e quanto foi guardado (zero no mês pulado, menos que o planejado
+ * no pago parcial). Em centavos.
+ */
+export interface PlanMonthRecord {
+  planned: number;
+  paid: number;
+}
+
+/**
  * Planejamento financeiro: uma projeção no tempo do que se guarda por mês,
- * com rendimento opcional de renda fixa. É simulação, não extrato: o app não
- * acompanha o saldo real guardado, porque o foco dele é o controle do mês. O
- * vínculo com o mês é o gasto fixo de planejamento (`FixedExpense.planId`).
+ * com rendimento opcional de renda fixa. Sozinho ele não mexe no mês: só entra
+ * nos gastos quando o usuário o inclui como gasto fixo de planejamento
+ * (`FixedExpense.planId`). A partir daí ele fica "em curso", e o que o
+ * Pagamento disser de cada mês (pago, pago parcial, pulado) volta para a
+ * projeção.
  *
  * Taxas são inteiros em centésimos de ponto percentual (1065 é 10,65%), pela
  * mesma razão de o dinheiro ser inteiro em centavos: nada de float gravado.
@@ -366,6 +385,17 @@ export interface Plan {
   cdiPercent: number;
   /** Desconta o imposto de renda da tabela regressiva no resgate. */
   incomeTax: boolean;
+  /**
+   * Mês em que o plano entrou nos gastos fixos e passou a ser acompanhado
+   * (YYYY-MM). Meses do plano antes dele contam como guardados conforme o
+   * planejado. `null` ou ausente: plano que nunca entrou no mês.
+   */
+  trackedFrom?: string | null;
+  /**
+   * O que aconteceu em cada mês fechado desde `trackedFrom`, gravado na virada
+   * do mês. É o histórico que separa o plano em curso do planejado.
+   */
+  progress?: Record<string, PlanMonthRecord>;
   active: boolean;
   createdAt: number;
 }

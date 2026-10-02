@@ -2,14 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Coins, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { usePlans } from '../hooks/useMonthData';
+import type { MonthData } from '../hooks/useMonthData';
 import type { PlanFixedSync } from '../services/plans';
+import { projectPlanForMonth } from '../services/months';
 import { formatBRL } from '../utils/money';
-import { formatDuration, formatPlanRate, projectPlan } from '../utils/projection';
+import { monthLabel } from '../utils/dates';
+import { formatDuration, formatPlanRate } from '../utils/projection';
 import { PLAN_KIND_TEXT } from './PlanSummary';
 import { PlanForm } from './PlanForm';
 import { PlanView } from './PlanView';
 import { PLAN_KINDS } from '../types';
-import type { FixedExpense, Origin, Plan, PlanKind } from '../types';
+import type { FixedEntry, FixedExpense, Origin, Plan, PlanKind } from '../types';
 
 const PLAN_KIND_ICON: Record<PlanKind, LucideIcon> = {
   accumulate: Coins,
@@ -29,15 +32,28 @@ type Page =
 /** Recado de quando o plano salvo estava no mês como gasto fixo de planejamento. */
 const SYNC_NOTICE: Record<PlanFixedSync, string | null> = {
   none: null,
-  updated: 'Planejamento salvo. O gasto fixo de planejamento do mês foi atualizado.',
+  updated: 'Planejamento salvo. O gasto fixo de planejamento foi atualizado junto.',
   removed:
-    'Planejamento salvo. O mês em aberto ficou fora do prazo, e o gasto fixo de planejamento saiu do mês.',
+    'Planejamento salvo. Não há mais valor a guardar no mês em aberto, e o gasto fixo de planejamento saiu dos gastos fixos.',
 };
 
-/** Linha da lista: o número que responde a pergunta de cada tipo de plano. */
-function PlanListItem(props: { plan: Plan; linked: boolean; onOpen: () => void }) {
+/**
+ * Linha da lista: o número que responde a pergunta de cada tipo de plano, já
+ * com o que aconteceu nos meses quando o plano está em curso.
+ */
+function PlanListItem(props: {
+  plan: Plan;
+  currentMonth: string;
+  linked: boolean;
+  line: FixedEntry | null;
+  onOpen: () => void;
+}) {
   const { plan } = props;
-  const projection = useMemo(() => projectPlan(plan), [plan]);
+  const projection = useMemo(
+    () => projectPlanForMonth(plan, props.currentMonth, props.linked, props.line),
+    [plan, props.currentMonth, props.linked, props.line],
+  );
+  const fim = projection.months[projection.months.length - 1];
   const comImposto = plan.incomeTax && projection.annualRate > 0;
   const Icon = PLAN_KIND_ICON[plan.kind];
   return (
@@ -50,7 +66,11 @@ function PlanListItem(props: { plan: Plan; linked: boolean; onOpen: () => void }
           <span className="plan-item-name">
             {plan.name}
             <span className="badge kind">{PLAN_KIND_TEXT[plan.kind].badge}</span>
-            {props.linked && <span className="badge plan">no mês</span>}
+            {props.linked ? (
+              <span className="badge plan">em curso</span>
+            ) : plan.trackedFrom ? (
+              <span className="badge kind">concluído</span>
+            ) : null}
           </span>
           <span className="plan-item-meta">
             {plan.kind === 'accumulate'
@@ -58,6 +78,12 @@ function PlanListItem(props: { plan: Plan; linked: boolean; onOpen: () => void }
               : `meta de ${formatBRL(plan.targetAmount)}`}{' '}
             · {formatDuration(plan)} · {formatPlanRate(plan)}
           </span>
+          {projection.extraMonths > 0 && fim && (
+            <span className="plan-item-meta neg">
+              fim em {monthLabel(fim.ym)}, {projection.extraMonths}{' '}
+              {projection.extraMonths === 1 ? 'mês' : 'meses'} a mais
+            </span>
+          )}
         </span>
         <span className="plan-item-value">
           {plan.kind === 'accumulate' ? (
@@ -89,8 +115,10 @@ export function PlanningScreen(props: {
   /** Cadastro de gastos fixos ativos: é por ele que o plano sabe se está no mês. */
   fixedExpenses: FixedExpense[];
   origins: Origin[];
+  /** Mês em aberto: é a linha do gasto fixo de planejamento que diz como o mês está indo. */
+  monthData: MonthData;
 }) {
-  const { compartmentId, currentMonth, fixedExpenses, origins } = props;
+  const { compartmentId, currentMonth, fixedExpenses, origins, monthData } = props;
   const { loading, plans } = usePlans(compartmentId);
   const [page, setPage] = useState<Page>({ kind: 'list' });
   const [notice, setNotice] = useState<string | null>(null);
@@ -108,6 +136,17 @@ export function PlanningScreen(props: {
     for (const f of fixedExpenses) if (f.planId) mapa.set(f.planId, f);
     return mapa;
   }, [fixedExpenses]);
+
+  // A linha do mês em aberto de cada plano em curso: pulada ou paga em parte, ela
+  // já muda a projeção antes de o mês virar.
+  const lineByFixed = useMemo(
+    () => new Map(monthData.fixedEntries.map((f) => [f.id, f])),
+    [monthData.fixedEntries],
+  );
+  const lineOf = (plan: Plan) => {
+    const linked = linkedByPlan.get(plan.id);
+    return linked ? (lineByFixed.get(linked.id) ?? null) : null;
+  };
 
   // A subpágina guarda só o id: o plano vem da assinatura, então a tela mostra
   // na hora o que foi salvo (aqui ou em outro aparelho).
@@ -137,6 +176,7 @@ export function PlanningScreen(props: {
         kind={pagePlan?.kind ?? page.planKind}
         initial={pagePlan}
         linked={pagePlan ? (linkedByPlan.get(pagePlan.id) ?? null) : null}
+        line={pagePlan ? lineOf(pagePlan) : null}
         onSaved={(id, sync) => {
           setNotice(SYNC_NOTICE[sync] ?? 'Planejamento salvo.');
           go({ kind: 'view', planId: id });
@@ -154,6 +194,7 @@ export function PlanningScreen(props: {
         currentMonth={currentMonth}
         plan={pagePlan}
         linked={linkedByPlan.get(pagePlan.id) ?? null}
+        line={lineOf(pagePlan)}
         origins={origins}
         notice={notice}
         onBack={() => go({ kind: 'list' })}
@@ -172,8 +213,9 @@ export function PlanningScreen(props: {
       <section className="card">
         <h3>Novo planejamento</h3>
         <p className="card-hint">
-          Projete no tempo o que você guarda por mês, com rendimento de renda fixa opcional. O valor
-          mensal pode entrar no mês em aberto como gasto fixo de planejamento.
+          Projete no tempo o que você guarda por mês, com rendimento de renda fixa opcional. O
+          planejamento não mexe no mês até você incluí-lo em gastos fixos; a partir daí ele fica
+          em curso e acompanha o que foi pago a cada mês.
         </p>
         <div className="plan-kinds">
           {PLAN_KINDS.map((kind) => {
@@ -210,7 +252,9 @@ export function PlanningScreen(props: {
               <PlanListItem
                 key={p.id}
                 plan={p}
+                currentMonth={currentMonth}
                 linked={linkedByPlan.has(p.id)}
+                line={lineOf(p)}
                 onOpen={() => go({ kind: 'view', planId: p.id })}
               />
             ))}

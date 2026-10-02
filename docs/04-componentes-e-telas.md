@@ -70,7 +70,8 @@ O mesmo componente serve às duas abas. Cabeçalho com navegação de mês
   aplica o mesmo status aos gastos fixos dela e grava a linha do mês, criando-a
   se ainda não existir (`setOriginStatus`). Lançamento sem origem vira uma linha
   só de leitura, sem ideal, porque não há onde guardar status nem planejado;
-- tabela de gastos fixos (nome, valor, status), com o valor editável no lugar e
+- tabela de gastos fixos (nome, valor, status), com o valor editável no lugar
+  (menos no gasto fixo de planejamento, cujo valor vem do plano) e
   o selo da origem ao lado do nome (o glifo e o tom vêm do cadastro recebido em
   `origins`; a linha do mês guarda só o id e o nome) e o `PlanBadge` no gasto
   fixo de planejamento. Não há coluna de ideal: o valor da conta já é o
@@ -86,6 +87,17 @@ histórico da aba Adicionar.
 Edição só é permitida quando o mês visualizado é o corrente e está aberto
 (`editable`).
 
+**Gasto fixo de planejamento.** O valor vem do plano e aparece só para leitura
+(`.plan-amount`). Escolher "Parcialmente pago" nele abre o `PartialModal`
+(interno), que pede quanto foi guardado (entre um centavo e o planejado) e
+grava o status com `paidAmount`; a célula passa a mostrar "R$ 300,00 de R$
+500,00", e o toque reabre o modal. Qualquer outro status grava `paidAmount:
+null`. Depois de cada mudança, `syncPlanFixedExpenses` refaz a conta do plano
+em curso e atualiza as parcelas, para o "faltam N meses" já sair certo no mês.
+A cascata do status da origem também alcança os fixos de planejamento, menos
+quando o status é "Parcialmente pago": o parcial da fatura não diz quanto foi
+guardado.
+
 ### `ManageScreen` (aba Gerenciar)
 
 `props: { compartmentId, currentMonth, fixedExpenses, categories, origins, monthlyIncome, monthData }`
@@ -100,13 +112,16 @@ valor, origem e parcela; a lista mostra o selo da origem ao lado do nome, o
 `PlanBadge` quando o fixo é de planejamento, e não tem mais campo de ideal,
 porque o valor do fixo já é o previsto) e o de
 categorias (nome editável, ideal editável, reordenação com as setas, "tornar
-padrão" e remoção). Mostra totais de cadastro por seção. A quarta seção, de
+padrão" e remoção). Mostra totais de cadastro por seção. O gasto fixo de
+planejamento aparece na lista sem lápis, sem remoção e com o valor só para
+leitura, com a nota "Gerenciado na aba Planejamento": ele espelha o plano, e
+qualquer mudança passa por lá. A quarta seção, de
 origens do gasto (com o gasto ideal do mês de cada uma), é delegada ao
 `ManageOrigins`.
 
 ### `PlanningScreen` (aba Planejamento)
 
-`props: { compartmentId, currentMonth, fixedExpenses, origins }`
+`props: { compartmentId, currentMonth, fixedExpenses, origins, monthData }`
 
 Projeções no tempo do que se guarda por mês. Assina os planos com `usePlans` e
 guarda em estado a subpágina aberta (`Page`: lista, formulário ou
@@ -114,20 +129,23 @@ visualização, com o id do plano), porque não há router.
 
 - **Lista** (página inicial da aba): o card "Novo planejamento" com os dois
   tipos (`.plan-kind-option`: "Quanto vou juntar" e "Quanto guardar por mês") e
-  o card "Seus planejamentos", uma linha por plano com o tipo, o selo "no mês"
-  quando ele é um gasto fixo de planejamento ativo, e o número que responde a
-  pergunta do plano (valor no fim do prazo ou valor por mês).
+  o card "Seus planejamentos", uma linha por plano com o tipo, o selo "em
+  curso" (está nos gastos fixos) ou "concluído" (esteve e terminou), o número
+  que responde a pergunta do plano (valor no fim do prazo ou valor por mês) e,
+  em vermelho, o novo fim quando o prazo foi prorrogado.
 - **Formulário** e **visualização**: `PlanForm` e `PlanView`, abaixo.
 
 O vínculo com o mês sai do cadastro de gastos fixos recebido em
-`fixedExpenses` (o fixo ativo com `planId` igual ao do plano). Depois de salvar,
+`fixedExpenses` (o fixo ativo com `planId` igual ao do plano), e a situação do
+mês em aberto sai da linha desse fixo em `monthData.fixedEntries`: pulada ou
+paga em parte no Pagamento, ela já muda a projeção. Depois de salvar,
 um recado de 2,5 segundos diz o que aconteceu com o gasto fixo de planejamento
 (atualizado ou retirado do mês). Plano que some da assinatura (excluído em outro
 aparelho) leva de volta à lista.
 
 ### `PlanForm` (subpágina)
 
-`props: { compartmentId, currentMonth, kind, initial, linked, onSaved, onCancel }`
+`props: { compartmentId, currentMonth, kind, initial, linked, line, onSaved, onCancel }`
 
 Criação e edição de um plano. Campos: nome, valor mensal (no "quanto vou
 juntar") ou meta (no "quanto guardar por mês"), prazo com a unidade (meses ou
@@ -140,27 +158,45 @@ resultado aparece ao vivo abaixo do formulário, no `PlanSummary`. Salva com
 `addPlan` ou `savePlan` e devolve em `onSaved` o id e o que aconteceu com o
 gasto fixo de planejamento.
 
+Com o plano em curso (`linked`), o primeiro mês fica travado, porque o
+histórico dos meses está preso a ele, e a prévia usa a conta em curso
+(`projectPlanForMonth`, com a `line` do mês em aberto), mostrando o que salvar
+produz de fato.
+
 ### `PlanView` (subpágina)
 
-`props: { compartmentId, currentMonth, plan, linked, origins, notice, onBack, onEdit, onRemoved }`
+`props: { compartmentId, currentMonth, plan, linked, line, origins, notice, onBack, onEdit, onRemoved }`
 
-Visualização do plano, nesta ordem: o resultado (`PlanSummary`), o gráfico
-(`PlanChart`), o card "No mês" e a listagem "Mês a mês", agrupada por ano em
-blocos recolhíveis (abre o ano do mês em aberto), com o mês em aberto marcado
-com o selo "atual". No rodapé, editar e excluir (`ConfirmModal`).
+Visualização do plano, nesta ordem: a situação do plano em curso ou concluído
+(`.plan-progress`: desde quando está nos gastos fixos, quantos meses foram
+pulados ou pagos em parte, em vermelho, e quanto o prazo foi prorrogado), o
+resultado (`PlanSummary`), o gráfico (`PlanChart`), o card "Gasto fixo de
+planejamento" e a listagem "Mês a mês", agrupada por ano em blocos recolhíveis
+(abre o ano do mês em aberto). Na listagem, cada mês que já aconteceu mostra o
+que foi pago; pulado e parcial vêm em vermelho com o selo `.badge.miss`, o mês
+em aberto tem o selo "atual" e os meses acrescentados no fim, "mês extra". No
+rodapé, editar e excluir (`ConfirmModal`).
 
-O card "No mês" mostra, conforme o caso: o botão "Incluir no mês" (abre o
-`IncludeModal`, interno, com a escolha da origem), o gasto fixo de planejamento
-já incluído (valor, parcela, meses que faltam e origem, com "Tirar do mês"), o
-aviso de que o gasto fixo foi ajustado e está diferente do planejado (com "Usar
-o valor planejado", que chama `setPlanFixedExpense`), ou o motivo de não dar
-para incluir (o plano ainda não começou, já terminou ou não tem valor mensal).
+A conta é `projectPlanForMonth` (`services/months.ts`): a planejada enquanto o
+plano não entrou nos gastos fixos, a em curso depois disso.
+
+O card "Gasto fixo de planejamento" mostra, conforme o caso: o botão "Incluir
+em gastos fixos" (abre o `IncludeModal`, interno, com a escolha da origem), que
+é a única forma de o plano mexer no mês; o gasto fixo já incluído (valor,
+parcela, meses que faltam, origem e, em vermelho, se o mês em aberto foi pulado
+ou pago em parte no Pagamento), com "Tirar dos gastos fixos"; o aviso de que o
+gasto fixo ficou diferente do plano (sincronização que não chegou ao banco ou
+mês de referência movido), com "Atualizar o gasto fixo"; o fim do plano
+concluído; ou o motivo de não dar para incluir (o plano ainda não começou, já
+terminou ou não tem valor mensal).
 
 ### `PlanChart`
 
 `props: { months, showDeposited }`
 
-Gráfico da projeção. O traçado é um SVG esticado para a caixa
+Gráfico da projeção. Os meses pulados ou pagos em parte ganham um traço
+vermelho na base (`.plan-chart-miss`), e a leitura diz "pulado" ou "pago em
+parte" quando o mês na mira é um deles. O traçado é um SVG esticado para a caixa
 (`preserveAspectRatio="none"`, linhas com `vector-effect: non-scaling-stroke`) e
 o texto é HTML por cima, para não deformar nem encolher em 360px. A leitura
 acima do gráfico é também a legenda: sem toque, mostra o fim do prazo; tocar,
@@ -292,7 +328,10 @@ considera apenas o que está visível: filtrar depois de marcar não deixa um
 lançamento fora da tela ser alterado sem querer.
 
 Na subaba de fixos, valor e descrição da linha do mês seguem editáveis no lugar
-(`EditableMoney` e `EditableText`), porque ali o cadastro é que manda. A remoção
+(`EditableMoney` e `EditableText`), porque ali o cadastro é que manda. O gasto
+fixo de planejamento é a exceção: só leitura e sem remoção, com o valor
+efetivamente guardado (`fixedEntryAmount`) e a nota "Gerenciado na aba
+Planejamento". A remoção
 passa por `ConfirmModal`: lançamento variável é excluído de verdade, gasto fixo
 usa `removeFixedExpense` (sai do mês e dos próximos, porque uma linha apagada
 sozinha voltaria na próxima reconciliação de `ensureMonth`). Edição só é liberada
@@ -403,11 +442,19 @@ aberto; mês fechado fica com a renda que tinha).
 ### `services/months.ts`
 
 `monthRef`, `fixedEntriesCol`, `categoryEntriesCol`, `originEntriesCol`,
-`expensesCol`, `isMonthOpen`, `ensureMonth` (cria o mês já com a renda copiada
+`expensesCol`, `isMonthOpen`, `fixedEntryAmount` (quanto a linha de gasto fixo
+tira do mês: no de planejamento, "Sem gasto" é zero e o pago parcial é o
+`paidAmount`), `planRecordOf` (o planejado e o guardado do mês, a partir da
+linha do gasto fixo de planejamento), `projectPlanForMonth` (a projeção do
+plano vista do mês em aberto: planejada ou em curso, com a linha do mês),
+`ensureMonth` (cria o mês já com a renda copiada
 do cadastro), `setOpenMonth` (move o conteúdo do
 mês em aberto para outro mês e troca a referência), `computeTotals` (recebe
 também as linhas de origem, porque origem ignorada tira do gasto tudo que saiu
-dela, e devolve o uso por categoria e por origem), `closeMonth`, `monthWeek` (semana corrente do mês, 1 quando o campo não
+dela, e devolve o uso por categoria e por origem, usando `fixedEntryAmount` nos
+fixos), `closeMonth` (antes de avançar as parcelas, grava no plano em curso o
+mês que fechou e acerta as parcelas e o valor do próximo mês do gasto fixo de
+planejamento), `monthWeek` (semana corrente do mês, 1 quando o campo não
 existe) e `setCurrentWeek` (vira a semana e marca quando isso aconteceu).
 
 ### `services/origins.ts`
@@ -440,14 +487,20 @@ origem inteira, porque ela pode ainda não existir.
 
 ### `services/plans.ts`
 
-`plansCol`, `addPlan`, `savePlan` (grava o plano e, se ele está no mês, chama
-`setPlanFixedExpense`; devolve `'none'`, `'updated'` ou `'removed'`),
-`setPlanFixedExpense` (leva nome, valor mensal e parcelas do plano para o gasto
-fixo de planejamento; tira do mês quando o mês em aberto saiu do prazo ou o
-valor mensal zerou), `removePlan` (desativa o plano e tira o gasto fixo dele do
-mês) e `addPlanFixedExpense` (inclui o valor mensal no mês em aberto como gasto
-fixo parcelado, parcela igual à posição do mês no prazo). O `PlanInput` é o
-plano sem `id`, `active` e `createdAt`.
+`plansCol`, `addPlan`, `savePlan` (grava o plano e, se ele está nos gastos
+fixos, chama `setPlanFixedExpense`; devolve `'none'`, `'updated'` ou
+`'removed'`), `planMonthSchedule` (parcela, total de parcelas e valor planejado
+do mês em aberto, a partir de uma projeção), `setPlanFixedExpense` (leva nome,
+valor do mês e parcelas do plano em curso para o gasto fixo de planejamento,
+lendo a linha do mês em aberto; tira dos gastos fixos quando o mês saiu do
+prazo ou não há valor a guardar), `syncPlanFixedExpenses` (o mesmo para as
+linhas que a aba Pagamento acabou de mudar), `addPlanFixedExpense` (inclui o
+plano nos gastos fixos e marca o início do acompanhamento, `trackedFrom`),
+`removePlanFixedExpense` (tira dos gastos fixos e descarta o acompanhamento) e
+`removePlan` (desativa o plano e tira o gasto fixo dele). O `PlanInput` é o
+que o formulário edita, sem `id`, `active`, `createdAt` e o acompanhamento
+(`PlanTracking`: `trackedFrom` e `progress`), que só os serviços e a virada
+gravam.
 
 ## 4.5 Utilitários
 
@@ -460,10 +513,10 @@ plano sem `id`, `active` e `createdAt`.
 | `addMonthsKey(key, n)`, `monthsBetween(from, to)` | `utils/dates.ts` | mês somado de n meses e distância em meses entre dois `YYYY-MM` |
 | `monthShortLabel(key)` | `utils/dates.ts` | "out/26", para o eixo do gráfico |
 | `formatBRLCompact(cents)` | `utils/money.ts` | "R$ 12 mil", só para eixo de gráfico |
-| `projectPlan(plan)` | `utils/projection.ts` | projeção mês a mês (depósito, rendimento, total depositado e saldo) mais os totais, o imposto e o líquido |
+| `projectPlan(plan)` | `utils/projection.ts` | projeção planejada mês a mês (depósito, rendimento, total depositado e saldo) mais os totais, o imposto e o líquido |
+| `projectPlanInProgress(plan, track)` | `utils/projection.ts` | projeção do plano em curso: meses que aconteceram com o que foi guardado, o que faltou empurrado para meses extras no fim, e a situação de cada mês (`state`) |
 | `monthlyDepositOf(plan)` | `utils/projection.ts` | valor mensal do plano; na meta, o menor depósito que chega lá, arredondado para cima |
 | `annualRateOf`, `monthlyRateOf`, `incomeTaxRate` | `utils/projection.ts` | taxa efetiva ao ano (CDI pela taxa diária), taxa mensal equivalente e alíquota da tabela regressiva |
-| `planMonthPosition(plan, ym)` | `utils/projection.ts` | `before`, `after` ou `during` com o índice do mês no prazo (a parcela) |
 | `formatRate`, `digitsToRate` | `utils/projection.ts` | taxa em centésimos de ponto percentual para "10,65%" e leitura por dígitos |
 | `formatDuration`, `formatPlanRate`, `remainingMonthsLabel` | `utils/projection.ts` | "3 anos", "110,00% do CDI" e "faltam 9 meses" |
 | `monthLabel(key)` | `utils/dates.ts` | "Setembro de 2026" |

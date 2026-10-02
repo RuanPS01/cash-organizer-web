@@ -1,17 +1,21 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { closeMonth, computeTotals, setOpenMonth } from '../services/months';
+import { closeMonth, computeTotals, fixedEntryAmount, setOpenMonth } from '../services/months';
 import { setOriginIdeal, setOriginStatus, updateFixedEntry } from '../services/expenses';
+import { syncPlanFixedExpenses } from '../services/plans';
 import { formatBRL } from '../utils/money';
 import { monthLabel, nextMonthKey, prevMonthKey } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
 import { useMonthData } from '../hooks/useMonthData';
-import { ConfirmModal, EditableMoney } from './shared';
+import { ConfirmModal, EditableMoney, MoneyInput } from './shared';
 import { StatsView } from './StatsView';
 import { OriginIcon } from './OriginIcon';
 import { PlanBadge } from './PlanBadge';
 import { ENTRY_STATUSES, IGNORED_STATUS, STATUS_CLASS } from '../types';
-import type { EntryStatus, Origin, OriginColorKey, OriginIconKey } from '../types';
+import type { EntryStatus, FixedEntry, Origin, OriginColorKey, OriginIconKey } from '../types';
+
+/** Status do gasto fixo de planejamento que pede o valor guardado. */
+const PARTIAL_STATUS: EntryStatus = 'Parcialmente pago';
 
 /**
  * Linha da tabela de origens da aba Pagamento: a origem (do cadastro ou de uma
@@ -51,6 +55,55 @@ function StatusSelect(props: {
         ))}
       </select>
     </span>
+  );
+}
+
+/**
+ * Valor guardado no gasto fixo de planejamento pago em parte. É o que o plano
+ * usa para saber quanto faltou e quanto empurrar para o fim do prazo, então o
+ * valor precisa ficar entre um centavo e o planejado: o inteiro é "Pago" e
+ * nada guardado é "Ignorar".
+ */
+function PartialModal(props: {
+  entry: FixedEntry;
+  busy: boolean;
+  onConfirm: (paid: number) => void;
+  onCancel: () => void;
+}) {
+  const { entry } = props;
+  const [paid, setPaid] = useState(entry.paidAmount ?? 0);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirm = () => {
+    if (paid <= 0 || paid >= entry.amount) {
+      setError(
+        `Informe um valor menor que ${formatBRL(entry.amount)}. Para o valor inteiro, use "Pago"; para nada guardado, "Ignorar".`,
+      );
+      return;
+    }
+    props.onConfirm(paid);
+  };
+
+  return (
+    <ConfirmModal
+      title="Pagamento parcial"
+      confirmLabel="Salvar"
+      busy={props.busy}
+      onConfirm={confirm}
+      onCancel={props.onCancel}
+    >
+      <div className="modal-form">
+        <p>
+          Quanto foi guardado em <strong>{entry.name}</strong> neste mês? O planejado era{' '}
+          <strong>{formatBRL(entry.amount)}</strong>.
+        </p>
+        <MoneyInput valueCents={paid} onChange={setPaid} placeholder="Valor guardado" />
+        <p className="card-hint">
+          O que faltou vai para o fim do planejamento, que ganha o tempo necessário para repor.
+        </p>
+        {error && <p className="form-error">{error}</p>}
+      </div>
+    </ConfirmModal>
   );
 }
 
@@ -103,7 +156,11 @@ export function MonthScreen(props: {
       return porOrigem;
     };
     const variaveis = somarPorOrigem(data.expenses);
-    const fixos = somarPorOrigem(data.fixedEntries);
+    // O gasto fixo de planejamento pago em parte tira do mês só o que foi
+    // guardado, e a fatura da origem acompanha.
+    const fixos = somarPorOrigem(
+      data.fixedEntries.map((f) => ({ originId: f.originId, amount: fixedEntryAmount(f) })),
+    );
     const linha = (chave: string) => {
       const variable = variaveis.get(chave) ?? 0;
       const fixed = fixos.get(chave) ?? 0;
@@ -152,16 +209,74 @@ export function MonthScreen(props: {
     promise.catch((err) => setError(writeErrorMessage(err)));
   };
 
+  // Gasto fixo de planejamento cujo pagamento parcial está sendo informado.
+  const [partialTarget, setPartialTarget] = useState<FixedEntry | null>(null);
+  const [partialBusy, setPartialBusy] = useState(false);
+
+  // Depois de mudar o status de um gasto fixo de planejamento, o plano em curso
+  // recalcula o prazo e a contagem de parcelas na hora: o selo "faltam N
+  // meses" já sai certo neste mês, sem esperar a virada.
+  const syncPlans = (entries: FixedEntry[]) =>
+    syncPlanFixedExpenses(
+      compartmentId,
+      viewMonth,
+      entries.filter((f) => f.planId),
+    );
+
+  const changeFixedStatus = (f: FixedEntry, status: EntryStatus) => {
+    // O pago parcial do gasto fixo de planejamento precisa do valor guardado:
+    // o status só é gravado quando o modal confirma.
+    if (f.planId && status === PARTIAL_STATUS) {
+      setPartialTarget(f);
+      return;
+    }
+    run(
+      (async () => {
+        await updateFixedEntry(compartmentId, viewMonth, f.id, {
+          status,
+          ...(f.planId ? { paidAmount: null } : {}),
+        });
+        await syncPlans([f]);
+      })(),
+    );
+  };
+
+  const confirmPartial = async (paid: number) => {
+    if (!partialTarget) return;
+    setPartialBusy(true);
+    setError(null);
+    try {
+      await updateFixedEntry(compartmentId, viewMonth, partialTarget.id, {
+        status: PARTIAL_STATUS,
+        paidAmount: paid,
+      });
+      await syncPlans([partialTarget]);
+      setPartialTarget(null);
+    } catch (err) {
+      setError(writeErrorMessage(err));
+      setPartialTarget(null);
+    } finally {
+      setPartialBusy(false);
+    }
+  };
+
   // O status da origem desce para os gastos fixos que saem dela; o nome, o
   // ideal e os ids saem daqui porque a tela já tem o cadastro e as linhas do
   // mês, e a linha da origem é gravada inteira (ela pode ainda não existir).
-  const changeOriginStatus = (origin: OriginRow, status: EntryStatus) =>
-    setOriginStatus(
+  // "Parcialmente pago" não desce para o gasto fixo de planejamento: o pago em
+  // parte da fatura não diz quanto foi guardado, e ele pede o valor no modal.
+  const changeOriginStatus = async (origin: OriginRow, status: EntryStatus) => {
+    const alvos = data.fixedEntries.filter(
+      (f) => f.originId === origin.id && !(f.planId && status === PARTIAL_STATUS),
+    );
+    await setOriginStatus(
       compartmentId,
       viewMonth,
       { id: origin.id, name: origin.name, idealAmount: origin.ideal, status },
-      data.fixedEntries.filter((f) => f.originId === origin.id).map((f) => f.id),
+      alvos.map((f) => f.id),
     );
+    await syncPlans(alvos);
+  };
 
   // Só o ideal do mês muda aqui, como no ideal do gasto fixo logo abaixo: o
   // cadastro da origem continua com o ideal que vale para os próximos meses.
@@ -388,21 +503,39 @@ export function MonthScreen(props: {
                           )}
                         </td>
                         <td className="num">
-                          <EditableMoney
-                            valueCents={f.amount}
-                            disabled={!editable}
-                            onSave={(v) =>
-                              run(updateFixedEntry(compartmentId, viewMonth, f.id, { amount: v }))
-                            }
-                          />
+                          {/* O valor do gasto fixo de planejamento vem do plano e
+                              não é editado aqui. No pago parcial aparece o que foi
+                              guardado, com o toque reabrindo o modal. */}
+                          {!f.planId ? (
+                            <EditableMoney
+                              valueCents={f.amount}
+                              disabled={!editable}
+                              onSave={(v) =>
+                                run(updateFixedEntry(compartmentId, viewMonth, f.id, { amount: v }))
+                              }
+                            />
+                          ) : f.status === PARTIAL_STATUS && f.paidAmount != null ? (
+                            <button
+                              type="button"
+                              className="money-cell plan-paid"
+                              disabled={!editable}
+                              title={editable ? 'Alterar o valor guardado' : undefined}
+                              onClick={() => setPartialTarget(f)}
+                            >
+                              {formatBRL(f.paidAmount)}{' '}
+                              <span className="muted">de {formatBRL(f.amount)}</span>
+                            </button>
+                          ) : (
+                            <span className="plan-amount" title="Valor definido na aba Planejamento">
+                              {formatBRL(f.amount)}
+                            </span>
+                          )}
                         </td>
                         <td>
                           <StatusSelect
                             value={f.status}
                             disabled={!editable}
-                            onChange={(s) =>
-                              run(updateFixedEntry(compartmentId, viewMonth, f.id, { status: s }))
-                            }
+                            onChange={(s) => changeFixedStatus(f, s)}
                           />
                         </td>
                       </tr>
@@ -471,6 +604,15 @@ export function MonthScreen(props: {
             {error && <p className="form-error">{error}</p>}
           </section>
         </>
+      )}
+
+      {partialTarget && (
+        <PartialModal
+          entry={partialTarget}
+          busy={partialBusy}
+          onConfirm={confirmPartial}
+          onCancel={() => setPartialTarget(null)}
+        />
       )}
 
       {confirmClose && (

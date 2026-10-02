@@ -77,10 +77,17 @@ preciso guardar por mês). Os dois aceitam o valor que já está guardado e um
 rendimento opcional de renda fixa (taxa ao ano ou percentual do CDI, com
 imposto de renda opcional), e mostram o resultado em gráfico e mês a mês.
 
-**Gasto fixo de planejamento.** O valor mensal de um planejamento incluído no
-mês em aberto. É um gasto fixo parcelado (uma parcela por mês do prazo), com
-selo próprio que mostra quantos meses faltam, e daí em diante segue as regras
-de qualquer gasto fixo.
+**Gasto fixo de planejamento.** O valor mensal de um planejamento, incluído nos
+gastos fixos pelo botão "Incluir em gastos fixos" (é a única forma de um plano
+mexer no mês). É um gasto fixo parcelado (uma parcela por mês do prazo), com
+selo próprio que mostra quantos meses faltam, pago na aba Pagamento como os
+outros, mas só editado pela aba Planejamento.
+
+**Planejamento em curso.** O plano que está nos gastos fixos. O que o Pagamento
+diz de cada mês volta para ele: mês pago segue o planejado; mês pulado
+(`Ignorar` ou `Sem gasto`) ou pago em parte (com o valor guardado informado)
+aparece em vermelho, e o que faltou vai para o fim, prorrogando o prazo e
+refazendo a projeção. Na última parcela o plano fica concluído.
 
 **Virada de mês.** Fecha o mês atual (gravando os totais para estatísticas) e
 abre o próximo mantendo fixos e categorias. Só é liberada quando não há nenhuma
@@ -112,7 +119,12 @@ linha `Pendente`.
 | Gasto fixo sem gasto ideal próprio | o valor da conta já é o previsto do mês; um segundo número para a mesma coisa só criava a ilusão de orçamento nos fixos |
 | Renda copiada para dentro do mês | mudar a renda de hoje não pode reescrever o restante de um mês já fechado, pela mesma razão que o ideal da categoria fica na linha do mês |
 | Fixos em ouro e variáveis em prata na barra do mês | as duas metades do gasto respondem a perguntas diferentes (conta que chega e escolha do dia), e a linha de detalhe abaixo da barra já era a legenda natural das duas cores |
-| Planejamento é simulação, sem saldo acompanhado | o app é de controle do mês; acompanhar o saldo real exigiria lançar aportes e rendimentos, que é extrato. O que o plano entrega ao mês é o valor a guardar, como gasto fixo |
+| Planejamento sem saldo informado | o app é de controle do mês; acompanhar o saldo real exigiria lançar aportes e rendimentos, que é extrato. O plano em curso conta com o que foi pago no Pagamento, e é isso que o mantém honesto sem virar extrato |
+| Plano só mexe no mês pelo botão "Incluir em gastos fixos" | planejar é experimentar valores e prazos; se cada plano salvo mexesse no previsto do mês, simular viraria comprometer dinheiro |
+| Gasto fixo de planejamento só editado pela aba Planejamento | ele espelha o plano; editado na tela Gerenciar, o valor e as parcelas discordariam do plano até a próxima gravação dele |
+| O que faltou vai para o fim, prorrogando o prazo | pular um mês não muda o objetivo do plano, muda quando ele chega; aumentar o valor dos meses seguintes mexeria no orçamento de todos eles sem o usuário pedir |
+| Pago em parte pede o valor guardado | o status sozinho não diz quanto faltou, e o plano precisa do número para saber quanto empurrar |
+| Tirar dos gastos fixos descarta o histórico | sem o gasto fixo o plano não está mais em curso; manter o histórico de um curso interrompido deixaria a projeção presa a meses que não vão continuar |
 | Plano guarda as entradas, não o resultado | o resultado depende da conta (juros, imposto, arredondamento); guardando só as entradas, melhorar a conta corrige todos os planos sem migrar dado |
 | Valor mensal do plano entra como gasto fixo parcelado | o parcelamento já existente mostra a posição no prazo, avança na virada e sai sozinho no fim; "quantos meses faltam" é a própria parcela |
 | Planejamento depois de um separador na navegação | as quatro primeiras abas são o controle do mês; o planejamento olha para meses e anos à frente, e o separador diz isso sem texto |
@@ -127,9 +139,9 @@ linha `Pendente`.
 - não importa extrato bancário nem OCR de nota;
 - não tem lançamento de receita, extrato nem saldo acumulado: a renda é um
   número só, configurado no compartimento, que serve de referência do mês;
-- o planejamento é projeção, não acompanhamento: não registra aportes nem
-  rendimentos reais, não consulta taxas do mercado (o CDI é digitado) e não
-  considera taxa de custódia nem variação da taxa no prazo;
+- o planejamento acompanha só o que foi pago no Pagamento: não registra aportes
+  avulsos nem o rendimento real, não consulta taxas do mercado (o CDI é
+  digitado) e não considera taxa de custódia nem variação da taxa no prazo;
 - não tem carteira de investimentos nem relatórios exportáveis;
 - não faz conversão de moeda: tudo é BRL;
 - não tem recuperação de senha.
@@ -154,4 +166,6 @@ linha `Pendente`.
 | Planejamento | `Plan`, coleção `plans` |
 | Quanto vou juntar / Quanto guardar por mês | `kind: 'accumulate'` / `kind: 'goal'` |
 | Gasto fixo de planejamento | `FixedExpense` (e `FixedEntry`) com `planId` |
+| Planejamento em curso | `Plan.trackedFrom` preenchido e o gasto fixo dele ativo |
+| Mês pulado / pago em parte | `PlanMonthRecord` com `paid` zero / menor que `planned`; na linha, `paidAmount` |
 | Virar mês | `closeMonth` |

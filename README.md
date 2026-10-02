@@ -43,9 +43,11 @@ manutenção. Agentes de IA devem começar por
   "quanto vou juntar" (guardando X por mês durante um prazo) e "quanto guardar
   por mês" (para chegar a um valor em um prazo), com rendimento opcional de
   renda fixa (taxa ao ano ou percentual do CDI, com imposto de renda opcional).
-  O valor mensal pode entrar no mês em aberto como **gasto fixo de
-  planejamento**, uma parcela por mês do prazo, que mostra quantos meses faltam.
-  É simulação: o app não acompanha o saldo guardado de fato.
+  O plano só mexe no mês pelo botão "Incluir em gastos fixos", que cria um
+  **gasto fixo de planejamento** (uma parcela por mês do prazo, mostrando
+  quantos meses faltam, editado só pela aba Planejamento). A partir daí o plano
+  fica **em curso**: mês pulado ou pago em parte no Pagamento aparece em
+  vermelho, prorroga o prazo e refaz a projeção.
 
 ## Telas
 

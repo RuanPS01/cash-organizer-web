@@ -99,6 +99,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             currentMonth={currentMonth}
             fixedExpenses={fixedExpenses}
             origins={origins}
+            monthData={monthData}
           />
         )}
       </main>

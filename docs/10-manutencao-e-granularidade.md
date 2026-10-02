@@ -2,36 +2,44 @@
 
 ## 10.1 Tamanho atual dos arquivos
 
-Referência de outubro de 2026 (linhas):
+Referência de outubro de 2026, depois do planejamento em curso (linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 2847 |
-| `components/ExpenseHistory.tsx` | 667 |
-| `services/months.ts` | 571 |
-| `components/MonthScreen.tsx` | 552 |
-| `components/ManageScreen.tsx` | 546 |
-| `services/expenses.ts` | 468 |
-| `components/PlanView.tsx` | 439 |
-| `components/PlanForm.tsx` | 388 |
-| `types.ts` | 371 |
+| `styles.css` | 2907 |
+| `services/months.ts` | 696 |
+| `components/MonthScreen.tsx` | 694 |
+| `components/ExpenseHistory.tsx` | 679 |
+| `components/ManageScreen.tsx` | 555 |
+| `components/PlanView.tsx` | 552 |
+| `services/expenses.ts` | 473 |
+| `components/PlanForm.tsx` | 422 |
+| `types.ts` | 401 |
+| `utils/projection.ts` | 398 |
 | `components/ManageOrigins.tsx` | 320 |
 | `components/AddStatsCard.tsx` | 315 |
 | `components/shared.tsx` | 281 |
 | `components/AddExpenseScreen.tsx` | 269 |
-| `utils/projection.ts` | 259 |
-| `components/PlanningScreen.tsx` | 222 |
-| `App.tsx` | 192 |
-| `components/PlanChart.tsx` | 191 |
+| `components/PlanningScreen.tsx` | 266 |
+| `services/plans.ts` | 242 |
+| `components/PlanChart.tsx` | 206 |
+| `App.tsx` | 193 |
 | `services/origins.ts` | 183 |
 | `components/ExpenseEditModal.tsx` | 161 |
 | `hooks/useMonthData.ts` | 159 |
 | `components/StatsView.tsx` | 154 |
-| `services/plans.ts` | 143 |
 | demais | menos de 125 cada |
 
-O projeto inteiro tem cerca de 10,6 mil linhas, das quais perto de 2,6 mil
-vieram com o Planejamento. Esse tamanho é uma vantagem: dá para
+O projeto inteiro tem cerca de 11,5 mil linhas, das quais perto de 3,5 mil
+vieram com o Planejamento.
+
+`MonthScreen` e `services/months.ts` passaram de 650 linhas com o planejamento
+em curso. Os dois blocos novos deles são pequenos e presos ao arquivo (o modal
+de pagamento parcial usa o estado da tabela; o registro do mês no plano roda
+dentro de `closeMonth`), mas são os primeiros candidatos a sair para arquivo
+próprio se crescerem: o `PartialModal` ao lado do `ExpenseEditModal`, e a parte
+de planejamento de `months.ts` em um módulo de serviço próprio, tomando cuidado
+com o import circular entre `months.ts`, `expenses.ts` e `plans.ts`. Esse tamanho é uma vantagem: dá para
 ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 ## 10.2 Quando criar um arquivo novo

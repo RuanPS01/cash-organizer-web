@@ -2697,6 +2697,66 @@ td .badge.plan { margin-left: 0.4rem; }
   white-space: nowrap;
 }
 
+/* Mês pulado ou pago em parte no planejamento em curso: terracota, porque é
+   exatamente o que a identidade reserva a ele (pendência e excesso). */
+.badge.miss {
+  --frame-edge: var(--danger-line);
+  --frame-fill: var(--danger-tint);
+  color: var(--danger);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.45rem;
+  white-space: nowrap;
+}
+
+/* Situação do planejamento em curso, logo abaixo do cabeçalho: moldura de
+   ouro pleno, o mesmo sinal do selo "em curso". */
+.card.plan-progress {
+  --frame-edge: var(--gold-edge);
+}
+
+.plan-progress-line {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.plan-progress-line.neg { color: var(--danger); }
+
+.plan-progress .card-hint { margin-bottom: 0.5rem; }
+
+/* Valor do gasto fixo de planejamento fora da aba Planejamento: só leitura, sem
+   o sublinhado tracejado que diz "toque para editar". */
+.plan-amount {
+  font: 600 0.86rem/1.2 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Pago em parte na aba Pagamento: o valor guardado e, apagado, o planejado. */
+.money-cell.plan-paid .muted {
+  font-weight: 400;
+  font-size: 0.76rem;
+}
+
+.history-plan-note {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+/* Traço vermelho na base do gráfico, na posição de cada mês pulado ou pago em
+   parte. */
+.plan-chart-miss {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 0.55rem;
+  transform: translateX(-50%);
+  background: var(--danger);
+  pointer-events: none;
+}
+
 @media (max-width: 560px) {
   .plan-hero { font-size: 1.7rem; }
   .plan-chart-plot { height: 10rem; }
