@@ -284,6 +284,11 @@ export function PlanForm(props: {
                 : ''}
             </span>
           )}
+          {!emCurso && (
+            <span className="muted small">
+              Ao incluir no gasto fixo, o primeiro mês passa a ser o mês em aberto.
+            </span>
+          )}
         </div>
 
         <label>

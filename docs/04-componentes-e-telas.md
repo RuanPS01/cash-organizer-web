@@ -181,14 +181,15 @@ A conta é `projectPlanForMonth` (`services/months.ts`): a planejada enquanto o
 plano não entrou nos gastos fixos, a em curso depois disso.
 
 O card "Gasto fixo de planejamento" mostra, conforme o caso: o botão "Incluir
-em gastos fixos" (abre o `IncludeModal`, interno, com a escolha da origem), que
-é a única forma de o plano mexer no mês; o gasto fixo já incluído (valor,
+no gasto fixo" (abre o `IncludeModal`, interno, com a escolha da origem e o
+aviso de que o primeiro mês passa a ser o mês em aberto), que é a única forma de
+o plano mexer no mês e fica disponível sempre que o plano não está em curso (no
+concluído, como "Incluir no gasto fixo de novo"); o gasto fixo já incluído (valor,
 parcela, meses que faltam, origem e, em vermelho, se o mês em aberto foi pulado
 ou pago em parte no Pagamento), com "Tirar dos gastos fixos"; o aviso de que o
 gasto fixo ficou diferente do plano (sincronização que não chegou ao banco ou
-mês de referência movido), com "Atualizar o gasto fixo"; o fim do plano
-concluído; ou o motivo de não dar para incluir (o plano ainda não começou, já
-terminou ou não tem valor mensal).
+mês de referência movido), com "Atualizar o gasto fixo"; ou o aviso de que não
+há valor mensal a guardar (o valor já guardado alcança a meta).
 
 ### `PlanChart`
 
@@ -495,7 +496,8 @@ valor do mês e parcelas do plano em curso para o gasto fixo de planejamento,
 lendo a linha do mês em aberto; tira dos gastos fixos quando o mês saiu do
 prazo ou não há valor a guardar), `syncPlanFixedExpenses` (o mesmo para as
 linhas que a aba Pagamento acabou de mudar), `addPlanFixedExpense` (inclui o
-plano nos gastos fixos e marca o início do acompanhamento, `trackedFrom`),
+plano no gasto fixo: move `startMonth` para o mês em aberto, que vira a
+parcela 1, e recomeça o acompanhamento em `trackedFrom`),
 `removePlanFixedExpense` (tira dos gastos fixos e descarta o acompanhamento) e
 `removePlan` (desativa o plano e tira o gasto fixo dele). O `PlanInput` é o
 que o formulário edita, sem `id`, `active`, `createdAt` e o acompanhamento

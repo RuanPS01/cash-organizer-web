@@ -78,8 +78,9 @@ rendimento opcional de renda fixa (taxa ao ano ou percentual do CDI, com
 imposto de renda opcional), e mostram o resultado em gráfico e mês a mês.
 
 **Gasto fixo de planejamento.** O valor mensal de um planejamento, incluído nos
-gastos fixos pelo botão "Incluir em gastos fixos" (é a única forma de um plano
-mexer no mês). É um gasto fixo parcelado (uma parcela por mês do prazo), com
+gastos fixos pelo botão "Incluir no gasto fixo" (é a única forma de um plano
+mexer no mês). Incluir é começar agora: o primeiro mês do plano passa a ser o
+mês em aberto. É um gasto fixo parcelado (uma parcela por mês do prazo), com
 selo próprio que mostra quantos meses faltam, pago na aba Pagamento como os
 outros, mas só editado pela aba Planejamento.
 
@@ -120,7 +121,8 @@ linha `Pendente`.
 | Renda copiada para dentro do mês | mudar a renda de hoje não pode reescrever o restante de um mês já fechado, pela mesma razão que o ideal da categoria fica na linha do mês |
 | Fixos em ouro e variáveis em prata na barra do mês | as duas metades do gasto respondem a perguntas diferentes (conta que chega e escolha do dia), e a linha de detalhe abaixo da barra já era a legenda natural das duas cores |
 | Planejamento sem saldo informado | o app é de controle do mês; acompanhar o saldo real exigiria lançar aportes e rendimentos, que é extrato. O plano em curso conta com o que foi pago no Pagamento, e é isso que o mantém honesto sem virar extrato |
-| Plano só mexe no mês pelo botão "Incluir em gastos fixos" | planejar é experimentar valores e prazos; se cada plano salvo mexesse no previsto do mês, simular viraria comprometer dinheiro |
+| Plano só mexe no mês pelo botão "Incluir no gasto fixo" | planejar é experimentar valores e prazos; se cada plano salvo mexesse no previsto do mês, simular viraria comprometer dinheiro |
+| Incluir move o primeiro mês do plano para o mês em aberto | o botão está sempre disponível: um plano pensado para começar depois não fica esperando o mês chegar, e um que começaria antes não entra com meses que ninguém pagou |
 | Gasto fixo de planejamento só editado pela aba Planejamento | ele espelha o plano; editado na tela Gerenciar, o valor e as parcelas discordariam do plano até a próxima gravação dele |
 | O que faltou vai para o fim, prorrogando o prazo | pular um mês não muda o objetivo do plano, muda quando ele chega; aumentar o valor dos meses seguintes mexeria no orçamento de todos eles sem o usuário pedir |
 | Pago em parte pede o valor guardado | o status sozinho não diz quanto faltou, e o plano precisa do número para saber quanto empurrar |

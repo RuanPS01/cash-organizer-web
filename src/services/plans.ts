@@ -207,11 +207,20 @@ export async function removePlan(
 }
 
 /**
- * Inclui o valor mensal do plano nos gastos fixos, a partir do mês em aberto:
- * parcela N de M, com N sendo a posição do mês em aberto no prazo. É a única
- * forma de o plano mexer no mês. Daí em diante ele fica em curso: o mês em
- * aberto é o primeiro acompanhado, e os meses do plano antes dele contam como
- * guardados conforme o planejado.
+ * Inclui o plano no gasto fixo, a partir do mês em aberto. É a única forma de o
+ * plano mexer no mês, e é sempre uma ação do usuário.
+ *
+ * Incluir é começar agora: o primeiro mês do plano passa a ser o mês em aberto,
+ * que entra como parcela 1, e o prazo conta dali. Sem isso, um plano criado
+ * para começar depois ficaria sem como entrar no mês, e um que começou antes
+ * entraria com meses que ninguém pagou. Pelo mesmo motivo o acompanhamento
+ * recomeça do zero, inclusive em um plano que já tinha sido concluído.
+ *
+ * A ordem das gravações protege de uma falha no meio: o plano muda o início e
+ * zera o acompanhamento, depois nasce o gasto fixo, e só então o plano passa a
+ * estar em curso. Se o gasto fixo falhar, sobra só o início novo; se a última
+ * gravação falhar, o plano incluído sem `trackedFrom` já é tratado como em
+ * curso a partir do mês em aberto.
  */
 export async function addPlanFixedExpense(
   compartmentId: string,
@@ -219,13 +228,14 @@ export async function addPlanFixedExpense(
   plan: Plan,
   origin: { originId: string | null; originName: string },
 ): Promise<void> {
-  const tracking: PlanTracking = plan.trackedFrom
-    ? { trackedFrom: plan.trackedFrom, progress: plan.progress ?? {} }
-    : { trackedFrom: currentMonth, progress: {} };
-  const projecao = projectPlanForMonth({ ...plan, ...tracking }, currentMonth, true, null);
-  const agenda = planMonthSchedule(projecao, plan.startMonth, currentMonth);
-  if (!agenda) throw new Error('O mês em aberto está fora do prazo deste planejamento.');
-  if (agenda.planned <= 0) throw new Error('Este planejamento não tem valor mensal a guardar.');
+  const inicio: Plan = { ...plan, startMonth: currentMonth, trackedFrom: currentMonth, progress: {} };
+  const projecao = projectPlanForMonth(inicio, currentMonth, true, null);
+  const agenda = planMonthSchedule(projecao, currentMonth, currentMonth);
+  if (!agenda || agenda.planned <= 0) {
+    throw new Error('Este planejamento não tem valor mensal a guardar.');
+  }
+  const planRef = doc(plansCol(compartmentId), plan.id);
+  await updateDoc(planRef, { startMonth: currentMonth, trackedFrom: null, progress: {} });
   await addFixedExpense(compartmentId, currentMonth, {
     name: plan.name,
     amount: agenda.planned,
@@ -236,7 +246,5 @@ export async function addPlanFixedExpense(
     installmentTotal: agenda.total,
     planId: plan.id,
   });
-  if (!plan.trackedFrom) {
-    await updateDoc(doc(plansCol(compartmentId), plan.id), tracking);
-  }
+  await updateDoc(planRef, { trackedFrom: currentMonth });
 }
