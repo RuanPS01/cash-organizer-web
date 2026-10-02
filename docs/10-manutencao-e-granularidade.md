@@ -2,28 +2,36 @@
 
 ## 10.1 Tamanho atual dos arquivos
 
-Referência de setembro de 2026 (linhas):
+Referência de outubro de 2026 (linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 2018 |
-| `components/ExpenseHistory.tsx` | 664 |
-| `components/MonthScreen.tsx` | 575 |
-| `services/months.ts` | 548 |
-| `components/ManageScreen.tsx` | 503 |
-| `services/expenses.ts` | 452 |
+| `styles.css` | 2847 |
+| `components/ExpenseHistory.tsx` | 667 |
+| `services/months.ts` | 571 |
+| `components/MonthScreen.tsx` | 552 |
+| `components/ManageScreen.tsx` | 546 |
+| `services/expenses.ts` | 468 |
+| `components/PlanView.tsx` | 439 |
+| `components/PlanForm.tsx` | 388 |
+| `types.ts` | 371 |
 | `components/ManageOrigins.tsx` | 320 |
 | `components/AddStatsCard.tsx` | 315 |
-| `types.ts` | 278 |
+| `components/shared.tsx` | 281 |
 | `components/AddExpenseScreen.tsx` | 269 |
-| `components/shared.tsx` | 240 |
+| `utils/projection.ts` | 259 |
+| `components/PlanningScreen.tsx` | 222 |
+| `App.tsx` | 192 |
+| `components/PlanChart.tsx` | 191 |
 | `services/origins.ts` | 183 |
-| `App.tsx` | 166 |
 | `components/ExpenseEditModal.tsx` | 161 |
+| `hooks/useMonthData.ts` | 159 |
 | `components/StatsView.tsx` | 154 |
+| `services/plans.ts` | 143 |
 | demais | menos de 125 cada |
 
-O projeto inteiro tem cerca de 7,6 mil linhas. Esse tamanho é uma vantagem: dá para
+O projeto inteiro tem cerca de 10,6 mil linhas, das quais perto de 2,6 mil
+vieram com o Planejamento. Esse tamanho é uma vantagem: dá para
 ler o app todo em uma sessão. Toda alteração deve pesar contra isso.
 
 ## 10.2 Quando criar um arquivo novo
@@ -49,6 +57,14 @@ o histórico já passava das 650 linhas sem ele. Pelo mesmo motivo o
 `AddStatsCard` saiu do `AddExpenseScreen` quando o card ganhou abas: o card tem
 estado próprio (aba, virada de semana) e o formulário de novo gasto voltou a
 caber em pouco mais de 250 linhas.
+
+O Planejamento nasceu dividido pelo mesmo critério: a tela (`PlanningScreen`)
+só lista e navega, cada subpágina tem arquivo próprio (`PlanForm` e
+`PlanView`), o gráfico é um bloco fechado com estado próprio (`PlanChart`), e o
+que duas subpáginas usam (`PlanSummary`) ou três listas de gasto fixo usam
+(`PlanBadge`) também. A conta é pura e mora em `utils/projection.ts`, fora de
+qualquer componente, para a prévia do formulário, a visualização, a lista e o
+serviço que atualiza o gasto fixo usarem exatamente o mesmo número.
 
 ## 10.3 Evitar duplicata
 
@@ -139,7 +155,10 @@ truque levam comentário na seção.
 2. Novo valor no tipo `View` do `App.tsx`, o bloco de render e o botão na navbar
    com ícone do lucide-react.
 3. Conferir a navbar nos dois modos (embaixo no celular, no topo a partir de
-   720px): cinco itens ficam apertados em 360px.
+   720px). Com o Planejamento ela já tem cinco abas e um separador, no limite
+   em 320px e em 720px (ver
+   [08-responsividade-mobile.md](08-responsividade-mobile.md), seção 8.2): uma
+   sexta aba pede repensar a navegação, e não só encolher a fonte de novo.
 4. Atualizar [04-componentes-e-telas.md](04-componentes-e-telas.md) e
    [01-arquitetura.md](01-arquitetura.md).
 
@@ -162,6 +181,16 @@ recalculados.
 4. Documentos desta pasta atualizados.
 
 Não existe suíte de testes automatizados. Se precisar validar comportamento sem
-credenciais do Firebase, o caminho já usado é subir um harness temporário do Vite
-com um stub de `firebase/firestore` e renderizar os componentes com dados
-fabricados. Se fizer isso, apague o harness antes de commitar.
+credenciais do Firebase, há dois caminhos já usados:
+
+- **Emulador do Firestore** (o mais fiel, usado no Planejamento): suba o
+  emulador com as regras do `cash-organizer-functions`
+  (`npx firebase-tools emulators:start --only firestore --project demo-cash`,
+  que pede Java), crie um `.env.local` com `VITE_FIREBASE_PROJECT_ID=demo-cash`,
+  valores quaisquer nas outras `VITE_FIREBASE_*` e
+  `VITE_FIRESTORE_EMULATOR_HOST=127.0.0.1:8080`, e rode `npm run dev`. O app
+  funciona de ponta a ponta, e as regras novas são exercitadas de verdade. O
+  `.env.local` já é ignorado pelo git, mas apague-o ao terminar;
+- **Harness com stub**: subir um harness temporário do Vite com um stub de
+  `firebase/firestore` e renderizar os componentes com dados fabricados. Se
+  fizer isso, apague o harness antes de commitar.

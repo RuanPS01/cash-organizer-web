@@ -8,6 +8,7 @@ ficam no repositório `cash-organizer-functions`, não aqui.
 | Regra | Detalhe |
 |---|---|
 | Dinheiro | inteiro em **centavos**. R$ 1.234,56 é gravado como `123456`. Nunca float |
+| Taxa (rendimento do planejamento) | inteiro em **centésimos de ponto percentual**. 10,65% é gravado como `1065` e 110% do CDI como `11000`. Nunca float |
 | Data e hora | número em milissegundos (`Date.now()` ou `date.getTime()`), nunca `Timestamp` do Firestore |
 | Chave de mês | string `YYYY-MM`, usada como id do documento do mês |
 | Chave de dia | string `YYYY-MM-DD` apenas na UI (`input[type=date]`), nunca persistida |
@@ -23,6 +24,7 @@ compartments/{compartmentId}
   fixedExpenses/{fixedExpenseId}
   categories/{categoryId}
   origins/{originId}
+  plans/{planId}
   months/{YYYY-MM}
     fixedEntries/{fixedExpenseId}
     categoryEntries/{categoryId}
@@ -62,12 +64,16 @@ mesmo texto de senha em compartimentos diferentes gera hashes diferentes.
 | `originName` | string | denormalizado, mantém a listagem legível se a origem for renomeada ou removida |
 | `installmentCurrent` | number ou null | parcela atual, começa em 1 |
 | `installmentTotal` | number ou null | total de parcelas; `null` significa gasto sem parcelamento |
+| `planId` | string ou null | plano que criou o gasto ("gasto fixo de planejamento"); `null` no gasto fixo comum e ausente no cadastrado antes do campo |
 | `active` | boolean | `false` some dos próximos meses |
 | `createdAt` | number | ms |
 
 `normalizeFixedInput` em `services/expenses.ts` é quem garante o formato: faz
 trim, grava a origem como `null` mais nome em branco quando não há escolha, e
-zera as parcelas para `null` quando não há `installmentTotal`.
+zera as parcelas para `null` quando não há `installmentTotal`. O `planId` só
+entra quando quem chama o informa: `addFixedExpense` grava `null` por padrão, e
+uma edição sem o campo (modal da tela Gerenciar, edição no lugar) não toca na
+chave, para não desfazer o vínculo com o plano.
 
 O cadastro gravado antes de o gasto fixo perder o ideal próprio ainda carrega a
 chave `idealAmount`. Ela não é mais lida nem escrita por lugar nenhum do app, e
@@ -146,6 +152,14 @@ e os lançamentos antigos seguem com `originName`.
 >   têm a chave). Sem isso o gasto ideal da origem é recusado, e sem a folga do
 >   opcional até trocar a origem padrão passaria a falhar.
 >
+> O planejamento financeiro trouxe mais duas liberações, obrigatórias:
+>
+> - `match /compartments/{id}/plans/{planId}`, a coleção nova, com a validação
+>   de tipo, valores em centavos, prazo de 1 a 600 meses, primeiro mês, modo de
+>   rendimento e taxas inteiras. Sem ela a aba Planejamento não lista nem grava;
+> - `planId` (string ou `null`, opcional) em `fixedExpenses` e em
+>   `months/{ym}/fixedEntries`.
+>
 > A renda mensal líquida e o fim do ideal do gasto fixo mexeram nas regras de
 > novo, e as duas mudanças são obrigatórias:
 >
@@ -157,6 +171,54 @@ e os lançamentos antigos seguem com `originName`.
 >   `months/{ym}/fixedEntries`, onde era obrigatório. Sem isso **toda** gravação
 >   de gasto fixo passa a ser recusada, inclusive a criação das linhas de um mês
 >   novo, porque o app não escreve mais esse campo.
+
+## 6.5.2 `plans/{id}` (planejamento financeiro)
+
+Projeção no tempo do que se guarda por mês. O documento guarda **só as entradas
+da simulação**: o resultado (valor no fim do prazo, valor mensal da meta, mês a
+mês, imposto) é recalculado na tela por `projectPlan`, em
+[`utils/projection.ts`](../src/utils/projection.ts). Não existe saldo real
+acompanhado: o app é de controle do mês, e o plano é a conta do que acontece se
+o valor for guardado todo mês.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `name` | string | com trim, até 100 caracteres |
+| `kind` | `'accumulate'` ou `'goal'` | "quanto vou juntar" ou "quanto guardar por mês" |
+| `monthlyAmount` | number | centavos guardados por mês; entrada do `accumulate`, zero no `goal` |
+| `targetAmount` | number | centavos a alcançar; entrada do `goal`, zero no `accumulate` |
+| `initialAmount` | number | centavos que já estão guardados no início (zero quando não há) |
+| `durationMonths` | number | prazo em meses, de 1 a 600 |
+| `durationUnit` | `'months'` ou `'years'` | unidade em que o prazo foi digitado, só para o formulário reabrir igual |
+| `startMonth` | string | `YYYY-MM` do primeiro mês do plano |
+| `rateMode` | `'none'`, `'annual'` ou `'cdi'` | sem rendimento, taxa fixa ao ano ou percentual do CDI |
+| `annualRate` | number | taxa ao ano no modo `annual`, em centésimos de ponto percentual |
+| `cdiRate` | number | CDI ao ano no modo `cdi`, em centésimos de ponto percentual |
+| `cdiPercent` | number | percentual do CDI no modo `cdi` (`10000` é 100%) |
+| `incomeTax` | boolean | desconta o imposto de renda da tabela regressiva no resgate |
+| `active` | boolean | remoção é desativação |
+| `createdAt` | number | ms |
+
+As taxas de modos que não estão em uso continuam gravadas como foram
+digitadas: trocar de volta para o modo reabre o valor anterior. Quem decide o
+que vale na conta é o `rateMode`.
+
+**A conta.** Os depósitos entram no fim de cada mês (o primeiro rende a partir
+do segundo mês, hipótese conservadora que bate com o gasto fixo, pago ao longo
+do mês). A taxa mensal é a equivalente composta da efetiva ao ano; no modo CDI o
+percentual incide sobre a taxa diária de 252 dias úteis, que é como o CDB
+pós-fixado rende. O imposto, quando ligado, é calculado por depósito, com a
+alíquota do tempo que cada um ficou aplicado (até 6 meses 22,5%, até 12 20%,
+até 24 17,5%, acima disso 15%). Na meta, o valor mensal é o menor depósito que
+chega ao alvo (líquido, quando o imposto está ligado), arredondado para cima
+no centavo.
+
+**O vínculo com o mês** é o gasto fixo de planejamento: um `fixedExpenses`
+comum com `planId`, valor igual ao mensal do plano e parcelas (`installmentCurrent`
+é a posição do mês em aberto no prazo, `installmentTotal` é o prazo). Ele avança
+na virada do mês e sai depois da última parcela como qualquer gasto parcelado.
+Salvar o plano reflete nome, valor e parcelas nele; se o mês em aberto sair do
+prazo, ele sai do mês. Excluir o plano também o tira do mês.
 
 ## 6.6 `months/{YYYY-MM}`
 
@@ -217,6 +279,7 @@ passado.
 | `originId` | string ou null | copiado do cadastro; `null` quando o gasto não tem origem |
 | `originName` | string | denormalizado, como estava no cadastro na hora da cópia |
 | `installmentCurrent`, `installmentTotal` | number ou null | copiados do cadastro |
+| `planId` | string ou null | copiado do cadastro; marca a linha como gasto fixo de planejamento |
 
 Linha criada antes de um campo existir fica sem ele. Foi o caso da origem nos
 meses que já estavam abertos quando o gasto fixo ganhou origem: essas linhas
@@ -323,7 +386,7 @@ decida o efeito em `computeTotals` e atualize esta tabela.
 | Função | Quando roda | O que faz |
 |---|---|---|
 | `ensureMonth` | login, restauração de sessão e após virar o mês | cria o mês na semana 1, com a renda copiada do cadastro e as linhas dos cadastros ativos; se o mês já existe e está aberto, reconcilia |
-| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries` (só o valor, que já é o previsto), `categoryEntries` e `originEntries` (com o ideal de cada um) a partir dos cadastros ativos, tudo com status `Pendente` |
+| `seedMonthEntries` | dentro de `ensureMonth` e `setOpenMonth` | popula `fixedEntries` (só o valor, que já é o previsto, mais origem, parcela e `planId`), `categoryEntries` e `originEntries` (com o ideal de cada um) a partir dos cadastros ativos, tudo com status `Pendente` |
 | `syncMonthEntries` | dentro de `ensureMonth` quando o mês já existe aberto | remove linhas de cadastros desativados (categoria e origem só saem se não tiverem gasto no mês), cria linhas de cadastros que ainda não estão no mês, completa a linha de fixo que ainda não tem o campo de origem e a linha de origem que ainda não tem o campo de ideal |
 | `computeTotals` | a cada render das telas com dados do mês | soma previsto e gasto, deixando de fora do gasto o que está em `Ignorar`: a linha de gasto fixo, a categoria (em meses antigos) e tudo que saiu de uma origem ignorada |
 | `setMonthlyIncome` | campo de renda da tela Gerenciar (`services/compartments.ts`) | grava `monthlyIncome` no compartimento e reflete em `income` no mês corrente, se ele estiver aberto |
@@ -365,7 +428,9 @@ dela.
 ## 6.11 Índices e consultas
 
 O cadastro de origens é lido inteiro por `onSnapshot` (`useConfig`), sem filtro
-composto: o volume é de poucas dezenas de documentos.
+composto: o volume é de poucas dezenas de documentos. Os planejamentos também
+(`usePlans`, ordenados por `createdAt` decrescente, índice de campo único); o
+filtro de `active` é feito no cliente, como nos demais cadastros.
 
 As consultas são simples de propósito. As únicas com filtro são as de
 desativação: `removeCategory` (`where('categoryId', '==', id)` mais `limit(1)`

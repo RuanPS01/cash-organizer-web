@@ -2,7 +2,9 @@
 
 Web app responsivo (mobile-first) para organizar gastos fixos e variáveis por mês, com
 adição rápida de gastos, renda mensal líquida como referência do restante, limites
-baseados em "gasto ideal" por categoria, virada de mês e estatísticas.
+baseados em "gasto ideal" por categoria, virada de mês, estatísticas e
+planejamento financeiro (projeção do que se guarda por mês, com rendimento de
+renda fixa opcional).
 
 Frontend em **Vite + React + TypeScript**, conversando **diretamente com o Firestore**
 (sem backend próprio). As rules e functions do Firebase ficam no repositório
@@ -37,6 +39,13 @@ manutenção. Agentes de IA devem começar por
   **Virar mês** só é liberado quando não há linhas `Pendente`; ao virar, o mês é
   fechado (com totais gravados para estatísticas) e o próximo é criado mantendo os
   fixos e categorias. Meses anteriores continuam consultáveis.
+- **Planejamento**: projeção no tempo do que se guarda por mês. Dois tipos:
+  "quanto vou juntar" (guardando X por mês durante um prazo) e "quanto guardar
+  por mês" (para chegar a um valor em um prazo), com rendimento opcional de
+  renda fixa (taxa ao ano ou percentual do CDI, com imposto de renda opcional).
+  O valor mensal pode entrar no mês em aberto como **gasto fixo de
+  planejamento**, uma parcela por mês do prazo, que mostra quantos meses faltam.
+  É simulação: o app não acompanha o saldo guardado de fato.
 
 ## Telas
 
@@ -48,6 +57,8 @@ manutenção. Agentes de IA devem começar por
    **Estatísticas** (comparativo mensal, uso por categoria e semanas × mês anterior).
 4. **Gerenciar**: renda mensal líquida, cadastro de gastos fixos (valor, origem e
    parcela) e de categorias com seus valores ideais.
+5. **Planejamento** (depois de um separador na navegação): lista dos planos, com
+   subpáginas para criar cada tipo e para ver a projeção em gráfico e mês a mês.
 
 ## Modelo de dados (Firestore)
 
@@ -55,6 +66,7 @@ manutenção. Agentes de IA devem começar por
 compartments/{id}                    nome, hash da senha, mês corrente, renda mensal
   fixedExpenses/{id}                 cadastro dos gastos fixos
   categories/{id}                    cadastro das categorias (Avulso é padrão)
+  plans/{id}                         planejamentos (entradas da simulação)
   months/{YYYY-MM}                   status open/closed, renda do mês + totais ao fechar
     fixedEntries/{fixedId}           snapshot do fixo no mês (valor, status)
     categoryEntries/{categoryId}     categoria no mês (ideal, status)

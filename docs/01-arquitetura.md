@@ -20,11 +20,14 @@ flowchart TD
   D --> F["MonthScreen (modo estatísticas)"]
   D --> G["MonthScreen (modo pagamento)"]
   D --> H["ManageScreen"]
-  E --> I["hooks useMonthData e useConfig"]
+  D --> P["PlanningScreen (lista, PlanForm, PlanView)"]
+  E --> I["hooks useMonthData, useConfig e usePlans"]
   F --> I
   G --> I
+  P --> I
   H --> J
-  E --> J["services (months, expenses, origins, compartments, session)"]
+  P --> J
+  E --> J["services (months, expenses, origins, plans, compartments, session)"]
   I --> K["firebase.ts (db)"]
   J --> K
   K --> L[("Firestore")]
@@ -35,7 +38,7 @@ flowchart TD
 ```
 src/
   main.tsx                  boot do React e registro do service worker
-  App.tsx                   sessão, shell, navegação entre as quatro telas
+  App.tsx                   sessão, shell, navegação entre as cinco telas
   firebase.ts               initializeApp e initializeFirestore com cache offline
   styles.css                folha de estilo global única (todo o CSS do app)
   types.ts                  tipos de domínio e ENTRY_STATUSES
@@ -50,9 +53,15 @@ src/
     ExpenseHistory.tsx      histórico do mês (subabas variáveis e fixos)
     ManageOrigins.tsx       cadastro de origens do gasto e modal de ícone
     OriginIcon.tsx          catálogo de ícones e tons da origem
+    PlanningScreen.tsx      aba Planejamento: lista e navegação entre as subpáginas
+    PlanForm.tsx            subpágina de criação e edição de um planejamento
+    PlanView.tsx            subpágina de visualização (gráfico, mês a mês, inclusão no mês)
+    PlanChart.tsx           gráfico da projeção (SVG mais rótulos em HTML)
+    PlanSummary.tsx         resultado do plano, usado no formulário e na visualização
+    PlanBadge.tsx           selo do gasto fixo de planejamento nas listas do mês
     shared.tsx              componentes genéricos reutilizáveis
   hooks/
-    useMonthData.ts         useMonthData e useConfig (assinaturas em tempo real)
+    useMonthData.ts         useMonthData, useConfig e usePlans (assinaturas em tempo real)
     useKeyboardInset.ts     mede o teclado virtual e publica --keyboard-inset
   services/
     compartments.ts         criar, abrir, buscar, preferências e renda do compartimento
@@ -60,10 +69,12 @@ src/
     months.ts               ciclo de vida do mês, semana corrente e totais
     expenses.ts             lançamentos, gastos fixos, categorias e linhas do mês
     origins.ts              cadastro de origens e a linha de origem do mês
+    plans.ts                planejamentos e o gasto fixo de planejamento
   utils/
     crypto.ts               SHA-256 da senha e AES-GCM da sessão
     dates.ts                chaves de mês e dia, semana do mês, rótulos pt-BR
-    money.ts                formatBRL e digitsToCents
+    money.ts                formatBRL, formatBRLCompact e digitsToCents
+    projection.ts           conta da projeção do planejamento (juros, IR, meta)
 public/icons/               ícones do PWA
 .github/workflows/deploy.yml  build e deploy no GitHub Pages
 ```
@@ -90,14 +101,19 @@ Não existe Redux, Zustand, Context nem React Query. O estado vem de três lugar
 1. **Tempo real do Firestore.** `useMonthData` assina o documento do mês e as
    quatro subcoleções (`fixedEntries`, `categoryEntries`, `originEntries`,
    `expenses`); `useConfig` assina os cadastros de `fixedExpenses`, `categories`
-   e `origins`, mais a renda mensal líquida do documento do compartimento. Como
+   e `origins`, mais a renda mensal líquida do documento do compartimento;
+   `usePlans` assina os planejamentos, só enquanto a aba Planejamento está
+   aberta. Como
    a escrita vai direto ao
    Firestore, a tela se atualiza sozinha depois de qualquer serviço, sem
    invalidação manual de cache.
 2. **Estado local de tela.** `useState` dentro de cada componente para formulário,
    modal aberto, `busy` durante gravação e mensagem de `flash`.
 3. **Derivado.** `useMemo` sobre os dados assinados, principalmente
-   `computeTotals` de [`services/months.ts`](../src/services/months.ts).
+   `computeTotals` de [`services/months.ts`](../src/services/months.ts) e
+   `projectPlan` de [`utils/projection.ts`](../src/utils/projection.ts). O
+   resultado do planejamento nunca é gravado: o plano guarda as entradas da
+   simulação e a tela recalcula.
 
 O `App` guarda o `currentMonth` em estado próprio porque o `MonthScreen` pode
 mudá-lo (virar mês ou definir outro mês como aberto) e as demais telas precisam
@@ -121,11 +137,18 @@ Detalhes de criptografia e chaves do `localStorage` estão em
 ## 1.6 Navegação
 
 Não há router nem URL por tela. O `Shell` guarda `view` (`'add' | 'stats' |
-'payment' | 'manage'`) em `useState` e renderiza a tela correspondente. A navbar
-fica embaixo no celular e vira uma barra no topo a partir de 720px, com a ordem
-visual controlada por `order` no CSS. Como não existe rota, também não existe
+'payment' | 'manage' | 'planning'`) em `useState` e renderiza a tela
+correspondente. A navbar fica embaixo no celular e vira uma barra no topo a
+partir de 720px, com a ordem visual controlada por `order` no CSS. Um separador
+(`.nav-sep`) divide as quatro abas do controle do mês da aba Planejamento, que
+olha para os próximos meses e anos. Como não existe rota, também não existe
 deep link nem histórico do navegador entre telas: o botão voltar do celular sai
 do app.
+
+As subpáginas do Planejamento (formulário e visualização) seguem a mesma ideia:
+o `PlanningScreen` guarda a página aberta em estado (`Page`), com o id do plano,
+e o botão de voltar do cabeçalho troca esse estado. Sair da aba volta para a
+lista.
 
 ## 1.7 Configuração e ambiente
 
@@ -143,7 +166,8 @@ do app.
 
 | Preciso de... | Vá para |
 |---|---|
-| Nova operação de banco | função nova em `services/` (`months.ts` para ciclo do mês, `expenses.ts` para lançamentos, cadastros de fixos e categorias e linhas do mês, `origins.ts` para origens) |
+| Nova operação de banco | função nova em `services/` (`months.ts` para ciclo do mês, `expenses.ts` para lançamentos, cadastros de fixos e categorias e linhas do mês, `origins.ts` para origens, `plans.ts` para planejamentos e o gasto fixo de planejamento) |
+| Nova conta de projeção (juros, imposto, prazo) | função pura em `utils/projection.ts` |
 | Novo cálculo sobre dados do mês | `computeTotals` ou uma função pura em `services/months.ts` |
 | Nova formatação de valor ou data | `utils/money.ts` ou `utils/dates.ts` |
 | Novo campo persistido | tipo em `types.ts` mais escrita no serviço mais documentação em `06-banco-de-dados.md` |

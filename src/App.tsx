@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Banknote, BarChart3, Plus, Settings } from 'lucide-react';
+import { Banknote, BarChart3, PiggyBank, Plus, Settings } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
 import { AddExpenseScreen } from './components/AddExpenseScreen';
 import { MonthScreen } from './components/MonthScreen';
 import { ManageScreen } from './components/ManageScreen';
+import { PlanningScreen } from './components/PlanningScreen';
 import { BrandMark } from './components/shared';
 import { clearSession, restoreSession } from './services/session';
 import { setViewPrefs } from './services/compartments';
@@ -13,7 +14,7 @@ import { useConfig, useMonthData } from './hooks/useMonthData';
 import { useKeyboardInset } from './hooks/useKeyboardInset';
 import type { Compartment } from './types';
 
-type View = 'add' | 'stats' | 'payment' | 'manage';
+type View = 'add' | 'stats' | 'payment' | 'manage' | 'planning';
 
 function Shell(props: { compartment: Compartment; onLogout: () => void }) {
   const [view, setView] = useState<View>('add');
@@ -92,6 +93,14 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             monthData={monthData}
           />
         )}
+        {view === 'planning' && (
+          <PlanningScreen
+            compartmentId={props.compartment.id}
+            currentMonth={currentMonth}
+            fixedExpenses={fixedExpenses}
+            origins={origins}
+          />
+        )}
       </main>
 
       <nav className="navbar">
@@ -118,6 +127,18 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             <Settings size={20} aria-hidden />
           </span>
           Gerenciar
+        </button>
+        {/* O separador divide o controle do mês (as quatro primeiras abas) do
+            planejamento, que olha para os próximos meses e anos. */}
+        <span className="nav-sep" aria-hidden />
+        <button
+          className={view === 'planning' ? 'active' : ''}
+          onClick={() => setView('planning')}
+        >
+          <span className="nav-icon">
+            <PiggyBank size={20} aria-hidden />
+          </span>
+          Planejamento
         </button>
       </nav>
     </div>

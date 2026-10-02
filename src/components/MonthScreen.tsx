@@ -9,6 +9,7 @@ import { useMonthData } from '../hooks/useMonthData';
 import { ConfirmModal, EditableMoney } from './shared';
 import { StatsView } from './StatsView';
 import { OriginIcon } from './OriginIcon';
+import { PlanBadge } from './PlanBadge';
 import { ENTRY_STATUSES, IGNORED_STATUS, STATUS_CLASS } from '../types';
 import type { EntryStatus, Origin, OriginColorKey, OriginIconKey } from '../types';
 
@@ -372,6 +373,9 @@ export function MonthScreen(props: {
                             <span className="badge installment">
                               {f.installmentCurrent ?? 1}/{f.installmentTotal}
                             </span>
+                          ) : null}
+                          {f.planId ? (
+                            <PlanBadge current={f.installmentCurrent} total={f.installmentTotal} />
                           ) : null}
                           {f.originId || f.originName ? (
                             <span className="badge origin">

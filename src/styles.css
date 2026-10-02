@@ -51,6 +51,15 @@
   --silver-bar: linear-gradient(90deg, #6f757f, #b9c0cb 40%, #eef1f5 60%, #cfd4dc);
   --silver-fill: linear-gradient(180deg, #eef1f5, #b9c0cb 45%, #8b929d);
 
+  /* Gráfico da projeção do planejamento: o saldo é a série em destaque, em
+     ouro, e o total depositado é a referência, em grafite. A dupla foi
+     conferida contra o fundo escuro para visão normal e para daltonismo
+     (diferença acima de 20 no OKLab): o prata sozinho ficava perto demais do
+     ouro para quem enxerga todas as cores. */
+  --chart-balance: var(--gold-bright);
+  --chart-balance-wash: rgba(231, 201, 95, 0.1);
+  --chart-deposit: #8d93a0;
+
   /* Texto */
   --text: #f0ead8;
   --text-strong: #e8e2d0;
@@ -134,6 +143,8 @@
 .icon-option,
 .color-swatch,
 .check-box,
+.plan-kind-option,
+.plan-collapse,
 .modal {
   position: relative;
   isolation: isolate;
@@ -166,6 +177,8 @@
 .icon-option::before,
 .color-swatch::before,
 .check-box::before,
+.plan-kind-option::before,
+.plan-collapse::before,
 .modal::before {
   content: '';
   position: absolute;
@@ -644,6 +657,31 @@ select option:checked { color: var(--gold-soft); }
   line-height: 1;
 }
 
+/* Separador entre o controle do mês (as quatro primeiras abas) e o
+   Planejamento: um fio vertical de ouro que some nas pontas, para dividir sem
+   pesar como uma borda. */
+.nav-sep {
+  flex: 0 0 1px;
+  align-self: stretch;
+  margin: 0.6rem 0.15rem;
+  background: linear-gradient(180deg, transparent, var(--line-strong) 25%, var(--line-strong) 75%, transparent);
+}
+
+/* Cinco abas em 360px: com o espaçamento entre letras das quatro antigas,
+   "Planejamento" e "Estatísticas" não cabiam no quinto da largura e
+   empurravam a barra para fora da tela. O min-width: 0 deixa o botão encolher
+   abaixo da largura do texto em vez de estourar a linha. */
+@media (max-width: 719px) {
+  /* flex 1 1 auto, e não 1: a largura de cada aba sai do próprio rótulo, então
+     as duas de nome comprido recebem mais espaço que "Pagamento". */
+  .navbar button {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.58rem;
+    letter-spacing: 0.02em;
+  }
+}
+
 /* Em telas largas a navegação vira uma barra no topo do conteúdo, logo abaixo
    da topbar, e o item ativo ganha moldura chanfrada. */
 @media (min-width: 720px) {
@@ -690,6 +728,23 @@ select option:checked { color: var(--gold-soft); }
     background: var(--frame-fill);
     clip-path: inherit;
   }
+
+  .nav-sep { margin: 0.35rem 0.5rem; }
+}
+
+/* Entre 720px e 960px as cinco abas com o recuo de tela larga passavam da
+   largura da janela: o recuo e o espaçamento entre letras encolhem até a barra
+   caber, e voltam ao normal quando há espaço. */
+@media (min-width: 720px) and (max-width: 959px) {
+  .navbar { gap: 0.2rem; }
+
+  .navbar button {
+    padding: 0.6rem 0.7rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+  }
+
+  .nav-sep { margin: 0.35rem 0.25rem; }
 
   .shell { display: flex; }
   .content { padding-bottom: 2rem; }
@@ -1967,6 +2022,686 @@ td .badge.origin { margin-left: 0.4rem; }
    porque ele está fora da soma do gasto. */
 .history-list li.row-ignored { opacity: 0.7; }
 .history-list li.row-ignored .history-value .money-cell { text-decoration: line-through; }
+
+/* --------------------------------------------------------------------------
+   Planejamento
+
+   A aba tem três páginas na mesma tela: a lista (com os dois tipos de plano
+   para criar), o formulário e a visualização. As subpáginas abrem com o
+   .subpage-header, que leva o botão de voltar ao lado do título.
+   -------------------------------------------------------------------------- */
+
+.subpage-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.subpage-header .btn.icon { flex: 0 0 auto; }
+
+.subpage-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.subpage-title h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.subpage-title .muted { line-height: 1.5; }
+
+/* Os dois tipos de plano para criar: peça com moldura, ícone à esquerda e a
+   pergunta que o plano responde. Uma coluna no celular, duas a partir de 560px. */
+.plan-kinds {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+@media (min-width: 560px) {
+  .plan-kinds { grid-template-columns: 1fr 1fr; }
+}
+
+.plan-kind-option {
+  --c: 10px;
+  --frame-edge: var(--gold-edge);
+  --frame-w: 1.5px;
+  --frame-fill: var(--surface-2);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'icon title'
+    'icon hint';
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.plan-kind-option:hover,
+.plan-kind-option:focus-visible {
+  --frame-edge: var(--gold-edge-bright);
+  filter: brightness(1.08);
+  outline: none;
+}
+
+.plan-kind-icon {
+  grid-area: icon;
+  display: flex;
+  color: var(--gold-soft);
+}
+
+.plan-kind-title {
+  grid-area: title;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+}
+
+.plan-kind-hint {
+  grid-area: hint;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* Lista dos planos: a linha inteira é o botão que abre a visualização. O texto
+   fica em minmax(0, 1fr) para o nome longo quebrar em vez de empurrar o valor
+   para fora da tela. */
+.plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-list li { border-bottom: 1px solid var(--line); }
+.plan-list li:last-child { border-bottom: none; }
+
+.plan-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 0.65rem;
+  padding: 0.75rem 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-item:hover .plan-item-name,
+.plan-item:focus-visible .plan-item-name { color: var(--gold-soft); }
+
+.plan-item:focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
+
+.plan-item-icon {
+  display: flex;
+  color: var(--gold-soft);
+}
+
+.plan-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.plan-item-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.plan-item-meta {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.plan-item-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  white-space: nowrap;
+}
+
+.plan-item-value strong {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92rem;
+  color: var(--gold-soft);
+}
+
+.plan-item-value .muted {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.plan-item-chevron { color: var(--muted); }
+
+/* Tipo do plano ("projeção" ou "meta"): selo neutro, porque é classificação e
+   não estado. */
+.badge.kind {
+  --frame-edge: var(--line-soft);
+  --frame-fill: var(--surface-2);
+  color: var(--text-soft);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Gasto fixo de planejamento: moldura de ouro pleno, como o selo do mês em
+   aberto, porque marca uma conta que veio de uma decisão tomada na aba
+   Planejamento. Na lista de planos ele diz que o plano está no mês. */
+.badge.plan {
+  --frame-edge: var(--gold);
+  --frame-fill: var(--gold-tint);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--gold-soft);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  white-space: nowrap;
+  padding: 0.22rem 0.5rem;
+}
+
+/* Mesmo motivo do selo de origem: na tabela a célula é texto corrido. */
+td .badge.plan { margin-left: 0.4rem; }
+
+/* Formulário: os campos já vêm com rótulo (label), então quem separa é o gap
+   da coluna, e não a margem de baixo do rótulo. */
+.plan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.plan-form label { margin-bottom: 0; }
+
+/* align-items: end alinha os campos pela base: quando um rótulo quebra em
+   duas linhas ("Percentual do CDI" em 360px), o campo dele não desce sozinho. */
+.plan-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 0.6rem;
+}
+
+.plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* Rótulo de um grupo que não é um campo só (o seletor do primeiro mês): mesma
+   aparência do label. */
+.plan-field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.month-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.month-stepper strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+/* Campo de taxa: o símbolo fica ao lado do número, dentro da moldura, e não no
+   valor do input (o apagar tiraria só o "%"). */
+.field.rate {
+  display: flex;
+  align-items: center;
+}
+
+.field.rate > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 0.3rem;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.rate-suffix {
+  flex: 0 0 auto;
+  padding-right: 0.9rem;
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Seção recolhível do rendimento: fechada, mostra só o resumo da taxa; aberta,
+   a moldura ganha o ouro, o mesmo sinal de "ativo" do resto da identidade. */
+.plan-collapse {
+  --c: 9px;
+  --frame-edge: var(--line-soft);
+  --frame-w: 1px;
+  --frame-fill: var(--surface-2);
+}
+
+.plan-collapse.open { --frame-edge: var(--gold-edge); }
+
+.plan-collapse-head {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+  padding: 0.8rem 0.9rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-collapse-head:focus-visible { outline: none; color: var(--gold-soft); }
+
+.plan-collapse-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.plan-collapse-title .muted {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* O resumo vai para a direita e, sem espaço, desce para a linha de baixo; o
+   chevron fica sempre por último. */
+.plan-collapse-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 0.76rem;
+  color: var(--gold-soft);
+}
+
+.plan-collapse-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+
+.plan-collapse.open .plan-collapse-chevron,
+.plan-year-head.open .plan-collapse-chevron { transform: rotate(180deg); }
+
+.plan-collapse-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 0 0.9rem 0.95rem;
+}
+
+.plan-collapse-body .card-hint { margin: 0; }
+
+/* Três chips de tipo de rendimento não cabem lado a lado em 360px: quebram em
+   vez de rolar, como dentro do modal. */
+.plan-collapse .chip-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.plan-check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-soft);
+  font: 500 0.82rem/1.35 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-check .check-box { flex: 0 0 auto; }
+
+.plan-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Resultado: o número que responde a pergunta do plano em destaque. Algarismos
+   proporcionais aqui (sem tabular-nums), porque em tamanho grande o espaço
+   fixo de cada dígito deixa o número frouxo. */
+.plan-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.plan-hero-label {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-hero {
+  font-family: var(--font-num);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  background: var(--gold-lettering);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.plan-totals { margin-top: 0.7rem; }
+
+.plan-rate-line { margin: 0.4rem 0 0; }
+
+/* Gráfico da projeção. O SVG é esticado para a caixa do gráfico e as linhas
+   usam vector-effect: non-scaling-stroke, para ficarem com 2px em qualquer
+   largura; o texto (eixos e leitura) é HTML, porque dentro do SVG esticado ele
+   sairia deformado. */
+.plan-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.plan-chart-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 2.6rem;
+}
+
+.plan-chart-month {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-chart-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  font-size: 0.76rem;
+  color: var(--text-soft);
+}
+
+.plan-chart-values strong {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Traço da legenda: linha, e não quadrado, porque a série é uma linha. */
+.legend-line {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  flex: none;
+}
+
+.legend-line.balance { background: var(--chart-balance); }
+.legend-line.deposit { background: var(--chart-deposit); }
+
+/* Linha da leitura sem série própria (o rendimento): o traço fica invisível
+   só para o valor alinhar com os de cima. */
+.legend-line.none { background: transparent; }
+
+.plan-chart-body {
+  display: grid;
+  grid-template-columns: 3.7rem minmax(0, 1fr);
+  margin-top: 0.4rem;
+}
+
+.plan-chart-y { position: relative; }
+
+.plan-chart-y span {
+  position: absolute;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  font: 500 0.6rem/1 var(--font-num);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* pan-y: arrastar o dedo na horizontal percorre os meses, e na vertical
+   continua rolando a página. */
+.plan-chart-plot {
+  position: relative;
+  height: 11rem;
+  touch-action: pan-y;
+  cursor: crosshair;
+  outline: none;
+}
+
+.plan-chart-plot:focus-visible { box-shadow: 0 0 0 1px var(--gold); }
+
+.plan-chart-plot svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.plan-chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.plan-chart-area { fill: var(--chart-balance-wash); }
+
+.plan-chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.plan-chart-line.balance { stroke: var(--chart-balance); }
+.plan-chart-line.deposit { stroke: var(--chart-deposit); }
+
+.plan-chart-cross {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Marcador do mês na mira: losango de 9px (o chanfro da identidade levado ao
+   ponto) com anel de 2px na cor do fundo, para destacar onde cruza a linha. */
+.plan-chart-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  box-sizing: content-box;
+  border: 2px solid var(--bg);
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
+}
+
+.plan-chart-dot.balance { background: var(--chart-balance); }
+.plan-chart-dot.deposit { background: var(--chart-deposit); }
+
+.plan-chart-x {
+  position: relative;
+  height: 0.9rem;
+  margin-left: 3.7rem;
+}
+
+/* O primeiro rótulo começa na borda e o último termina nela: centralizados,
+   os dois sairiam pela lateral do gráfico. */
+.plan-chart-x span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font: 500 0.6rem/1 var(--font-num);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.plan-chart-x span.first { transform: none; }
+.plan-chart-x span.last { transform: translateX(-100%); }
+
+/* Inclusão no mês */
+.plan-link-origin { margin: 0 0 0.8rem; }
+
+.plan-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Mês a mês: um grupo recolhível por ano e, dentro dele, uma linha por mês no
+   desenho do histórico (texto em duas linhas à esquerda, valor à direita, que
+   nunca quebra). */
+.plan-years {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-year { border-bottom: 1px solid var(--line); }
+.plan-year:last-child { border-bottom: none; }
+
+.plan-year-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-year-head:focus-visible { outline: none; color: var(--gold-soft); }
+
+.plan-year-head strong {
+  font-family: var(--font-num);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.plan-year-value {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+  color: var(--gold-soft);
+  white-space: nowrap;
+}
+
+.plan-month-list {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+
+.plan-month-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'name value'
+    'meta value';
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 0.1rem;
+  padding: 0.5rem 0.1rem 0.5rem 1.55rem;
+  border-top: 1px solid var(--line);
+}
+
+.plan-month-list li.current {
+  background: linear-gradient(90deg, var(--gold-tint), transparent 70%);
+}
+
+.plan-month-name {
+  grid-area: name;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.4rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.plan-month-name .badge.week { margin-left: 0; }
+
+.plan-month-meta {
+  grid-area: meta;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.plan-month-value {
+  grid-area: value;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .plan-hero { font-size: 1.7rem; }
+  .plan-chart-plot { height: 10rem; }
+  .plan-month-list li { padding-left: 0.4rem; }
+}
 
 /* --------------------------------------------------------------------------
    Modal

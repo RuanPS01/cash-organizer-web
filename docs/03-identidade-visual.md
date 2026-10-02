@@ -77,6 +77,23 @@ sendo ouro sobre preto.
 | `--silver-bar` | gradiente horizontal | faixa dos gastos variáveis na barra |
 | `--silver-fill` | gradiente vertical | chanfro da legenda (em 9px o gradiente horizontal deixaria metade quase preta) |
 
+### Gráfico da projeção
+
+O gráfico do planejamento tem duas séries: o saldo com rendimento, que é a
+série em destaque, e o total depositado, que é a referência. Ouro contra prata
+foi descartado: a diferença entre os dois ficou abaixo do mínimo para quem
+enxerga todas as cores (13,4 no OKLab, contra 15). Ouro contra grafite passa
+com folga para visão normal e para daltonismo (acima de 20), e o grafite
+neutro deixa claro qual linha é a história e qual é o pano de fundo.
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--chart-balance` | `var(--gold-bright)` | linha, marcador e traço da legenda do saldo |
+| `--chart-balance-wash` | ouro a 10% | área sob a linha do saldo |
+| `--chart-deposit` | `#8d93a0` | linha, marcador e traço da legenda do total depositado |
+
+Sem rendimento as duas linhas seriam a mesma, e só a do saldo aparece.
+
 ### Texto
 
 | Token | Valor | Uso |
@@ -185,7 +202,8 @@ nas diagonais do chanfro. A moldura é feita assim:
 Quem participa do sistema está na regra agrupada no topo do `styles.css`:
 `.frame`, `.btn`, `.mini-btn`, `.chip`, `.card`, `.field`, `.badge`,
 `.status-frame`, `.form-error`, `.section-totals`, `.subtab`, `.icon-option`,
-`.color-swatch` e `.modal`.
+`.color-swatch`, `.check-box`, `.plan-kind-option`, `.plan-collapse` e
+`.modal`.
 
 `clip-path` também recorta **descendente `position: fixed`**. Por isso um modal
 nunca pode ser renderizado dentro de um `.card`: ele apareceria cortado pelos
@@ -219,7 +237,18 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Campo | `.field` | `.plate` (placa de valor), `.inline` (edição em tabela) |
 | Chip de categoria ou de origem | `.chip` | `.selected` (ouro preenchido), `.new` (moldura tracejada); em modal a fileira quebra de linha em vez de rolar. O peso da fonte é o mesmo nos dois estados, senão o chip selecionado fica mais largo e a fileira se mexe a cada toque |
 | Card | `.card` | `.table-card`, `.totals-card`, `.info` (com `.info-head`, `.info-category` e `.week-hint` no card de estatísticas da aba Adicionar) |
-| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status`, `.week` (semana corrente), `.empty` (sem origem) |
+| Selo | `.badge` | `.open`, `.closed`, `.installment`, `.padrao`, `.ignored`, `.cat`, `.origin`, `.status`, `.week` (semana corrente e mês atual na listagem do plano), `.empty` (sem origem), `.plan` (gasto fixo de planejamento, moldura de ouro pleno com o cofrinho; na lista de planos diz "no mês"), `.kind` (tipo do plano, neutro) |
+| Separador da navegação | `.nav-sep` | fio vertical de ouro que some nas pontas, entre Gerenciar e Planejamento |
+| Cabeçalho de subpágina | `.subpage-header` mais `.subpage-title` | botão de voltar ao lado do título (formulário e visualização do plano) |
+| Escolha do tipo de plano | `.plan-kinds` mais `.plan-kind-option` | peça com moldura, ícone, título em ouro e a pergunta que o plano responde |
+| Lista de planos | `.plan-list` mais `.plan-item` | a linha inteira é botão; `.plan-item-value` leva o número do plano à direita |
+| Seção recolhível | `.plan-collapse` mais `.plan-collapse-head` e `.plan-collapse-body` | `.open` troca a moldura para ouro e gira o `.plan-collapse-chevron` |
+| Campo de taxa | `.field.rate` mais `.rate-suffix` | o símbolo fica fora do valor do input |
+| Caixa de marcação com texto | `.plan-check` | usa a `.check-box` do histórico |
+| Número em destaque do plano | `.plan-hero` mais `.plan-hero-label` | vazado em ouro, algarismos proporcionais |
+| Gráfico da projeção | `.plan-chart` | `.plan-chart-readout` (leitura e legenda), `.plan-chart-plot`, `.plan-chart-line.balance`/`.deposit`, `.plan-chart-dot` (losango de 9px com anel de 2px), `.plan-chart-cross` (mira), `.plan-chart-x` e `.plan-chart-y` (eixos em HTML) |
+| Traço de legenda de linha | `.legend-line` | `.balance`, `.deposit`, `.none` (invisível, só alinha) |
+| Mês a mês do plano | `.plan-years`, `.plan-year-head`, `.plan-month-list` | `li.current` marca o mês em aberto |
 | Glifo de origem | `.origin-icon` | tons `.oc-*`; `.origin-cell` põe o glifo ao lado do nome na tabela do mês |
 | Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-text`, `.history-meta`, `.history-value`, `.history-actions` (lápis mais excluir), `.history-filters`, `.history-summary` |
 | Marca | `.brand-mark` (via `BrandMark`) | `.big` (login e abertura) |
@@ -317,7 +346,9 @@ e chips, 18 em botões de ícone, 20 na navegação, 34 na marca grande do login
 Em uso hoje: `Wallet`, `Plus`, `BarChart3`, `Banknote`, `Settings`,
 `CalendarDays`, `Eraser`, `Pencil`, `X`, `ChevronLeft`, `ChevronRight`,
 `ChevronUp`, `ChevronDown`, `Search`, `SlidersHorizontal`, `ListChecks`,
-`Check`, e os glifos de
+`Check`, `Trash2` (excluir planejamento), `PiggyBank` (aba Planejamento e selo
+do gasto fixo de planejamento), `Coins` ("quanto vou juntar"), `Target`
+("quanto guardar por mês"), e os glifos de
 origem `QrCode` (Pix), `ArrowLeftRight` (transferência), `CreditCard` (cartão),
 `Banknote` (dinheiro), `TrendingUp` (investimento), `CalendarSync` (débito
 automático) e `Barcode` (boleto).

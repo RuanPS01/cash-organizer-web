@@ -148,6 +148,7 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
       originName: f.originName ?? '',
       installmentCurrent: f.installmentCurrent ?? null,
       installmentTotal: f.installmentTotal ?? null,
+      planId: f.planId ?? null,
     } satisfies Omit<FixedEntry, 'id'>);
     dirty = true;
   }
@@ -177,8 +178,9 @@ async function syncMonthEntries(compartmentId: string, ym: string): Promise<void
 
 /**
  * Adiciona ao batch as linhas do mês a partir dos cadastros ativos (fixos
- * com valor/ideal/descrição/origem/parcela; categorias com o ideal; origens
- * com o ideal e o status, que é o que a aba Pagamento acompanha nelas).
+ * com valor, descrição, origem, parcela e vínculo com o planejamento;
+ * categorias com o ideal; origens com o ideal e o status, que é o que a aba
+ * Pagamento acompanha nelas).
  */
 async function seedMonthEntries(
   compartmentId: string,
@@ -201,6 +203,7 @@ async function seedMonthEntries(
       originName: f.originName ?? '',
       installmentCurrent: f.installmentCurrent ?? null,
       installmentTotal: f.installmentTotal ?? null,
+      planId: f.planId ?? null,
     } satisfies Omit<FixedEntry, 'id'>);
   }
   for (const c of categories) {

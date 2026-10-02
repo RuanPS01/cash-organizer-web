@@ -90,6 +90,13 @@ export interface FixedExpense {
    */
   installmentCurrent?: number | null;
   installmentTotal?: number | null;
+  /**
+   * Planejamento que deu origem a este gasto fixo ("gasto fixo de
+   * planejamento"): o valor mensal do plano entra no mês como uma conta
+   * parcelada, uma parcela por mês do prazo. `null` ou ausente no gasto fixo
+   * comum.
+   */
+  planId?: string | null;
   active: boolean;
   createdAt: number;
 }
@@ -252,6 +259,8 @@ export interface FixedEntry {
   originName?: string;
   installmentCurrent?: number | null;
   installmentTotal?: number | null;
+  /** Copiado do cadastro: marca a linha como gasto fixo de planejamento. */
+  planId?: string | null;
 }
 
 /**
@@ -299,4 +308,64 @@ export interface VariableExpense {
 export interface Session {
   compartmentId: string;
   name: string;
+}
+
+/**
+ * Tipos de planejamento financeiro:
+ * - `accumulate`: guardando um valor fixo por mês, quanto haverá no fim do prazo;
+ * - `goal`: com uma meta e um prazo, quanto é preciso guardar por mês.
+ */
+export const PLAN_KINDS = ['accumulate', 'goal'] as const;
+
+export type PlanKind = (typeof PLAN_KINDS)[number];
+
+/**
+ * Como o rendimento é informado: sem rendimento, taxa fixa ao ano (Tesouro
+ * Prefixado, CDB prefixado) ou percentual do CDI (CDB pós-fixado, Tesouro
+ * Selic). Fica gravado para o formulário reabrir do jeito que foi preenchido.
+ */
+export const PLAN_RATE_MODES = ['none', 'annual', 'cdi'] as const;
+
+export type PlanRateMode = (typeof PLAN_RATE_MODES)[number];
+
+/** Unidade em que o prazo foi digitado; o prazo em si é sempre em meses. */
+export const PLAN_DURATION_UNITS = ['months', 'years'] as const;
+
+export type PlanDurationUnit = (typeof PLAN_DURATION_UNITS)[number];
+
+/**
+ * Planejamento financeiro: uma projeção no tempo do que se guarda por mês,
+ * com rendimento opcional de renda fixa. É simulação, não extrato: o app não
+ * acompanha o saldo real guardado, porque o foco dele é o controle do mês. O
+ * vínculo com o mês é o gasto fixo de planejamento (`FixedExpense.planId`).
+ *
+ * Taxas são inteiros em centésimos de ponto percentual (1065 é 10,65%), pela
+ * mesma razão de o dinheiro ser inteiro em centavos: nada de float gravado.
+ */
+export interface Plan {
+  id: string;
+  name: string;
+  kind: PlanKind;
+  /** Quanto se guarda por mês, em centavos. Entrada do `accumulate`; zero no `goal`. */
+  monthlyAmount: number;
+  /** Valor a alcançar, em centavos. Entrada do `goal`; zero no `accumulate`. */
+  targetAmount: number;
+  /** Valor que já está guardado no início, em centavos (zero quando não há). */
+  initialAmount: number;
+  /** Prazo em meses, de 1 a 600 (50 anos). */
+  durationMonths: number;
+  durationUnit: PlanDurationUnit;
+  /** Primeiro mês do plano (YYYY-MM): é dele que sai a listagem mês a mês. */
+  startMonth: string;
+  rateMode: PlanRateMode;
+  /** Taxa ao ano no modo `annual`, em centésimos de ponto percentual. */
+  annualRate: number;
+  /** CDI ao ano no modo `cdi`, em centésimos de ponto percentual. */
+  cdiRate: number;
+  /** Percentual do CDI no modo `cdi` (10000 é 100% do CDI). */
+  cdiPercent: number;
+  /** Desconta o imposto de renda da tabela regressiva no resgate. */
+  incomeTax: boolean;
+  active: boolean;
+  createdAt: number;
 }

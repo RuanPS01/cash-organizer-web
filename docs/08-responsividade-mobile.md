@@ -9,7 +9,9 @@ pronta.
 | Faixa | O que muda |
 |---|---|
 | Até 560px | tabelas viram blocos, coluna "Ideal" some, lançamento vira grade de duas linhas, status e valores encolhem |
-| Acima de 560px | tabelas normais com todas as colunas |
+| Acima de 560px | tabelas normais com todas as colunas, os dois tipos de plano lado a lado |
+| Até 719px | navbar embaixo, com as cinco abas em fonte menor e largura vinda do rótulo |
+| De 720px a 959px | navbar no topo com recuo e espaçamento entre letras reduzidos, para as cinco abas caberem |
 | A partir de 720px | navbar sai de baixo e vira barra no topo, totais em 4 colunas, formulário inline em grade |
 
 A folha é escrita mobile-first: o padrão é o celular e as media queries adicionam
@@ -26,6 +28,12 @@ o comportamento de tela larga (`min-width: 720px`) ou o modo compacto de tabela
   `padding-bottom: var(--safe-bottom)`. A partir de 720px ela vira `sticky` logo
   abaixo da topbar, usando `order` para ficar acima do conteúdo; lá o
   `bottom: auto` da media query desliga o apoio no teclado.
+- A navbar tem cinco abas e o separador `.nav-sep` antes de Planejamento. Abaixo
+  de 720px os botões usam `flex: 1 1 auto` com `min-width: 0` e fonte de
+  0.58rem: com largura igual para todos (`flex: 1`), "Planejamento" e
+  "Estatísticas" não cabiam no quinto da tela e a barra passava da borda. Entre
+  720px e 959px o recuo de cada aba cai para 0.7rem, porque com o recuo de tela
+  larga a barra media 792px em uma janela de 720px. Conferido de 320px a 1280px.
 - `.content` tem `max-width: 900px`, centralizado, com `padding-bottom:
   calc(5.5rem + var(--safe-bottom))` no celular para o conteúdo não terminar
   embaixo da navbar.
@@ -121,6 +129,28 @@ O modal tem `max-height: calc(100dvh - 2rem)` e quem rola é o `.modal-body`, pa
 que o título e os botões de ação continuem visíveis: o modal da origem, com a
 grade de ícones, é mais alto que a tela de um celular.
 
+## 8.4.2 Planejamento
+
+- **Formulário.** Uma coluna; prazo e unidade, e as duas taxas do CDI, ficam em
+  `.plan-form-row`, duas colunas `minmax(0, 1fr)` alinhadas pela base
+  (`align-items: end`), porque em 360px o rótulo "Percentual do CDI" quebra em
+  duas linhas e, alinhado pelo topo, o campo dele descia sozinho. Os três chips
+  de tipo de rendimento quebram de linha dentro da seção recolhível, como dentro
+  do modal, em vez de rolar.
+- **Lista de planos.** Grade `auto minmax(0, 1fr) auto auto` (ícone, texto,
+  valor, chevron): o nome longo quebra em várias linhas e o valor nunca sai da
+  tela.
+- **Gráfico.** O SVG é esticado para a caixa e os rótulos dos eixos são HTML,
+  então o texto tem o mesmo tamanho em 360px e no desktop. A leitura dos valores
+  fica acima do gráfico, e não em uma caixa flutuante: em 360px a caixa
+  ocuparia dois terços da largura e seria cortada pela moldura do card. O
+  gráfico usa `touch-action: pan-y`: arrastar na horizontal percorre os meses, e
+  na vertical a página continua rolando.
+- **Mês a mês.** Cada mês é uma grade de duas linhas de texto e o valor à
+  direita, que nunca quebra, como no histórico do mês.
+- **Selo do gasto fixo de planejamento.** `white-space: nowrap`: dentro da
+  linha de selos do histórico ele quebrava no meio ("faltam 23 / meses").
+
 ## 8.5 Rolagem horizontal permitida
 
 Só dois contêineres rolam na horizontal, e de propósito:
@@ -157,5 +187,6 @@ horizontal.**
 - [ ] Abri um campo de texto, fechei o teclado e a navegação voltou colada na
       borda de baixo, sem faixa vazia, inclusive depois de rolar em outra aba.
 - [ ] Molduras chanfradas inteiras, sem canto sem ouro nem miolo vazando.
-- [ ] Conferi a partir de 720px, com a navbar no topo.
+- [ ] Conferi a partir de 720px, com a navbar no topo, e em 720px exatos, onde
+      as cinco abas ficam mais apertadas.
 - [ ] Se mexi em tabela, conferi os dois lados do breakpoint de 560px.

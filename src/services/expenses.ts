@@ -154,6 +154,11 @@ export interface FixedExpenseInput {
   originName?: string;
   installmentCurrent?: number | null;
   installmentTotal?: number | null;
+  /**
+   * Planejamento de origem do gasto fixo de planejamento. Ausente em uma
+   * edição, a chave não é tocada (ver `normalizeFixedInput`).
+   */
+  planId?: string | null;
 }
 
 function normalizeFixedInput(input: FixedExpenseInput) {
@@ -168,6 +173,11 @@ function normalizeFixedInput(input: FixedExpenseInput) {
     originName: input.originName?.trim() ?? '',
     installmentCurrent: input.installmentTotal ? (input.installmentCurrent ?? 1) : null,
     installmentTotal: input.installmentTotal ?? null,
+    // O vínculo com o planejamento só entra quando quem chama o informa. O
+    // modal de edição da tela Gerenciar e a edição no lugar não conhecem o
+    // plano: gravar `null` por omissão desfaria o vínculo a cada ajuste de
+    // valor, e o gasto deixaria de aparecer como gasto fixo de planejamento.
+    ...(input.planId !== undefined ? { planId: input.planId } : {}),
   };
 }
 
@@ -175,8 +185,8 @@ export async function addFixedExpense(
   compartmentId: string,
   currentMonth: string,
   input: FixedExpenseInput,
-): Promise<void> {
-  const data = normalizeFixedInput(input);
+): Promise<string> {
+  const data = { ...normalizeFixedInput(input), planId: input.planId ?? null };
   const ref = await addDoc(collection(db, 'compartments', compartmentId, 'fixedExpenses'), {
     ...data,
     active: true,
@@ -189,6 +199,7 @@ export async function addFixedExpense(
       status: 'Pendente' satisfies EntryStatus,
     });
   }
+  return ref.id;
 }
 
 /**
@@ -209,7 +220,14 @@ export async function saveFixedExpense(
     if (entry.exists()) {
       await updateDoc(entryRef, data);
     } else {
-      await setDoc(entryRef, { ...data, status: 'Pendente' satisfies EntryStatus });
+      // Linha nova precisa do vínculo com o plano mesmo quando quem salvou não
+      // o informou: ele vem do cadastro, que acabou de ser gravado.
+      const cad = await getDoc(doc(db, 'compartments', compartmentId, 'fixedExpenses', id));
+      await setDoc(entryRef, {
+        planId: (cad.data()?.planId as string | null | undefined) ?? null,
+        ...data,
+        status: 'Pendente' satisfies EntryStatus,
+      });
     }
   }
 }
