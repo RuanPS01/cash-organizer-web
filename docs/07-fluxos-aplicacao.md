@@ -145,10 +145,10 @@ lado do nome. Não há campo de ideal: conta que se repete todo mês já é o pr
 planejamento, então o valor do fixo é o previsto dele.
 
 O gasto fixo de planejamento (criado pela aba Planejamento) aparece na lista
-com o selo "planejamento" e os meses que faltam, e pode ser editado como os
-outros; o modal avisa que nome, valor e parcelas vêm do plano. Editar aqui não
-desfaz o vínculo, e a visualização do plano passa a mostrar que o valor está
-diferente do planejado.
+com o selo "planejamento" e os meses que faltam, mas sem edição: sem lápis, sem
+remoção e com o valor só para leitura, com a nota "Gerenciado na aba
+Planejamento". Ele espelha o plano, e mudar o valor ou as parcelas aqui o faria
+discordar do plano; tudo isso passa pela aba Planejamento.
 
 Categoria: nome e ideal editáveis no lugar, setas para reordenar (a ordem vale
 para os chips da tela de novo gasto), "tornar padrão" para transferir o papel da
@@ -191,6 +191,19 @@ A aba tem dois cards, na ordem em que o mês é resolvido:
 2. **Gastos fixos.** Uma linha por gasto fixo, com o valor editável no lugar, o
    selo da origem e o status. Sem coluna de ideal: o valor já é o previsto.
 
+**Gasto fixo de planejamento no Pagamento.** O valor vem do plano e não é
+editável. O status é o que o plano em curso lê de cada mês:
+
+- `Pago`, `Agendado/Automático` e os demais: o valor inteiro foi guardado;
+- `Ignorar` ou `Sem gasto`: o mês foi pulado, nada guardado;
+- `Parcialmente pago`: abre um modal que pede quanto foi guardado (menos que o
+  planejado). A célula passa a mostrar "R$ 300,00 de R$ 500,00", e o mês conta
+  só o que foi guardado no gasto.
+
+Mês pulado ou pago em parte prorroga o plano na hora: as parcelas do gasto fixo
+e o selo "faltam N meses" já mudam, e a aba Planejamento mostra o mês em
+vermelho com o novo fim.
+
 Trocar o status de uma origem aplica o mesmo status aos gastos fixos que saem
 dela, em uma gravação só. Depois disso, cada gasto fixo ainda pode ser ajustado
 na tabela de baixo: a cascata é um atalho, não uma amarra.
@@ -229,6 +242,12 @@ flowchart TD
   H --> I["ensureMonth do próximo mês"]
   I --> J["Tela passa a exibir o novo mês"]
 ```
+
+Antes de avançar as parcelas, a virada grava em cada plano em curso o que
+aconteceu no mês que fechou (o planejado e o guardado) e acerta o gasto fixo de
+planejamento: parcela, total de parcelas (com os meses extras) e o valor do
+próximo mês, que no último mês extra é só o resto. Uma falha aqui não segura a
+virada.
 
 `advanceInstallments` incrementa a parcela atual dos gastos parcelados; quem
 estava na última parcela é desativado e não aparece no mês seguinte. O mês novo
@@ -295,10 +314,15 @@ flowchart TD
   F --> G["Salvar: visualização do plano"]
   A --> G
   G --> H["Resultado, gráfico e mês a mês"]
-  G --> I{"Incluir no mês?"}
+  G --> I{"Incluir em gastos fixos?"}
   I -- "mês em aberto dentro do prazo" --> J["Escolhe a origem"]
-  J --> K["Gasto fixo de planejamento, parcela N de M"]
-  K --> L["Avança na virada do mês e sai depois da última"]
+  J --> K["Plano em curso: gasto fixo de planejamento, parcela N de M"]
+  K --> M{"Pagamento do mês"}
+  M -- "pago" --> N["Segue o planejado"]
+  M -- "pulado ou pago em parte" --> O["Mês em vermelho, prazo prorrogado, projeção refeita"]
+  N --> L["Virada grava o mês e avança a parcela"]
+  O --> L
+  L --> P["Última parcela: plano concluído"]
 ```
 
 1. **Criar.** Na lista, o usuário escolhe o tipo. "Quanto vou juntar" pede o
@@ -315,24 +339,36 @@ flowchart TD
 4. **Ver.** Salvar leva à visualização: resultado, gráfico (saldo em ouro e,
    com rendimento, o total depositado em grafite; tocar no gráfico mostra o mês)
    e a listagem mês a mês por ano, com o mês em aberto marcado.
-5. **Incluir no mês.** Com o mês em aberto dentro do prazo, "Incluir no mês"
-   cria um gasto fixo de planejamento com o valor mensal do plano, a origem
-   escolhida e as parcelas: a do mês em aberto é a posição dele no prazo
-   (parcela 3 de 12 no terceiro mês), e o selo mostra quantos meses faltam
-   depois deste. Daí em diante ele é um gasto fixo comum: entra na aba
-   Pagamento, no previsto do mês e no resumo, avança na virada e sai depois da
-   última parcela.
-6. **Editar.** Salvar um plano que está no mês atualiza nome, valor e parcelas
-   do gasto fixo. Se o mês em aberto ficar fora do prazo (o primeiro mês foi
-   para depois dele, ou o prazo encurtou), o gasto fixo sai do mês, e o recado
-   depois de salvar diz isso. Se o valor do gasto fixo foi mudado à mão, a
-   visualização mostra a diferença e oferece "Usar o valor planejado".
-7. **Tirar do mês e excluir.** "Tirar do mês" remove o gasto fixo do mês em
-   aberto e dos próximos, e o plano continua salvo. Excluir o plano faz o mesmo
-   com o gasto fixo dele. Meses fechados nunca mudam.
+   Até aqui o plano não mexe no mês nem nos totais: ele é só cadastrado,
+   editado e consultado na aba.
+5. **Incluir em gastos fixos.** É a única ação que leva o plano ao mês. Com o
+   mês em aberto dentro do prazo, o botão cria um gasto fixo de planejamento com
+   o valor do mês, a origem escolhida e as parcelas: a do mês em aberto é a
+   posição dele no prazo (parcela 3 de 12 no terceiro mês), e o selo mostra
+   quantos meses faltam depois deste. O plano passa a estar **em curso**: a
+   lista e a visualização dizem isso, e meses do plano antes da inclusão contam
+   como guardados.
+6. **Em curso.** O que a aba Pagamento disser de cada mês volta para o plano.
+   Mês pago segue o planejado. Mês pulado (`Ignorar` ou `Sem gasto`) ou pago em
+   parte aparece em vermelho na listagem e no gráfico, e o que faltou vai para
+   o fim: o prazo é prorrogado (no "quanto vou juntar", um mês pulado acrescenta
+   um mês; no "quanto guardar por mês", os meses extras vão até a meta), a
+   projeção do rendimento é refeita e o gasto fixo ganha as parcelas a mais. A
+   virada do mês grava o resultado de cada mês no plano.
+7. **Editar.** Salvar um plano em curso atualiza nome, valor e parcelas do
+   gasto fixo; os meses que já aconteceram ficam como foram pagos, e o primeiro
+   mês não pode mudar. O gasto fixo de planejamento não é editado em nenhum
+   outro lugar.
+8. **Tirar dos gastos fixos e excluir.** "Tirar dos gastos fixos" remove o
+   gasto fixo do mês em aberto e dos próximos e encerra o curso: o histórico dos
+   meses é descartado e o plano volta a ser só o planejado. Excluir o plano faz
+   o mesmo com o gasto fixo dele. Meses fechados nunca mudam.
+9. **Concluído.** Na última parcela, a virada desativa o gasto fixo, e o plano
+   fica marcado como concluído, com o histórico dos meses.
 
-O plano não acompanha o saldo guardado de fato, de propósito: o foco do app é o
-controle do mês, e o plano é a conta de onde se chega guardando aquele valor.
+O plano conta com o que foi pago no Pagamento, e não com um saldo informado: o
+foco do app é o controle do mês, e o plano é a conta de onde se chega guardando
+aquele valor.
 
 ## 7.10 Offline e instalação
 

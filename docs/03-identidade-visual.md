@@ -249,6 +249,12 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Gráfico da projeção | `.plan-chart` | `.plan-chart-readout` (leitura e legenda), `.plan-chart-plot`, `.plan-chart-line.balance`/`.deposit`, `.plan-chart-dot` (losango de 9px com anel de 2px), `.plan-chart-cross` (mira), `.plan-chart-x` e `.plan-chart-y` (eixos em HTML) |
 | Traço de legenda de linha | `.legend-line` | `.balance`, `.deposit`, `.none` (invisível, só alinha) |
 | Mês a mês do plano | `.plan-years`, `.plan-year-head`, `.plan-month-list` | `li.current` marca o mês em aberto |
+| Mês em falta do plano | `.badge.miss` | moldura e texto terracota: "pulado", "parcial" e a contagem do ano |
+| Situação do plano em curso | `.card.plan-progress` mais `.plan-progress-line` | moldura de ouro; `.neg` em terracota quando há mês pulado ou parcial |
+| Valor só de leitura do fixo de planejamento | `.plan-amount` | número sem o sublinhado tracejado de "toque para editar" |
+| Pago em parte na aba Pagamento | `.money-cell.plan-paid` | o guardado e, apagado, o planejado |
+| Nota do fixo de planejamento no histórico | `.history-plan-note` | |
+| Mês em falta no gráfico | `.plan-chart-miss` | traço terracota de 2px na base, na posição do mês |
 | Glifo de origem | `.origin-icon` | tons `.oc-*`; `.origin-cell` põe o glifo ao lado do nome na tabela do mês |
 | Histórico do mês | `.history-card` | `.history-list`, `.history-desc`, `.history-text`, `.history-meta`, `.history-value`, `.history-actions` (lápis mais excluir), `.history-filters`, `.history-summary` |
 | Marca | `.brand-mark` (via `BrandMark`) | `.big` (login e abertura) |

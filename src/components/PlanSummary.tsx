@@ -37,7 +37,12 @@ export function PlanSummary(props: {
 }) {
   const { kind, projection, incomeTax } = props;
   const ultimo = projection.months[projection.months.length - 1];
-  const prazo = formatDuration(props);
+  // Plano em curso com mês pulado ou pago em parte: o prazo cresceu.
+  const prazo =
+    formatDuration(props) +
+    (projection.extraMonths > 0
+      ? ` e mais ${projection.extraMonths === 1 ? '1 mês' : `${projection.extraMonths} meses`} para repor o que faltou`
+      : '');
   // Com o imposto ligado, o que importa é o que sobra no resgate: o bruto
   // continua visível na composição, mas não é o número de cima.
   const valorFinal = incomeTax ? projection.netBalance : projection.grossBalance;

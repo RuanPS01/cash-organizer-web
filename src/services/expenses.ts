@@ -403,6 +403,11 @@ export async function updateFixedEntry(
     status: EntryStatus;
     /** Só a linha do mês muda; o cadastro segue com a descrição original. */
     description: string;
+    /**
+     * Valor guardado no gasto fixo de planejamento pago em parte; `null` ao
+     * sair desse status, para a linha não carregar um valor que não vale mais.
+     */
+    paidAmount: number | null;
   }>,
 ): Promise<void> {
   await updateDoc(doc(fixedEntriesCol(compartmentId, ym), entryId), patch);

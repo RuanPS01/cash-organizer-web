@@ -9,13 +9,20 @@ import {
   digitsToRate,
   formatPlanRate,
   formatRate,
-  projectPlan,
 } from '../utils/projection';
+import { projectPlanForMonth } from '../services/months';
 import { addMonthsKey, monthLabel } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
 import { MoneyInput } from './shared';
 import { PLAN_KIND_TEXT, PlanSummary } from './PlanSummary';
-import type { FixedExpense, Plan, PlanDurationUnit, PlanKind, PlanRateMode } from '../types';
+import type {
+  FixedEntry,
+  FixedExpense,
+  Plan,
+  PlanDurationUnit,
+  PlanKind,
+  PlanRateMode,
+} from '../types';
 
 const RATE_MODE_LABELS: Record<PlanRateMode, string> = {
   none: 'Sem rendimento',
@@ -66,10 +73,14 @@ export function PlanForm(props: {
   initial: Plan | null;
   /** Gasto fixo de planejamento do plano em edição, quando ele está no mês. */
   linked: FixedExpense | null;
+  /** Linha do gasto fixo de planejamento no mês em aberto, quando o plano está em curso. */
+  line: FixedEntry | null;
   onSaved: (id: string, sync: PlanFixedSync) => void;
   onCancel: () => void;
 }) {
   const { compartmentId, currentMonth, kind, initial, linked } = props;
+  // Em curso: o plano já está nos gastos fixos e os meses dele são acompanhados.
+  const emCurso = linked !== null;
   const text = PLAN_KIND_TEXT[kind];
 
   const [name, setName] = useState(initial?.name ?? '');
@@ -120,7 +131,17 @@ export function PlanForm(props: {
 
   // A prévia aparece assim que há valor e prazo: o nome é só para a lista. A
   // conta é recalculada a cada tecla, o que é barato (no máximo 600 meses).
-  const projection = amount > 0 && durationValid ? projectPlan(input) : null;
+  // No plano em curso a prévia já conta os meses que aconteceram (pulados e
+  // pagos em parte), para mostrar o que salvar vai produzir de fato.
+  const projection =
+    amount > 0 && durationValid
+      ? projectPlanForMonth(
+          { ...input, trackedFrom: initial?.trackedFrom, progress: initial?.progress },
+          currentMonth,
+          emCurso,
+          props.line,
+        )
+      : null;
 
   const validate = (): string | null => {
     if (!name.trim()) return 'Dê um nome ao planejamento.';
@@ -153,7 +174,10 @@ export function PlanForm(props: {
     setError(null);
     try {
       if (initial) {
-        const sync = await savePlan(compartmentId, currentMonth, initial.id, input, linked);
+        const sync = await savePlan(compartmentId, currentMonth, initial.id, input, linked, {
+          trackedFrom: initial.trackedFrom ?? null,
+          progress: initial.progress ?? {},
+        });
         props.onSaved(initial.id, sync);
       } else {
         const id = await addPlan(compartmentId, input);
@@ -227,10 +251,14 @@ export function PlanForm(props: {
             Primeiro mês
           </span>
           <div className="month-stepper">
+            {/* Com o plano em curso o primeiro mês fica fixo: o histórico dos
+                meses está preso a ele, e mudá-lo deslocaria tudo o que já foi
+                pago para outros meses do plano. */}
             <button
               type="button"
               className="btn icon"
               aria-label="Mês anterior"
+              disabled={emCurso}
               onClick={() => setStartMonth(addMonthsKey(startMonth, -1))}
             >
               <ChevronLeft size={16} aria-hidden />
@@ -240,6 +268,7 @@ export function PlanForm(props: {
               type="button"
               className="btn icon"
               aria-label="Próximo mês"
+              disabled={emCurso}
               onClick={() => setStartMonth(addMonthsKey(startMonth, 1))}
             >
               <ChevronRight size={16} aria-hidden />
@@ -248,6 +277,11 @@ export function PlanForm(props: {
           {durationValid && (
             <span className="muted small">
               Último mês: {monthLabel(addMonthsKey(startMonth, durationMonths - 1))}
+              {projection && projection.extraMonths > 0
+                ? `, com o planejamento em curso indo até ${monthLabel(
+                    projection.months[projection.months.length - 1].ym,
+                  )}`
+                : ''}
             </span>
           )}
         </div>
@@ -351,11 +385,11 @@ export function PlanForm(props: {
           )}
         </section>
 
-        {linked && (
+        {emCurso && (
           <p className="card-hint">
-            Este planejamento está no mês como <strong>gasto fixo de planejamento</strong>: salvar
-            atualiza o nome, o valor e as parcelas dele. Se o mês em aberto ficar fora do prazo, ele
-            sai do mês.
+            Este planejamento está <strong>em curso</strong>, nos gastos fixos. Salvar atualiza o
+            nome, o valor e as parcelas do gasto fixo de planejamento. Os meses que já aconteceram
+            ficam como foram pagos, e o primeiro mês não muda.
           </p>
         )}
         {error && <p className="form-error">{error}</p>}

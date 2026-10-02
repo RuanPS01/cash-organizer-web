@@ -99,6 +99,8 @@ export function PlanChart(props: { months: ProjectionMonth[]; showDeposited: boo
         <span className="plan-chart-month">
           {monthLabel(mes.ym)}
           {active === null ? ' (fim do prazo)' : ` (mês ${mes.index})`}
+          {mes.state === 'skipped' && <span className="neg"> · pulado</span>}
+          {mes.state === 'partial' && <span className="neg"> · pago em parte</span>}
         </span>
         <span className="plan-chart-values">
           <span className="legend-item">
@@ -166,6 +168,19 @@ export function PlanChart(props: { months: ProjectionMonth[]; showDeposited: boo
               style={{ left: `${left}%`, top: `${(y(mes.deposited) / H) * 100}%` }}
               aria-hidden
             />
+          )}
+          {/* Meses pulados ou pagos em parte: um traço vermelho na base, na
+              posição do mês, para o desvio aparecer no gráfico sem precisar
+              tocar em cada mês. */}
+          {months.map((m, k) =>
+            m.state === 'skipped' || m.state === 'partial' ? (
+              <span
+                key={m.ym}
+                className="plan-chart-miss"
+                style={{ left: `${(x(k) / W) * 100}%` }}
+                aria-hidden
+              />
+            ) : null,
           )}
           <span
             className="plan-chart-dot balance"

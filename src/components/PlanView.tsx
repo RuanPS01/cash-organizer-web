@@ -1,33 +1,36 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react';
-import { addPlanFixedExpense, removePlan, setPlanFixedExpense } from '../services/plans';
-import { removeFixedExpense } from '../services/expenses';
+import {
+  addPlanFixedExpense,
+  planMonthSchedule,
+  removePlan,
+  removePlanFixedExpense,
+  setPlanFixedExpense,
+} from '../services/plans';
+import { projectPlanForMonth } from '../services/months';
 import { formatBRL } from '../utils/money';
 import { monthLabel } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
-import {
-  formatDuration,
-  formatPlanRate,
-  planMonthPosition,
-  projectPlan,
-  remainingMonthsLabel,
-} from '../utils/projection';
+import { formatDuration, formatPlanRate, remainingMonthsLabel } from '../utils/projection';
 import type { ProjectionMonth } from '../utils/projection';
 import { ConfirmModal } from './shared';
 import { OriginIcon } from './OriginIcon';
 import { PlanChart } from './PlanChart';
 import { PLAN_KIND_TEXT, PlanSummary } from './PlanSummary';
-import type { FixedExpense, Origin, Plan } from '../types';
+import { IGNORED_STATUS } from '../types';
+import type { FixedEntry, FixedExpense, Origin, Plan } from '../types';
+
+/** Onde o mês em aberto cai no plano (ver `planMonthSchedule`). */
+type Schedule = { index: number; total: number; planned: number };
 
 /**
- * Escolha da origem do gasto fixo de planejamento, no mesmo formato do cadastro
- * de gasto fixo da tela Gerenciar: a padrão já vem escolhida e "Sem origem"
- * deixa o gasto sem uma.
+ * Inclusão do plano nos gastos fixos, com a escolha da origem no mesmo formato
+ * do cadastro de gasto fixo da tela Gerenciar: a padrão já vem escolhida e
+ * "Sem origem" deixa o gasto sem uma.
  */
 function IncludeModal(props: {
   plan: Plan;
-  deposit: number;
-  index: number;
+  schedule: Schedule;
   origins: Origin[];
   currentMonth: string;
   busy: boolean;
@@ -35,7 +38,7 @@ function IncludeModal(props: {
   onConfirm: (origin: { originId: string | null; originName: string }) => void;
   onCancel: () => void;
 }) {
-  const { origins } = props;
+  const { plan, schedule, origins } = props;
   const padrao = origins.find((o) => o.isDefault) ?? origins[0];
   const [originId, setOriginId] = useState<string | null>(padrao?.id ?? null);
 
@@ -46,7 +49,7 @@ function IncludeModal(props: {
 
   return (
     <ConfirmModal
-      title="Incluir no mês?"
+      title="Incluir em gastos fixos?"
       confirmLabel="Incluir"
       busy={props.busy}
       onConfirm={confirm}
@@ -54,11 +57,17 @@ function IncludeModal(props: {
     >
       <div className="modal-form">
         <p>
-          <strong>{props.plan.name}</strong> entra em {monthLabel(props.currentMonth)} como gasto
-          fixo de planejamento de <strong>{formatBRL(props.deposit)}</strong>, parcela{' '}
-          {props.index} de {props.plan.durationMonths} (
-          {remainingMonthsLabel(props.index, props.plan.durationMonths)}).
+          <strong>{plan.name}</strong> entra nos gastos fixos a partir de{' '}
+          {monthLabel(props.currentMonth)}, como gasto fixo de planejamento de{' '}
+          <strong>{formatBRL(schedule.planned)}</strong>, parcela {schedule.index} de{' '}
+          {schedule.total} ({remainingMonthsLabel(schedule.index, schedule.total)}).
         </p>
+        {schedule.index > 1 && (
+          <p className="card-hint">
+            Os meses do planejamento antes de {monthLabel(props.currentMonth)} contam como já
+            guardados.
+          </p>
+        )}
         {origins.length > 0 && (
           <div className="origin-picker">
             <span className="origin-label">De onde sai o dinheiro</span>
@@ -89,8 +98,9 @@ function IncludeModal(props: {
           </div>
         )}
         <p className="card-hint">
-          A partir daqui ele é um gasto fixo como os outros: aparece na aba Pagamento, avança a
-          parcela a cada virada de mês e sai sozinho depois da última.
+          A partir daqui o planejamento fica em curso: o gasto aparece na aba Pagamento e avança
+          uma parcela a cada virada de mês. Mês pulado (Ignorar ou Sem gasto) ou pago em parte vai
+          para o fim do planejamento, que prorroga o prazo e refaz a projeção do rendimento.
         </p>
         {props.error && <p className="form-error">{props.error}</p>}
       </div>
@@ -110,20 +120,46 @@ function groupByYear(months: ProjectionMonth[]): { year: string; months: Project
   return grupos;
 }
 
+/** Mês pulado ou pago em parte: é o que aparece em vermelho. */
+function isShort(m: ProjectionMonth): boolean {
+  return m.state === 'partial' || m.state === 'skipped';
+}
+
+/** O depósito do mês por extenso, conforme o que aconteceu nele. */
+function depositText(m: ProjectionMonth): string {
+  switch (m.state) {
+    case 'skipped':
+      return `pulado, nada guardado (previsto ${formatBRL(m.planned)})`;
+    case 'partial':
+      return `guardado ${formatBRL(m.deposit)} de ${formatBRL(m.planned)}`;
+    case 'paid':
+      return `guardado ${formatBRL(m.deposit)}`;
+    case 'assumed':
+      return `${formatBRL(m.deposit)}, antes da inclusão`;
+    default:
+      return `depósito ${formatBRL(m.deposit)}`;
+  }
+}
+
 /**
- * Subpágina de visualização do planejamento: o resultado, o gráfico da
- * projeção, a inclusão do valor mensal no mês em aberto e a listagem mês a mês.
+ * Subpágina de visualização do planejamento: a situação do plano em curso, o
+ * resultado, o gráfico da projeção, o gasto fixo de planejamento e a listagem
+ * mês a mês.
  *
- * Não existe saldo real acompanhado aqui, e isso é de propósito: o app é de
- * controle do mês, e o plano é a conta do que acontece se o valor for guardado
- * todo mês. O vínculo com o mês é o gasto fixo de planejamento.
+ * O plano só mexe no mês depois de "Incluir em gastos fixos". A partir daí ele
+ * fica em curso: os meses que já aconteceram entram na conta com o que foi
+ * guardado de fato (o Pagamento diz isso), o que faltou vai para o fim, e o
+ * gasto fixo acompanha a contagem. Não há saldo real informado pelo usuário: o
+ * plano conta com o que foi pago, não com extrato.
  */
 export function PlanView(props: {
   compartmentId: string;
   currentMonth: string;
   plan: Plan;
-  /** Gasto fixo de planejamento ativo do plano, quando ele está no mês. */
+  /** Gasto fixo de planejamento ativo do plano, quando ele está nos gastos fixos. */
   linked: FixedExpense | null;
+  /** Linha desse gasto fixo no mês em aberto. */
+  line: FixedEntry | null;
   origins: Origin[];
   /** Recado vindo do formulário (o que aconteceu com o gasto fixo ao salvar). */
   notice: string | null;
@@ -131,32 +167,40 @@ export function PlanView(props: {
   onEdit: () => void;
   onRemoved: () => void;
 }) {
-  const { compartmentId, currentMonth, plan, linked, origins } = props;
-  const projection = useMemo(() => projectPlan(plan), [plan]);
-  const position = planMonthPosition(plan, currentMonth);
-  const deposit = projection.monthlyDeposit;
+  const { compartmentId, currentMonth, plan, linked, line, origins } = props;
+  const emCurso = linked !== null;
+  const concluido = !emCurso && Boolean(plan.trackedFrom);
+  const projection = useMemo(
+    () => projectPlanForMonth(plan, currentMonth, emCurso, line),
+    [plan, currentMonth, emCurso, line],
+  );
+  const schedule = planMonthSchedule(projection, plan.startMonth, currentMonth);
   const temRendimento = projection.annualRate > 0;
   const comImposto = plan.incomeTax && temRendimento;
   const anos = useMemo(() => groupByYear(projection.months), [projection]);
   const ultimoMes = projection.months[projection.months.length - 1];
+  const trackedFrom = plan.trackedFrom ?? (emCurso ? currentMonth : null);
 
   // Abre o ano do mês em aberto quando ele cai no prazo; senão, o primeiro.
   const [openYears, setOpenYears] = useState<Set<string>>(
-    () => new Set([position.kind === 'during' ? currentMonth.slice(0, 4) : plan.startMonth.slice(0, 4)]),
+    () => new Set([schedule ? currentMonth.slice(0, 4) : plan.startMonth.slice(0, 4)]),
   );
   const [modal, setModal] = useState<'include' | 'unlink' | 'remove' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const linkedOrigin = linked?.originId ? origins.find((o) => o.id === linked.originId) : undefined;
-  // O valor do gasto fixo pode ter sido ajustado à mão na tela Gerenciar ou o
-  // mês de referência pode ter sido movido; nesses casos a tela mostra a
-  // diferença e oferece voltar ao planejado, sem corrigir sozinha.
+  // Com a edição fora daqui bloqueada, o gasto fixo só fica diferente do plano
+  // quando uma sincronização falhou (sem rede, por exemplo) ou o mês de
+  // referência foi movido. A tela mostra e oferece acertar.
   const divergente =
     linked !== null &&
-    (linked.amount !== deposit ||
-      linked.installmentTotal !== plan.durationMonths ||
-      (position.kind === 'during' && linked.installmentCurrent !== position.index));
+    schedule !== null &&
+    (linked.amount !== schedule.planned ||
+      linked.installmentTotal !== schedule.total ||
+      linked.installmentCurrent !== schedule.index);
+  // Como o mês em aberto está indo, pela linha da aba Pagamento.
+  const mesAtual = schedule ? projection.months[schedule.index - 1] : undefined;
 
   const toggleYear = (year: string) =>
     setOpenYears((atual) => {
@@ -194,6 +238,8 @@ export function PlanView(props: {
           <h2 className="h2-gold">{plan.name}</h2>
           <span className="muted small">
             <span className="badge kind">{PLAN_KIND_TEXT[plan.kind].badge}</span>{' '}
+            {emCurso && <span className="badge plan">em curso</span>}
+            {concluido && <span className="badge kind">concluído</span>}{' '}
             {formatDuration(plan)} · {formatPlanRate(plan)}
             {comImposto ? ' com IR' : ''} · de {monthLabel(plan.startMonth)} a{' '}
             {monthLabel(ultimoMes.ym)}
@@ -202,6 +248,35 @@ export function PlanView(props: {
       </header>
 
       {props.notice && <p className="flash">{props.notice}</p>}
+
+      {(emCurso || concluido) && trackedFrom && (
+        <section className="card plan-progress">
+          <h3>{emCurso ? 'Planejamento em curso' : 'Planejamento concluído'}</h3>
+          <p className="card-hint">
+            Nos gastos fixos desde {monthLabel(trackedFrom)}
+            {concluido ? `, até ${monthLabel(ultimoMes.ym)}` : ''}. A projeção abaixo usa o que foi
+            pago em cada mês na aba Pagamento.
+          </p>
+          {projection.shortMonths > 0 ? (
+            <p className="plan-progress-line neg">
+              {projection.shortMonths === 1
+                ? '1 mês pulado ou pago em parte.'
+                : `${projection.shortMonths} meses pulados ou pagos em parte.`}{' '}
+              {projection.extraMonths > 0
+                ? `O que faltou foi para o fim: o prazo passou de ${monthLabel(
+                    projection.originalEnd,
+                  )} para ${monthLabel(ultimoMes.ym)} (${
+                    projection.extraMonths === 1 ? '1 mês' : `${projection.extraMonths} meses`
+                  } a mais)${temRendimento ? ', e o rendimento foi recalculado' : ''}.`
+                : 'O que faltou já foi reposto dentro do prazo.'}
+            </p>
+          ) : (
+            <p className="plan-progress-line">
+              Todos os meses até agora seguiram o planejado.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="card">
         <h3>Resultado</h3>
@@ -221,12 +296,12 @@ export function PlanView(props: {
       </section>
 
       <section className="card plan-link">
-        <h3>No mês</h3>
+        <h3>Gasto fixo de planejamento</h3>
         {linked ? (
           <>
             <p className="card-hint">
-              Está em {monthLabel(currentMonth)} como <strong>gasto fixo de planejamento</strong>,
-              e avança uma parcela a cada virada de mês.
+              Nos gastos fixos e na aba Pagamento, com uma parcela por mês do planejamento. Ele só
+              muda por aqui: a tela Gerenciar mostra o gasto sem edição.
             </p>
             <div className="section-totals">
               <span>
@@ -250,6 +325,16 @@ export function PlanView(props: {
                 </span>
               ) : null}
             </div>
+            {mesAtual && isShort(mesAtual) && (
+              <p className="plan-progress-line neg">
+                {monthLabel(currentMonth)}:{' '}
+                {line?.status === IGNORED_STATUS || mesAtual.deposit === 0
+                  ? 'marcado como pulado no Pagamento.'
+                  : `pago em parte no Pagamento (${formatBRL(mesAtual.deposit)} de ${formatBRL(
+                      mesAtual.planned,
+                    )}).`}
+              </p>
+            )}
             {(linked.originId || linked.originName) && (
               <p className="plan-link-origin">
                 <span className="badge origin">
@@ -258,13 +343,11 @@ export function PlanView(props: {
                 </span>
               </p>
             )}
-            {divergente && (
+            {divergente && schedule && (
               <p className="card-hint">
-                O gasto fixo está diferente do planejado ({formatBRL(deposit)} por mês
-                {position.kind === 'during'
-                  ? `, parcela ${position.index} de ${plan.durationMonths}`
-                  : ''}
-                ): ele foi ajustado na tela Gerenciar ou o mês de referência mudou.
+                O gasto fixo está diferente do planejamento ({formatBRL(schedule.planned)} neste
+                mês, parcela {schedule.index} de {schedule.total}): a última atualização dele não
+                chegou ao banco ou o mês de referência mudou.
               </p>
             )}
             <div className="plan-link-actions">
@@ -274,10 +357,12 @@ export function PlanView(props: {
                   className="btn small"
                   disabled={busy}
                   onClick={() =>
-                    run(() => setPlanFixedExpense(compartmentId, currentMonth, plan.id, plan, linked))
+                    run(() =>
+                      setPlanFixedExpense(compartmentId, currentMonth, plan.id, plan, linked),
+                    )
                   }
                 >
-                  Usar o valor planejado
+                  Atualizar o gasto fixo
                 </button>
               )}
               <button
@@ -286,33 +371,39 @@ export function PlanView(props: {
                 disabled={busy}
                 onClick={() => openModal('unlink')}
               >
-                Tirar do mês
+                Tirar dos gastos fixos
               </button>
             </div>
           </>
-        ) : deposit <= 0 ? (
+        ) : concluido ? (
+          <p className="card-hint">
+            O gasto fixo de planejamento terminou com a última parcela, em{' '}
+            {monthLabel(ultimoMes.ym)}.
+          </p>
+        ) : projection.monthlyDeposit <= 0 ? (
           <p className="card-hint">
             Não há valor mensal a guardar: o valor que já está guardado alcança a meta.
           </p>
-        ) : position.kind === 'before' ? (
+        ) : !schedule && currentMonth < plan.startMonth ? (
           <p className="card-hint">
-            O planejamento começa em {monthLabel(plan.startMonth)}. A inclusão no mês fica
-            disponível quando o mês em aberto chegar lá, ou ao mudar o primeiro mês na edição.
+            O planejamento começa em {monthLabel(plan.startMonth)}. A inclusão em gastos fixos
+            fica disponível quando o mês em aberto chegar lá, ou ao mudar o primeiro mês na edição.
           </p>
-        ) : position.kind === 'after' ? (
+        ) : !schedule ? (
           <p className="card-hint">
             O prazo deste planejamento terminou em {monthLabel(ultimoMes.ym)}.
           </p>
         ) : (
           <>
             <p className="card-hint">
-              Inclua <strong>{formatBRL(deposit)}</strong> no mês em aberto (
-              {monthLabel(currentMonth)}) como gasto fixo de planejamento: ele entra como parcela{' '}
-              {position.index} de {plan.durationMonths} ({remainingMonthsLabel(position.index, plan.durationMonths)}),
-              avança sozinho a cada virada de mês e sai depois da última.
+              O planejamento não mexe no mês até ser incluído. Incluir em gastos fixos coloca{' '}
+              <strong>{formatBRL(schedule.planned)}</strong> no mês em aberto (
+              {monthLabel(currentMonth)}) como gasto fixo de planejamento, parcela {schedule.index}{' '}
+              de {schedule.total} ({remainingMonthsLabel(schedule.index, schedule.total)}), e o
+              planejamento passa a estar em curso.
             </p>
             <button type="button" className="btn primary" onClick={() => openModal('include')}>
-              <Plus size={16} aria-hidden /> Incluir no mês
+              <Plus size={16} aria-hidden /> Incluir em gastos fixos
             </button>
           </>
         )}
@@ -323,12 +414,15 @@ export function PlanView(props: {
         <h3>Mês a mês</h3>
         <p className="card-hint">
           Depósito no fim de cada mês{temRendimento ? ', com o rendimento do mês sobre o saldo' : ''}.
-          O saldo é a projeção, não o valor guardado de fato.
+          {emCurso || concluido
+            ? ' Os meses que já aconteceram mostram o que foi pago; em vermelho, os pulados e os pagos em parte.'
+            : ' O saldo é a projeção, não o valor guardado de fato.'}
         </p>
         <ul className="plan-years">
           {anos.map((grupo) => {
             const aberto = openYears.has(grupo.year);
             const fim = grupo.months[grupo.months.length - 1];
+            const curtos = grupo.months.filter(isShort).length;
             return (
               <li key={grupo.year} className="plan-year">
                 <button
@@ -342,20 +436,29 @@ export function PlanView(props: {
                   <span className="muted small">
                     {grupo.months.length === 1 ? '1 mês' : `${grupo.months.length} meses`}
                   </span>
+                  {curtos > 0 && <span className="badge miss">{curtos} em falta</span>}
                   <span className="plan-year-value">{formatBRL(fim.balance)}</span>
                 </button>
                 {aberto && (
                   <ul className="plan-month-list">
                     {grupo.months.map((m) => {
                       const atual = m.ym === currentMonth;
+                      const curto = isShort(m);
                       return (
                         <li key={m.ym} className={atual ? 'current' : ''}>
                           <span className="plan-month-name">
                             {monthLabel(m.ym)}
                             {atual && <span className="badge week">atual</span>}
+                            {curto && (
+                              <span className="badge miss">
+                                {m.state === 'skipped' ? 'pulado' : 'parcial'}
+                              </span>
+                            )}
+                            {m.extra && <span className="badge kind">mês extra</span>}
                           </span>
                           <span className="plan-month-meta">
-                            mês {m.index} · depósito {formatBRL(m.deposit)}
+                            mês {m.index} ·{' '}
+                            <span className={curto ? 'neg' : ''}>{depositText(m)}</span>
                             {temRendimento ? ` · rendimento ${formatBRL(m.interest)}` : ''}
                           </span>
                           <span className="plan-month-value">{formatBRL(m.balance)}</span>
@@ -371,7 +474,13 @@ export function PlanView(props: {
       </section>
 
       <div className="plan-actions">
-        <button type="button" className="btn icon danger" title="Excluir planejamento" aria-label="Excluir planejamento" onClick={() => openModal('remove')}>
+        <button
+          type="button"
+          className="btn icon danger"
+          title="Excluir planejamento"
+          aria-label="Excluir planejamento"
+          onClick={() => openModal('remove')}
+        >
           <Trash2 size={16} aria-hidden />
         </button>
         <button type="button" className="btn" onClick={props.onEdit}>
@@ -379,11 +488,10 @@ export function PlanView(props: {
         </button>
       </div>
 
-      {modal === 'include' && position.kind === 'during' && (
+      {modal === 'include' && schedule && (
         <IncludeModal
           plan={plan}
-          deposit={deposit}
-          index={position.index}
+          schedule={schedule}
           origins={origins}
           currentMonth={currentMonth}
           busy={busy}
@@ -397,17 +505,22 @@ export function PlanView(props: {
 
       {modal === 'unlink' && linked && (
         <ConfirmModal
-          title="Tirar do mês?"
-          confirmLabel="Tirar do mês"
+          title="Tirar dos gastos fixos?"
+          confirmLabel="Tirar dos gastos fixos"
           busy={busy}
-          onConfirm={() => run(() => removeFixedExpense(compartmentId, currentMonth, linked.id))}
+          onConfirm={() =>
+            run(() => removePlanFixedExpense(compartmentId, currentMonth, plan.id, linked.id))
+          }
           onCancel={() => setModal(null)}
         >
           <p>
             O gasto fixo de planejamento <strong>{linked.name}</strong> sai do mês em aberto e dos
-            próximos meses. O planejamento continua salvo e pode ser incluído de novo.
+            próximos meses, e o planejamento deixa de estar em curso: o histórico dos meses pagos,
+            pulados e parciais é descartado, e a projeção volta a ser a planejada.
           </p>
-          <p className="muted small">Meses já fechados não mudam.</p>
+          <p className="muted small">
+            O planejamento continua salvo e pode ser incluído de novo. Meses já fechados não mudam.
+          </p>
           {error && <p className="form-error">{error}</p>}
         </ConfirmModal>
       )}

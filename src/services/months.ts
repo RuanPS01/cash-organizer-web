@@ -1,7 +1,17 @@
-import { collection, doc, getDoc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
+import {
+  FieldPath,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
 import type { WriteBatch } from 'firebase/firestore';
 import { db } from '../firebase';
-import { nextMonthKey } from '../utils/dates';
+import { monthsBetween, nextMonthKey } from '../utils/dates';
+import { projectPlan, projectPlanInProgress } from '../utils/projection';
+import type { PlanParams, Projection } from '../utils/projection';
 import { IGNORED_STATUS, MONTH_WEEKS } from '../types';
 import type {
   Category,
@@ -13,6 +23,8 @@ import type {
   Origin,
   OriginEntry,
   OriginTotal,
+  Plan,
+  PlanMonthRecord,
   VariableExpense,
 } from '../types';
 
@@ -415,6 +427,118 @@ export async function setOpenMonth(
 }
 
 /**
+ * Quanto a linha de gasto fixo tira do mês. No gasto fixo comum é o valor da
+ * linha. No de planejamento, que é dinheiro guardado e não conta a pagar, "Sem
+ * gasto" é zero (nada foi guardado) e o pago parcial é o valor informado no
+ * Pagamento: o resto não saiu da conta. "Ignorar" continua sendo tratado por
+ * quem soma, como em qualquer linha.
+ */
+export function fixedEntryAmount(f: FixedEntry): number {
+  if (!f.planId) return f.amount;
+  if (f.status === 'Sem gasto') return 0;
+  if (f.status === 'Parcialmente pago') return f.paidAmount ?? f.amount;
+  return f.amount;
+}
+
+/**
+ * O mês do planejamento em curso segundo a linha do gasto fixo de
+ * planejamento: o planejado é o valor da linha, e o guardado é zero quando ela
+ * foi ignorada.
+ */
+export function planRecordOf(f: FixedEntry): PlanMonthRecord {
+  return { planned: f.amount, paid: f.status === IGNORED_STATUS ? 0 : fixedEntryAmount(f) };
+}
+
+/**
+ * Projeção do plano vista do mês em aberto. Plano que nunca entrou nos gastos
+ * fixos é o planejado. Plano em curso usa o histórico gravado na virada de cada
+ * mês e, para o mês em aberto, a linha do gasto fixo de planejamento: se o
+ * Pagamento já disse que ela ficou pulada ou paga em parte, a projeção já se
+ * ajusta, sem esperar a virada.
+ *
+ * O planejado do mês em aberto sai da própria projeção, e não do valor da
+ * linha: logo depois de editar o plano a linha ainda tem o valor antigo.
+ *
+ * Plano incluído antes de o acompanhamento existir não tem `trackedFrom`; ele
+ * passa a ser acompanhado a partir do mês em aberto, que é o que a virada
+ * grava nele.
+ */
+export function projectPlanForMonth(
+  plan: PlanParams & Pick<Plan, 'trackedFrom' | 'progress'>,
+  currentMonth: string,
+  ongoing: boolean,
+  line: FixedEntry | null,
+): Projection {
+  const trackedFrom = plan.trackedFrom ?? (ongoing ? currentMonth : null);
+  if (!trackedFrom) return projectPlan(plan);
+  const projetar = (current?: PlanMonthRecord) =>
+    projectPlanInProgress(plan, {
+      trackedFrom,
+      progress: plan.progress ?? {},
+      currentMonth,
+      ongoing,
+      current,
+    });
+  const base = projetar();
+  if (!ongoing || !line) return base;
+  const planned = base.months[monthsBetween(plan.startMonth, currentMonth)]?.planned;
+  if (planned === undefined) return base;
+  const rec = planRecordOf({ ...line, amount: planned });
+  return rec.paid >= rec.planned ? base : projetar(rec);
+}
+
+/**
+ * Grava no plano o que aconteceu no mês que está fechando e acerta o gasto
+ * fixo de planejamento para o próximo: a parcela do mês fechado, o total de
+ * parcelas do prazo (que cresce quando um mês foi pulado ou pago em parte) e o
+ * valor do próximo mês (o último mês extra leva só o resto). Roda antes de
+ * `advanceInstallments`, que avança a parcela e desativa o gasto quando o
+ * plano termina.
+ *
+ * Cada plano é tratado à parte e a falha de um não segura a virada: o mês já
+ * fechou, e o pior caso é o plano continuar com a contagem antiga.
+ */
+async function recordPlanMonths(
+  compartmentId: string,
+  ym: string,
+  fixedEntries: FixedEntry[],
+): Promise<void> {
+  for (const f of fixedEntries) {
+    if (!f.planId) continue;
+    try {
+      const planRef = doc(db, 'compartments', compartmentId, 'plans', f.planId);
+      const snap = await getDoc(planRef);
+      if (!snap.exists()) continue;
+      const plan = snap.data() as Omit<Plan, 'id'>;
+      const rec = planRecordOf(f);
+      const trackedFrom = plan.trackedFrom ?? ym;
+      await updateDoc(
+        planRef,
+        new FieldPath('progress', ym),
+        rec,
+        ...(plan.trackedFrom ? [] : ['trackedFrom', trackedFrom]),
+      );
+      const projecao = projectPlanForMonth(
+        { ...plan, trackedFrom, progress: { ...(plan.progress ?? {}), [ym]: rec } },
+        ym,
+        true,
+        null,
+      );
+      const atual = monthsBetween(plan.startMonth, ym) + 1;
+      if (atual < 1) continue;
+      const proximo = projecao.months[atual]?.planned ?? 0;
+      await updateDoc(doc(db, 'compartments', compartmentId, 'fixedExpenses', f.id), {
+        installmentCurrent: atual,
+        installmentTotal: projecao.months.length,
+        ...(proximo > 0 ? { amount: proximo } : {}),
+      });
+    } catch {
+      // Ver o comentário da função: a virada não depende disto.
+    }
+  }
+}
+
+/**
  * Totais do mês. Linhas com status "Ignorar" ficam de fora do gasto somado
  * (fixedActual/varActual) mas continuam contando no ideal, que é o orçamento
  * planejado; o valor delas segue visível na tela, marcado como ignorado.
@@ -486,7 +610,7 @@ export function computeTotals(
     });
     origin.actual += amount;
   };
-  for (const f of fixedEntries) addToOrigin(f, f.amount);
+  for (const f of fixedEntries) addToOrigin(f, fixedEntryAmount(f));
   for (const e of expenses) addToOrigin(e, e.amount);
 
   return {
@@ -496,7 +620,7 @@ export function computeTotals(
     fixedIdeal: fixedEntries.reduce((s, f) => s + f.amount, 0),
     fixedActual: fixedEntries
       .filter((f) => f.status !== IGNORED_STATUS)
-      .reduce((s, f) => s + f.amount, 0),
+      .reduce((s, f) => s + fixedEntryAmount(f), 0),
     varIdeal: categoryEntries.reduce((s, c) => s + c.idealAmount, 0),
     varActual: Object.values(byCategory)
       .filter((c) => !c.ignored)
@@ -540,6 +664,7 @@ export async function closeMonth(
   batch.update(doc(db, 'compartments', compartmentId), { currentMonth: next });
   await batch.commit();
 
+  await recordPlanMonths(compartmentId, ym, fixedEntries);
   await advanceInstallments(compartmentId);
   await ensureMonth(compartmentId, next);
   return next;
