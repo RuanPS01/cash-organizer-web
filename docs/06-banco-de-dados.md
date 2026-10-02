@@ -224,13 +224,15 @@ no centavo.
 **O vínculo com o mês** é o gasto fixo de planejamento: um `fixedExpenses`
 com `planId`, o valor do mês do plano e parcelas (`installmentCurrent` é a
 posição do mês em aberto no prazo, `installmentTotal` é o prazo, já com os meses
-extras). Ele só existe depois de "Incluir em gastos fixos": o plano sozinho não
-mexe no mês. Avança na virada e sai depois da última parcela como qualquer
+extras). Ele só existe depois de "Incluir no gasto fixo": o plano sozinho não
+mexe no mês. Incluir grava `startMonth` igual ao mês em aberto, que entra como
+parcela 1, e recomeça o acompanhamento. Avança na virada e sai depois da última parcela como qualquer
 gasto parcelado, mas só muda pela aba Planejamento (a tela Gerenciar e o
 histórico o mostram sem edição).
 
-**O plano em curso.** Incluir grava `trackedFrom` (meses do plano antes dele
-contam como guardados). Cada mês, a linha do gasto fixo no Pagamento diz o que
+**O plano em curso.** Incluir grava `trackedFrom` igual ao novo `startMonth`.
+Planos incluídos antes dessa regra podem ter `trackedFrom` depois do primeiro
+mês; os meses entre os dois contam como guardados (`state: 'assumed'`). Cada mês, a linha do gasto fixo no Pagamento diz o que
 foi guardado (`planRecordOf`):
 
 | Status da linha | Guardado no mês |

@@ -9,9 +9,14 @@ import {
 } from '../services/plans';
 import { projectPlanForMonth } from '../services/months';
 import { formatBRL } from '../utils/money';
-import { monthLabel } from '../utils/dates';
+import { addMonthsKey, monthLabel } from '../utils/dates';
 import { writeErrorMessage } from '../utils/errors';
-import { formatDuration, formatPlanRate, remainingMonthsLabel } from '../utils/projection';
+import {
+  formatDuration,
+  formatPlanRate,
+  projectPlan,
+  remainingMonthsLabel,
+} from '../utils/projection';
 import type { ProjectionMonth } from '../utils/projection';
 import { ConfirmModal } from './shared';
 import { OriginIcon } from './OriginIcon';
@@ -24,15 +29,18 @@ import type { FixedEntry, FixedExpense, Origin, Plan } from '../types';
 type Schedule = { index: number; total: number; planned: number };
 
 /**
- * Inclusão do plano nos gastos fixos, com a escolha da origem no mesmo formato
- * do cadastro de gasto fixo da tela Gerenciar: a padrão já vem escolhida e
- * "Sem origem" deixa o gasto sem uma.
+ * Inclusão do plano no gasto fixo, com a escolha da origem no mesmo formato do
+ * cadastro de gasto fixo da tela Gerenciar: a padrão já vem escolhida e "Sem
+ * origem" deixa o gasto sem uma. O modal avisa quando o primeiro mês do plano
+ * muda, porque incluir é começar no mês em aberto.
  */
 function IncludeModal(props: {
   plan: Plan;
   schedule: Schedule;
   origins: Origin[];
   currentMonth: string;
+  /** O plano já foi concluído: incluir de novo recomeça do zero. */
+  restart: boolean;
   busy: boolean;
   error: string | null;
   onConfirm: (origin: { originId: string | null; originName: string }) => void;
@@ -49,7 +57,7 @@ function IncludeModal(props: {
 
   return (
     <ConfirmModal
-      title="Incluir em gastos fixos?"
+      title="Incluir no gasto fixo?"
       confirmLabel="Incluir"
       busy={props.busy}
       onConfirm={confirm}
@@ -62,10 +70,17 @@ function IncludeModal(props: {
           <strong>{formatBRL(schedule.planned)}</strong>, parcela {schedule.index} de{' '}
           {schedule.total} ({remainingMonthsLabel(schedule.index, schedule.total)}).
         </p>
-        {schedule.index > 1 && (
+        {plan.startMonth !== props.currentMonth && (
           <p className="card-hint">
-            Os meses do planejamento antes de {monthLabel(props.currentMonth)} contam como já
-            guardados.
+            O primeiro mês do planejamento passa de {monthLabel(plan.startMonth)} para{' '}
+            <strong>{monthLabel(props.currentMonth)}</strong>, e o último fica em{' '}
+            {monthLabel(addMonthsKey(props.currentMonth, schedule.total - 1))}.
+          </p>
+        )}
+        {props.restart && (
+          <p className="card-hint">
+            O planejamento já foi concluído: incluir de novo recomeça o curso, e o histórico dos
+            meses do curso anterior é descartado.
           </p>
         )}
         {origins.length > 0 && (
@@ -146,7 +161,7 @@ function depositText(m: ProjectionMonth): string {
  * resultado, o gráfico da projeção, o gasto fixo de planejamento e a listagem
  * mês a mês.
  *
- * O plano só mexe no mês depois de "Incluir em gastos fixos". A partir daí ele
+ * O plano só mexe no mês depois de "Incluir no gasto fixo". A partir daí ele
  * fica em curso: os meses que já aconteceram entram na conta com o que foi
  * guardado de fato (o Pagamento diz isso), o que faltou vai para o fim, e o
  * gasto fixo acompanha a contagem. Não há saldo real informado pelo usuário: o
@@ -199,6 +214,13 @@ export function PlanView(props: {
     (linked.amount !== schedule.planned ||
       linked.installmentTotal !== schedule.total ||
       linked.installmentCurrent !== schedule.index);
+  // Como o plano entra no gasto fixo se for incluído agora: o primeiro mês passa
+  // a ser o mês em aberto, então ele é sempre a parcela 1 do prazo planejado.
+  const inclusao = useMemo(
+    () =>
+      planMonthSchedule(projectPlan({ ...plan, startMonth: currentMonth }), currentMonth, currentMonth),
+    [plan, currentMonth],
+  );
   // Como o mês em aberto está indo, pela linha da aba Pagamento.
   const mesAtual = schedule ? projection.months[schedule.index - 1] : undefined;
 
@@ -375,35 +397,28 @@ export function PlanView(props: {
               </button>
             </div>
           </>
-        ) : concluido ? (
-          <p className="card-hint">
-            O gasto fixo de planejamento terminou com a última parcela, em{' '}
-            {monthLabel(ultimoMes.ym)}.
-          </p>
-        ) : projection.monthlyDeposit <= 0 ? (
+        ) : !inclusao || inclusao.planned <= 0 ? (
           <p className="card-hint">
             Não há valor mensal a guardar: o valor que já está guardado alcança a meta.
           </p>
-        ) : !schedule && currentMonth < plan.startMonth ? (
-          <p className="card-hint">
-            O planejamento começa em {monthLabel(plan.startMonth)}. A inclusão em gastos fixos
-            fica disponível quando o mês em aberto chegar lá, ou ao mudar o primeiro mês na edição.
-          </p>
-        ) : !schedule ? (
-          <p className="card-hint">
-            O prazo deste planejamento terminou em {monthLabel(ultimoMes.ym)}.
-          </p>
         ) : (
           <>
+            {concluido && (
+              <p className="card-hint">
+                O gasto fixo de planejamento terminou com a última parcela, em{' '}
+                {monthLabel(ultimoMes.ym)}.
+              </p>
+            )}
             <p className="card-hint">
-              O planejamento não mexe no mês até ser incluído. Incluir em gastos fixos coloca{' '}
-              <strong>{formatBRL(schedule.planned)}</strong> no mês em aberto (
-              {monthLabel(currentMonth)}) como gasto fixo de planejamento, parcela {schedule.index}{' '}
-              de {schedule.total} ({remainingMonthsLabel(schedule.index, schedule.total)}), e o
-              planejamento passa a estar em curso.
+              O planejamento não mexe no mês até você incluí-lo. Incluir no gasto fixo coloca{' '}
+              <strong>{formatBRL(inclusao.planned)}</strong> no mês em aberto (
+              {monthLabel(currentMonth)}) como gasto fixo de planejamento, parcela 1 de{' '}
+              {inclusao.total}, e o planejamento passa a estar em curso.
+              {plan.startMonth !== currentMonth &&
+                ` O primeiro mês do planejamento passa a ser ${monthLabel(currentMonth)}.`}
             </p>
             <button type="button" className="btn primary" onClick={() => openModal('include')}>
-              <Plus size={16} aria-hidden /> Incluir em gastos fixos
+              <Plus size={16} aria-hidden /> {concluido ? 'Incluir no gasto fixo de novo' : 'Incluir no gasto fixo'}
             </button>
           </>
         )}
@@ -488,12 +503,13 @@ export function PlanView(props: {
         </button>
       </div>
 
-      {modal === 'include' && schedule && (
+      {modal === 'include' && inclusao && (
         <IncludeModal
           plan={plan}
-          schedule={schedule}
+          schedule={inclusao}
           origins={origins}
           currentMonth={currentMonth}
+          restart={concluido}
           busy={busy}
           error={error}
           onConfirm={(origin) =>

@@ -314,8 +314,8 @@ flowchart TD
   F --> G["Salvar: visualização do plano"]
   A --> G
   G --> H["Resultado, gráfico e mês a mês"]
-  G --> I{"Incluir em gastos fixos?"}
-  I -- "mês em aberto dentro do prazo" --> J["Escolhe a origem"]
+  G --> I{"Incluir no gasto fixo?"}
+  I -- "toque no botão" --> J["Escolhe a origem; o primeiro mês passa a ser o mês em aberto"]
   J --> K["Plano em curso: gasto fixo de planejamento, parcela N de M"]
   K --> M{"Pagamento do mês"}
   M -- "pago" --> N["Segue o planejado"]
@@ -341,13 +341,14 @@ flowchart TD
    e a listagem mês a mês por ano, com o mês em aberto marcado.
    Até aqui o plano não mexe no mês nem nos totais: ele é só cadastrado,
    editado e consultado na aba.
-5. **Incluir em gastos fixos.** É a única ação que leva o plano ao mês. Com o
-   mês em aberto dentro do prazo, o botão cria um gasto fixo de planejamento com
-   o valor do mês, a origem escolhida e as parcelas: a do mês em aberto é a
-   posição dele no prazo (parcela 3 de 12 no terceiro mês), e o selo mostra
-   quantos meses faltam depois deste. O plano passa a estar **em curso**: a
-   lista e a visualização dizem isso, e meses do plano antes da inclusão contam
-   como guardados.
+5. **Incluir no gasto fixo.** É a única ação que leva o plano ao mês, e o
+   botão está sempre disponível enquanto o plano não está em curso (inclusive
+   em plano concluído, que recomeça). Incluir é começar agora: o primeiro mês
+   do plano passa a ser o mês em aberto, que entra como parcela 1, e o modal
+   avisa a mudança e o novo último mês. O botão cria o gasto fixo de
+   planejamento com o valor do mês, a origem escolhida e as parcelas, e o selo
+   mostra quantos meses faltam depois deste. O plano passa a estar **em
+   curso**, e a lista e a visualização dizem isso.
 6. **Em curso.** O que a aba Pagamento disser de cada mês volta para o plano.
    Mês pago segue o planejado. Mês pulado (`Ignorar` ou `Sem gasto`) ou pago em
    parte aparece em vermelho na listagem e no gráfico, e o que faltou vai para
@@ -364,7 +365,9 @@ flowchart TD
    meses é descartado e o plano volta a ser só o planejado. Excluir o plano faz
    o mesmo com o gasto fixo dele. Meses fechados nunca mudam.
 9. **Concluído.** Na última parcela, a virada desativa o gasto fixo, e o plano
-   fica marcado como concluído, com o histórico dos meses.
+   fica marcado como concluído, com o histórico dos meses. "Incluir no gasto
+   fixo de novo" recomeça o plano a partir do mês em aberto, descartando esse
+   histórico.
 
 O plano conta com o que foi pago no Pagamento, e não com um saldo informado: o
 foco do app é o controle do mês, e o plano é a conta de onde se chega guardando

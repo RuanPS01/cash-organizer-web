@@ -214,8 +214,8 @@ export function PlanningScreen(props: {
         <h3>Novo planejamento</h3>
         <p className="card-hint">
           Projete no tempo o que você guarda por mês, com rendimento de renda fixa opcional. O
-          planejamento não mexe no mês até você incluí-lo em gastos fixos; a partir daí ele fica
-          em curso e acompanha o que foi pago a cada mês.
+          planejamento não mexe no mês até você tocar em "Incluir no gasto fixo" na tela dele; a
+          partir daí ele fica em curso e acompanha o que foi pago a cada mês.
         </p>
         <div className="plan-kinds">
           {PLAN_KINDS.map((kind) => {

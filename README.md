@@ -43,8 +43,9 @@ manutenção. Agentes de IA devem começar por
   "quanto vou juntar" (guardando X por mês durante um prazo) e "quanto guardar
   por mês" (para chegar a um valor em um prazo), com rendimento opcional de
   renda fixa (taxa ao ano ou percentual do CDI, com imposto de renda opcional).
-  O plano só mexe no mês pelo botão "Incluir em gastos fixos", que cria um
-  **gasto fixo de planejamento** (uma parcela por mês do prazo, mostrando
+  O plano só mexe no mês pelo botão "Incluir no gasto fixo", que cria um
+  **gasto fixo de planejamento** a partir do mês em aberto, que passa a ser o
+  primeiro mês do plano (uma parcela por mês do prazo, mostrando
   quantos meses faltam, editado só pela aba Planejamento). A partir daí o plano
   fica **em curso**: mês pulado ou pago em parte no Pagamento aparece em
   vermelho, prorroga o prazo e refaz a projeção.
