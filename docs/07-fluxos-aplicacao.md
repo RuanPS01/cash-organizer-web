@@ -144,6 +144,12 @@ O valor também pode ser editado direto na lista, que mostra o selo da origem ao
 lado do nome. Não há campo de ideal: conta que se repete todo mês já é o próprio
 planejamento, então o valor do fixo é o previsto dele.
 
+O gasto fixo de planejamento (criado pela aba Planejamento) aparece na lista
+com o selo "planejamento" e os meses que faltam, e pode ser editado como os
+outros; o modal avisa que nome, valor e parcelas vêm do plano. Editar aqui não
+desfaz o vínculo, e a visualização do plano passa a mostrar que o valor está
+diferente do planejado.
+
 Categoria: nome e ideal editáveis no lugar, setas para reordenar (a ordem vale
 para os chips da tela de novo gasto), "tornar padrão" para transferir o papel da
 categoria pré-selecionada e X para remover.
@@ -273,7 +279,62 @@ Parcelas não avançam: mover a referência é uma correção, não uma virada d
   o ideal semanal (ideal das variáveis dividido por 4). A semana corrente ganha
   o selo "atual" enquanto o mês está em aberto.
 
-## 7.9 Offline e instalação
+## 7.9 Planejamento
+
+A aba fica depois de um separador na navegação, porque não é controle do mês: é
+projeção do que se guarda por mês ao longo de meses ou anos.
+
+```mermaid
+flowchart TD
+  A["Aba Planejamento: lista"] --> B{"Novo planejamento"}
+  B -- "Quanto vou juntar" --> C["Valor por mês e prazo"]
+  B -- "Quanto guardar por mês" --> D["Meta e prazo"]
+  C --> E["Primeiro mês, valor já guardado e rendimento opcional"]
+  D --> E
+  E --> F["Prévia ao vivo do resultado"]
+  F --> G["Salvar: visualização do plano"]
+  A --> G
+  G --> H["Resultado, gráfico e mês a mês"]
+  G --> I{"Incluir no mês?"}
+  I -- "mês em aberto dentro do prazo" --> J["Escolhe a origem"]
+  J --> K["Gasto fixo de planejamento, parcela N de M"]
+  K --> L["Avança na virada do mês e sai depois da última"]
+```
+
+1. **Criar.** Na lista, o usuário escolhe o tipo. "Quanto vou juntar" pede o
+   valor guardado por mês; "Quanto guardar por mês" pede o valor a alcançar. Os
+   dois pedem o prazo (meses ou anos, até 50 anos), o primeiro mês (o mês em
+   aberto, por padrão) e, opcionalmente, o valor que já está guardado.
+2. **Rendimento (opcional).** A seção recolhível "Rendimento" escolhe entre sem
+   rendimento, taxa ao ano (Tesouro Prefixado, CDB prefixado) e percentual do
+   CDI (CDB pós-fixado, Tesouro Selic), com a opção de descontar o imposto de
+   renda da tabela regressiva no resgate. Fechada, ela mostra o resumo da taxa.
+3. **Prévia.** O resultado aparece ao vivo abaixo do formulário: o valor no fim
+   do prazo (líquido, com imposto) ou o valor por mês para chegar à meta, mais
+   total depositado, rendimento e imposto.
+4. **Ver.** Salvar leva à visualização: resultado, gráfico (saldo em ouro e,
+   com rendimento, o total depositado em grafite; tocar no gráfico mostra o mês)
+   e a listagem mês a mês por ano, com o mês em aberto marcado.
+5. **Incluir no mês.** Com o mês em aberto dentro do prazo, "Incluir no mês"
+   cria um gasto fixo de planejamento com o valor mensal do plano, a origem
+   escolhida e as parcelas: a do mês em aberto é a posição dele no prazo
+   (parcela 3 de 12 no terceiro mês), e o selo mostra quantos meses faltam
+   depois deste. Daí em diante ele é um gasto fixo comum: entra na aba
+   Pagamento, no previsto do mês e no resumo, avança na virada e sai depois da
+   última parcela.
+6. **Editar.** Salvar um plano que está no mês atualiza nome, valor e parcelas
+   do gasto fixo. Se o mês em aberto ficar fora do prazo (o primeiro mês foi
+   para depois dele, ou o prazo encurtou), o gasto fixo sai do mês, e o recado
+   depois de salvar diz isso. Se o valor do gasto fixo foi mudado à mão, a
+   visualização mostra a diferença e oferece "Usar o valor planejado".
+7. **Tirar do mês e excluir.** "Tirar do mês" remove o gasto fixo do mês em
+   aberto e dos próximos, e o plano continua salvo. Excluir o plano faz o mesmo
+   com o gasto fixo dele. Meses fechados nunca mudam.
+
+O plano não acompanha o saldo guardado de fato, de propósito: o foco do app é o
+controle do mês, e o plano é a conta de onde se chega guardando aquele valor.
+
+## 7.10 Offline e instalação
 
 O app é um PWA instalável. O shell é pré-cacheado pelo service worker e os dados
 vêm do cache offline do SDK do Firestore em IndexedDB: sem rede, os últimos dados

@@ -18,6 +18,7 @@ import { formatBRL } from '../utils/money';
 import { EditableMoney, EditableText, MoneyInput, ConfirmModal } from './shared';
 import { ManageOrigins } from './ManageOrigins';
 import { OriginIcon } from './OriginIcon';
+import { PlanBadge } from './PlanBadge';
 import type { MonthData } from '../hooks/useMonthData';
 import type { Category, FixedExpense, Origin, OriginColorKey, OriginIconKey } from '../types';
 
@@ -182,6 +183,13 @@ function FixedExpenseModal(props: {
           Em gastos parcelados, a parcela avança a cada virada de mês; após a última, o gasto sai
           dos próximos meses automaticamente.
         </p>
+        {initial?.planId && (
+          <p className="card-hint">
+            Este é um <strong>gasto fixo de planejamento</strong>: o nome, o valor e as parcelas
+            vêm do planejamento, e salvar o planejamento de novo na aba Planejamento volta a
+            usar os valores dele.
+          </p>
+        )}
         {error && <p className="form-error">{error}</p>}
       </div>
     </ConfirmModal>
@@ -354,6 +362,9 @@ export function ManageScreen(props: {
                       <span className="badge installment">
                         {f.installmentCurrent ?? 1}/{f.installmentTotal}
                       </span>
+                    ) : null}
+                    {f.planId ? (
+                      <PlanBadge current={f.installmentCurrent} total={f.installmentTotal} />
                     ) : null}
                     {f.originId || f.originName ? (
                       <span className="badge origin">

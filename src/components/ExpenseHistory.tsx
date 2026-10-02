@@ -15,6 +15,7 @@ import { writeErrorMessage } from '../utils/errors';
 import { ConfirmModal, EditableMoney, EditableText } from './shared';
 import { ExpenseEditModal } from './ExpenseEditModal';
 import { OriginIcon } from './OriginIcon';
+import { PlanBadge } from './PlanBadge';
 import { IGNORED_STATUS, STATUS_CLASS } from '../types';
 import type { MonthData } from '../hooks/useMonthData';
 import type { Category, FixedEntry, Origin, VariableExpense } from '../types';
@@ -563,6 +564,9 @@ export function ExpenseHistory(props: {
                 </span>
                 <span className="history-meta">
                   <span className={`badge status ${STATUS_CLASS[f.status]}`}>{f.status}</span>
+                  {f.planId ? (
+                    <PlanBadge current={f.installmentCurrent} total={f.installmentTotal} />
+                  ) : null}
                   {/* Sem botão de troca: a origem do gasto fixo vem do cadastro,
                       e é lá (aba Gerenciar) que ela muda para os próximos meses. */}
                   {f.originId || f.originName ? (

@@ -17,6 +17,33 @@ export function prevMonthKey(key: string): string {
   return monthKey(d);
 }
 
+/** Soma (ou subtrai, com n negativo) meses a uma chave YYYY-MM. */
+export function addMonthsKey(key: string, n: number): string {
+  const [y, m] = key.split('-').map(Number);
+  return monthKey(new Date(y, m - 1 + n, 1));
+}
+
+/** Quantos meses vão de `from` até `to` (zero no mesmo mês, negativo se `to` vem antes). */
+export function monthsBetween(from: string, to: string): number {
+  const [y1, m1] = from.split('-').map(Number);
+  const [y2, m2] = to.split('-').map(Number);
+  return (y2 - y1) * 12 + (m2 - m1);
+}
+
+const shortMonthFormatter = new Intl.DateTimeFormat('pt-BR', {
+  month: 'short',
+  year: '2-digit',
+});
+
+/** Rótulo curto de mês ("out. de 26" vira "out/26"), para eixo de gráfico. */
+export function monthShortLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  const parts = shortMonthFormatter.formatToParts(new Date(y, m - 1, 1));
+  const mes = parts.find((p) => p.type === 'month')?.value.replace('.', '') ?? '';
+  const ano = parts.find((p) => p.type === 'year')?.value ?? '';
+  return `${mes}/${ano}`;
+}
+
 /** Hoje é domingo? É quando o app sugere virar a semana. */
 export function isSunday(date: Date = new Date()): boolean {
   return date.getDay() === 0;

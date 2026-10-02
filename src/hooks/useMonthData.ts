@@ -9,6 +9,7 @@ import {
   originEntriesCol,
 } from '../services/months';
 import { originsCol } from '../services/origins';
+import { plansCol } from '../services/plans';
 import { compartmentRef } from '../services/compartments';
 import type {
   Category,
@@ -18,6 +19,7 @@ import type {
   MonthDoc,
   Origin,
   OriginEntry,
+  Plan,
   VariableExpense,
 } from '../types';
 
@@ -130,4 +132,28 @@ export function useConfig(compartmentId: string) {
   }, [compartmentId]);
 
   return { fixedExpenses, categories, origins, monthlyIncome };
+}
+
+/**
+ * Assina os planejamentos ativos do compartimento, do mais recente para o mais
+ * antigo. Fica fora do `useConfig` de propósito: só a aba Planejamento usa os
+ * planos, e as outras telas não precisam manter essa assinatura aberta.
+ */
+export function usePlans(compartmentId: string): { loading: boolean; plans: Plan[] } {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    return onSnapshot(query(plansCol(compartmentId), orderBy('createdAt', 'desc')), (snap) => {
+      setPlans(
+        snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<Plan, 'id'>) }))
+          .filter((p) => p.active),
+      );
+      setLoading(false);
+    });
+  }, [compartmentId]);
+
+  return { loading, plans };
 }
