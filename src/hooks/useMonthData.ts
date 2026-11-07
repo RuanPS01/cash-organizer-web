@@ -11,6 +11,11 @@ import {
 import { originsCol } from '../services/origins';
 import { plansCol } from '../services/plans';
 import { compartmentRef } from '../services/compartments';
+import { compartmentSecret } from '../services/session';
+import { EMPTY_AI_CONFIG, aiSettingsRef, openAiSettings } from '../services/ai';
+import type { AiConfig } from '../services/ai';
+import { EMPTY_EMAIL_CONFIG, emailSettingsRef, openEmailSettings } from '../services/emailImport';
+import type { EmailConfig } from '../services/emailImport';
 import type {
   Category,
   CategoryEntry,
@@ -20,6 +25,8 @@ import type {
   Origin,
   OriginEntry,
   Plan,
+  StoredAiSettings,
+  StoredEmailImportSettings,
   VariableExpense,
 } from '../types';
 
@@ -156,4 +163,66 @@ export function usePlans(compartmentId: string): { loading: boolean; plans: Plan
   }, [compartmentId]);
 
   return { loading, plans };
+}
+
+/**
+ * Assina um documento de configuração com segredo e o entrega já aberto (as
+ * chaves decifradas com a chave da sessão). A decifragem é assíncrona, então
+ * a flag `cancelled` descarta o resultado de um snapshot antigo que termine
+ * depois do novo.
+ */
+function useSecretSettings<S, C>(
+  compartmentId: string,
+  ref: ReturnType<typeof aiSettingsRef>,
+  empty: C,
+  open: (stored: S | null, secret: CryptoKey | null) => Promise<C>,
+): { loading: boolean; config: C } {
+  const [state, setState] = useState<{ loading: boolean; config: C }>({ loading: true, config: empty });
+  useEffect(() => {
+    let cancelled = false;
+    let seq = 0;
+    setState({ loading: true, config: empty });
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        const mine = ++seq;
+        const stored = snap.exists() ? (snap.data() as S) : null;
+        open(stored, compartmentSecret(compartmentId)).then((config) => {
+          if (!cancelled && mine === seq) setState({ loading: false, config });
+        });
+      },
+      // Sem a regra liberada no Firestore a leitura falha: a tela segue como
+      // se não houvesse configuração, em vez de ficar carregando para sempre.
+      () => {
+        if (!cancelled) setState({ loading: false, config: empty });
+      },
+    );
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+    // `ref`, `empty` e `open` mudam junto com o compartimento, que é a
+    // dependência que importa: incluí-los recriaria a assinatura a cada render.
+  }, [compartmentId]);
+  return state;
+}
+
+/** Configuração de IA do compartimento, com as chaves já decifradas. */
+export function useAiConfig(compartmentId: string): { loading: boolean; config: AiConfig } {
+  return useSecretSettings<StoredAiSettings, AiConfig>(
+    compartmentId,
+    aiSettingsRef(compartmentId),
+    EMPTY_AI_CONFIG,
+    openAiSettings,
+  );
+}
+
+/** Configuração da importação por email, com as senhas de ZIP já decifradas. */
+export function useEmailConfig(compartmentId: string): { loading: boolean; config: EmailConfig } {
+  return useSecretSettings<StoredEmailImportSettings, EmailConfig>(
+    compartmentId,
+    emailSettingsRef(compartmentId),
+    EMPTY_EMAIL_CONFIG,
+    openEmailSettings,
+  );
 }

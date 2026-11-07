@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { createCompartment, openCompartment, slugify } from '../services/compartments';
-import { saveSession } from '../services/session';
+import { saveSession, unlockSecrets } from '../services/session';
 import { ensureMonth } from '../services/months';
 import { BrandMark, ConfirmModal } from './shared';
 import type { Compartment } from '../types';
@@ -15,6 +15,7 @@ export function LoginScreen(props: { onEnter: (compartment: Compartment) => void
 
   const finish = async (compartment: Compartment) => {
     await saveSession(name, password, compartment.id);
+    await unlockSecrets(compartment.id, password);
     await ensureMonth(compartment.id, compartment.currentMonth);
     props.onEnter(compartment);
   };

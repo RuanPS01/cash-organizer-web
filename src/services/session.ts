@@ -1,4 +1,4 @@
-import { decryptText, encryptText } from '../utils/crypto';
+import { decryptText, deriveSecretKey, encryptText } from '../utils/crypto';
 import { openCompartment } from './compartments';
 import type { Compartment } from '../types';
 
@@ -19,6 +19,24 @@ export async function saveSession(name: string, password: string, compartmentId:
 
 export function clearSession() {
   localStorage.removeItem(SESSION_STORAGE);
+  secret = null;
+}
+
+/**
+ * Chave dos segredos do compartimento aberto (chave de API da IA, senha do ZIP
+ * da fatura), derivada da senha. Fica só em memória: some ao sair e é refeita
+ * a cada login ou restauração de sessão, que são os dois momentos em que a
+ * senha está em mãos.
+ */
+let secret: { compartmentId: string; key: CryptoKey } | null = null;
+
+export async function unlockSecrets(compartmentId: string, password: string): Promise<void> {
+  secret = { compartmentId, key: await deriveSecretKey(compartmentId, password) };
+}
+
+/** A chave dos segredos, ou null quando a sessão não a derivou (não deveria acontecer). */
+export function compartmentSecret(compartmentId: string): CryptoKey | null {
+  return secret?.compartmentId === compartmentId ? secret.key : null;
 }
 
 /**
@@ -40,6 +58,7 @@ export async function restoreSession(): Promise<Compartment | null> {
       clearSession();
       return null;
     }
+    await unlockSecrets(result.compartment.id, password);
     return result.compartment;
   } catch {
     clearSession();

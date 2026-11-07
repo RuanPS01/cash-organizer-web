@@ -82,3 +82,76 @@ export async function decryptText(encoded: string): Promise<string | null> {
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Segredos do compartimento (chave de API da IA, senha do ZIP da fatura)
+// ---------------------------------------------------------------------------
+
+// Iterações do PBKDF2: caro o bastante para atrasar quem tenta adivinhar a
+// senha a partir de um segredo gravado, barato o bastante para não pesar no
+// login do celular (uma derivação por sessão).
+const SECRET_ITERATIONS = 210_000;
+
+/**
+ * Deriva da senha do compartimento a chave AES-GCM que cifra os segredos
+ * gravados no Firestore. O documento do compartimento é legível por quem sabe
+ * o id dele (as regras não conhecem a senha), então segredo nenhum pode ir em
+ * claro: com esta chave, só quem tem a senha consegue abrir. Não é a mesma
+ * chave do dispositivo (que cifra a sessão local) porque precisa valer em
+ * qualquer aparelho que entrar no compartimento.
+ */
+export async function deriveSecretKey(compartmentId: string, password: string): Promise<CryptoKey> {
+  const material = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey'],
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      hash: 'SHA-256',
+      salt: new TextEncoder().encode(`cash-organizer:${compartmentId}:segredos`),
+      iterations: SECRET_ITERATIONS,
+    },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+const SEALED_PREFIX = 'v1.';
+
+/** Cifra um segredo com a chave do compartimento. Vazio continua vazio. */
+export async function sealSecret(key: CryptoKey, plain: string): Promise<string> {
+  if (!plain) return '';
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cipher = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(plain),
+  );
+  const out = new Uint8Array(iv.length + cipher.byteLength);
+  out.set(iv);
+  out.set(new Uint8Array(cipher), iv.length);
+  return SEALED_PREFIX + bytesToBase64(out);
+}
+
+/** Abre o que `sealSecret` produziu. Devolve null se a chave não abrir. */
+export async function openSecret(key: CryptoKey, sealed: string): Promise<string | null> {
+  if (!sealed) return '';
+  if (!sealed.startsWith(SEALED_PREFIX)) return null;
+  try {
+    const bytes = base64ToBytes(sealed.slice(SEALED_PREFIX.length));
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: bytes.slice(0, 12) },
+      key,
+      bytes.slice(12),
+    );
+    return new TextDecoder().decode(plain);
+  } catch {
+    return null;
+  }
+}
