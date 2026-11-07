@@ -19,6 +19,7 @@ precisar reconstruir o contexto lendo o código inteiro.
 | [08-responsividade-mobile.md](08-responsividade-mobile.md) | Breakpoints, tabela em telas estreitas, safe areas. |
 | [09-contexto-do-produto.md](09-contexto-do-produto.md) | O que o produto é, para quem, decisões de produto, glossário. |
 | [10-manutencao-e-granularidade.md](10-manutencao-e-granularidade.md) | Quando criar arquivo novo, tamanho, comentários, receitas de tarefas comuns. |
+| [11-importacao-e-ia.md](11-importacao-e-ia.md) | Importação de fatura (CSV, ZIP, email), registro anti-duplicata e serviço de IA. |
 
 ## Por onde começar
 
@@ -29,7 +30,9 @@ precisar reconstruir o contexto lendo o código inteiro.
    [04-componentes-e-telas.md](04-componentes-e-telas.md) e
    [03-identidade-visual.md](03-identidade-visual.md).
 3. Vai mexer em dados: leia [06-banco-de-dados.md](06-banco-de-dados.md).
-4. É um agente de IA: [00-regras-para-ia.md](00-regras-para-ia.md) é obrigatório.
+4. Vai mexer na importação de fatura ou na IA: leia
+   [11-importacao-e-ia.md](11-importacao-e-ia.md).
+5. É um agente de IA: [00-regras-para-ia.md](00-regras-para-ia.md) é obrigatório.
 
 O [README.md](../README.md) da raiz continua sendo o guia rápido de instalação e
 deploy. Esta pasta é o detalhamento técnico.

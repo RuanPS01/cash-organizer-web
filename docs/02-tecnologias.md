@@ -16,7 +16,7 @@
 
 Não usamos: framework de CSS, biblioteca de componentes, router, gerenciador de
 estado global, camada de i18n, biblioteca de datas, biblioteca de formulários,
-suíte de testes. Cada ausência é deliberada: o app é pequeno e o custo de manter
+suíte de testes, biblioteca de CSV ou de ZIP, SDK de provedor de IA. Cada ausência é deliberada: o app é pequeno e o custo de manter
 essas camadas seria maior que o ganho.
 
 ## 2.2 Dependências
@@ -41,8 +41,20 @@ Desenvolvimento (`devDependencies`):
 | `@types/react`, `@types/react-dom` | ^19.2.0 | tipos do React |
 
 Antes de adicionar qualquer dependência, verifique se a plataforma já resolve:
-`Intl.NumberFormat` e `Intl.DateTimeFormat` cobrem moeda e datas, e a Web Crypto
-API cobre hash e cifra.
+`Intl.NumberFormat` e `Intl.DateTimeFormat` cobrem moeda e datas, a Web Crypto
+API cobre hash, cifra e derivação de chave (PBKDF2), `DecompressionStream`
+cobre o deflate do ZIP e `fetch` cobre as APIs dos provedores de IA e do Gmail.
+
+### Serviços externos
+
+| Serviço | Para que | Como é chamado |
+|---|---|---|
+| Provedores de IA (Anthropic, OpenAI, Google Gemini, Ollama) | organizar a fatura importada | `fetch` direto do navegador, sem SDK (ver [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.7) |
+| Google Identity Services | login do Google para ler o Gmail | script `https://accounts.google.com/gsi/client` carregado sob demanda, fora do `package.json` |
+| API do Gmail | buscar a fatura anexada no email | `fetch` com o token do login, escopo `gmail.readonly` |
+
+O service worker não intercepta essas chamadas: só o app shell e as fontes
+estão no cache.
 
 ## 2.3 Scripts
 
@@ -80,6 +92,7 @@ API cobre hash e cifra.
 | `VITE_FIREBASE_APP_ID` | sim | idem |
 | `VITE_BASE_PATH` | não | base do Vite. Local `/`, Pages `/cash-organizer-web/` |
 | `VITE_FIRESTORE_EMULATOR_HOST` | não | ex.: `127.0.0.1:8080`, liga o emulador |
+| `VITE_GOOGLE_CLIENT_ID` | não | id do cliente OAuth do Google (tipo Aplicativo da Web) que liga a busca de faturas no Gmail. É público por natureza (vai no bundle); a configuração está em [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.6 |
 
 Toda variável precisa do prefixo `VITE_` para chegar ao cliente. Nenhum segredo
 de verdade pode entrar aqui: tudo que vai para o bundle é público, e a proteção
@@ -134,4 +147,5 @@ push na `main` e no disparo manual:
 3. `upload-pages-artifact` com o `dist/` e `deploy-pages`.
 
 Pré-requisitos no repositório: Pages com source "GitHub Actions" e as seis
-secrets `VITE_FIREBASE_*` cadastradas.
+secrets `VITE_FIREBASE_*` cadastradas. Para a busca no Gmail, a secret
+`VITE_GOOGLE_CLIENT_ID` também (opcional).

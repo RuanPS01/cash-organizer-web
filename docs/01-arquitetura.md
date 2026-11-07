@@ -7,6 +7,11 @@ próprio e sem servidor de API. Não há autenticação do Firebase Auth: o cont
 de acesso é o par nome + senha do compartimento, validado no cliente contra o
 hash guardado no documento do compartimento.
 
+Fora do Firestore, o navegador fala com dois serviços externos, sempre por
+`services/`: os provedores de IA (Claude, OpenAI, Gemini ou Ollama), que
+organizam a fatura importada, e o Gmail, de onde a fatura pode ser buscada.
+Os dois estão em [11-importacao-e-ia.md](11-importacao-e-ia.md).
+
 As regras de segurança e as functions do Firebase vivem em outro repositório,
 `cash-organizer-functions`. Alterações de permissão de leitura e escrita não são
 feitas aqui.
@@ -21,7 +26,12 @@ flowchart TD
   D --> G["MonthScreen (modo pagamento)"]
   D --> H["ManageScreen"]
   D --> P["PlanningScreen (lista, PlanForm, PlanView)"]
+  D --> Q["AiSettingsScreen (botão do topo)"]
+  E --> R["StatementImport e ImportReview"]
   E --> I["hooks useMonthData, useConfig e usePlans"]
+  R --> S["services imports, ai, aiProviders, emailImport"]
+  Q --> S
+  S --> T[("Provedores de IA e Gmail")]
   F --> I
   G --> I
   P --> I
@@ -38,13 +48,18 @@ flowchart TD
 ```
 src/
   main.tsx                  boot do React e registro do service worker
-  App.tsx                   sessão, shell, navegação entre as cinco telas
+  App.tsx                   sessão, shell, navegação entre as cinco telas e a de IA
   firebase.ts               initializeApp e initializeFirestore com cache offline
   styles.css                folha de estilo global única (todo o CSS do app)
   types.ts                  tipos de domínio e ENTRY_STATUSES
   components/
     LoginScreen.tsx         entrada e criação de compartimento
-    AddExpenseScreen.tsx    tela principal de novo gasto
+    AddExpenseScreen.tsx    tela principal: importar fatura ou lançar à mão
+    StatementImport.tsx     card de importação de fatura (anexo, ZIP, email, IA)
+    ImportReview.tsx        revisão da fatura importada, uma linha por compra
+    AiSettingsScreen.tsx    configurações de IA (botão do topo)
+    AiModelChain.tsx        editor da fila de modelos de IA
+    ManageEmailImport.tsx   seção "Faturas por email" da tela Gerenciar
     MonthScreen.tsx         mês corrente: pagamento e estatísticas
     ManageScreen.tsx        renda mensal, cadastro de fixos e categorias
     StatsView.tsx           subtela de estatísticas usada pelo MonthScreen
@@ -61,17 +76,24 @@ src/
     PlanBadge.tsx           selo do gasto fixo de planejamento nas listas do mês
     shared.tsx              componentes genéricos reutilizáveis
   hooks/
-    useMonthData.ts         useMonthData, useConfig e usePlans (assinaturas em tempo real)
+    useMonthData.ts         useMonthData, useConfig, usePlans, useAiConfig e useEmailConfig
     useKeyboardInset.ts     mede o teclado virtual e publica --keyboard-inset
   services/
     compartments.ts         criar, abrir, buscar, preferências e renda do compartimento
-    session.ts              sessão no localStorage
+    session.ts              sessão no localStorage e a chave dos segredos em memória
     months.ts               ciclo de vida do mês, semana corrente e totais
     expenses.ts             lançamentos, gastos fixos, categorias e linhas do mês
     origins.ts              cadastro de origens e a linha de origem do mês
     plans.ts                planejamentos e o gasto fixo de planejamento
+    imports.ts              rascunho da revisão e gravação da fatura importada
+    ai.ts                   configuração de IA e a organização da fatura
+    aiProviders.ts          provedores de IA, fila de modelos e quarentena
+    emailImport.ts          configuração e busca de faturas no Gmail
   utils/
-    crypto.ts               SHA-256 da senha e AES-GCM da sessão
+    crypto.ts               SHA-256 da senha, AES-GCM da sessão e dos segredos
+    csv.ts                  leitura de CSV, valor e data de fatura
+    statement.ts            formatos de fatura, parcelas e chaves de importação
+    zip.ts                  leitor de ZIP, inclusive protegido por senha
     dates.ts                chaves de mês e dia, semana do mês, rótulos pt-BR
     money.ts                formatBRL, formatBRLCompact e digitsToCents
     projection.ts           conta da projeção do planejamento (juros, IR, meta)
@@ -88,7 +110,7 @@ public/icons/               ícones do PWA
 | Telas | `components/*Screen.tsx` | estado de formulário, chamadas a serviços, montagem visual | montar query do Firestore |
 | Componentes genéricos | `components/shared.tsx` | UI sem conhecimento de domínio | importar serviços ou tipos de domínio |
 | Hooks | `hooks/*.ts` | assinar coleções com `onSnapshot` e devolver estado, ou observar o ambiente do navegador | escrever no banco |
-| Serviços | `services/*.ts` | toda leitura e escrita no Firestore, regras de consistência | renderizar JSX |
+| Serviços | `services/*.ts` | toda leitura e escrita no Firestore, chamadas aos provedores de IA e ao Gmail, regras de consistência | renderizar JSX |
 | Utilitários | `utils/*.ts` | funções puras, sem React e sem Firestore | acessar `db` |
 
 Regra prática: se um componente precisa de `collection`, `doc` ou `onSnapshot`,
@@ -137,8 +159,10 @@ Detalhes de criptografia e chaves do `localStorage` estão em
 ## 1.6 Navegação
 
 Não há router nem URL por tela. O `Shell` guarda `view` (`'add' | 'stats' |
-'payment' | 'manage' | 'planning'`) em `useState` e renderiza a tela
-correspondente. A navbar fica embaixo no celular e vira uma barra no topo a
+'payment' | 'manage' | 'planning'`, mais `'ai'`) em `useState` e renderiza a tela
+correspondente. A tela de IA não é aba: abre pelo botão com o ícone de brilho
+no topo, não acende nenhuma aba da navbar e o voltar dela retorna à aba de
+onde veio (`lastView`). A navbar fica embaixo no celular e vira uma barra no topo a
 partir de 720px, com a ordem visual controlada por `order` no CSS. Um separador
 (`.nav-sep`) divide as quatro abas do controle do mês da aba Planejamento, que
 olha para os próximos meses e anos. Como não existe rota, também não existe
@@ -158,6 +182,9 @@ lista.
 - `VITE_BASE_PATH` define o `base` do Vite. Local fica `/`; no GitHub Pages o
   workflow injeta `/cash-organizer-web/`.
 - `VITE_FIRESTORE_EMULATOR_HOST` (opcional) aponta o SDK para o emulador local.
+- `VITE_GOOGLE_CLIENT_ID` (opcional) é o id do cliente OAuth do Google que
+  liga a busca de faturas no Gmail. Sem ele a seção de email avisa e a busca
+  fica desligada.
 - O Firestore é inicializado com `persistentLocalCache` e
   `persistentSingleTabManager`, o que dá cache offline em IndexedDB e sincronismo
   ao reconectar. Por isso o app abre e mostra os últimos dados mesmo sem rede.
@@ -170,6 +197,9 @@ lista.
 | Nova conta de projeção (juros, imposto, prazo) | função pura em `utils/projection.ts` |
 | Novo cálculo sobre dados do mês | `computeTotals` ou uma função pura em `services/months.ts` |
 | Nova formatação de valor ou data | `utils/money.ts` ou `utils/dates.ts` |
+| Novo formato de fatura ou regra de leitura de CSV | `utils/statement.ts` e `utils/csv.ts` |
+| Novo provedor de IA | `services/aiProviders.ts` (ver [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.13) |
+| Nova funcionalidade que usa IA | função em `services/ai.ts`, chamando `runCompletion` |
 | Novo campo persistido | tipo em `types.ts` mais escrita no serviço mais documentação em `06-banco-de-dados.md` |
 | Novo controle visual usado em duas telas ou mais | `components/shared.tsx` |
 | Nova tela | `components/NomeScreen.tsx` mais entrada em `View` e na navbar do `App.tsx` |

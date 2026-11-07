@@ -28,6 +28,7 @@ que você vai mexer:
 | Login, novo gasto, pagamento, virada de mês | [07-fluxos-aplicacao.md](07-fluxos-aplicacao.md) |
 | Layout, largura, tabela, qualquer coisa visual | [08-responsividade-mobile.md](08-responsividade-mobile.md) |
 | Criar arquivo, componente, hook ou serviço novo | [10-manutencao-e-granularidade.md](10-manutencao-e-granularidade.md) |
+| Importação de fatura, email, provedores de IA, prompt | [11-importacao-e-ia.md](11-importacao-e-ia.md) |
 
 Consultar não é opcional: quase toda necessidade de "componente novo" já tem um
 componente pronto em [`src/components/shared.tsx`](../src/components/shared.tsx),
@@ -53,7 +54,10 @@ atualização:
 - adicionou ou removeu dependência, script ou variável de ambiente
   (atualize [02-tecnologias.md](02-tecnologias.md));
 - mudou um fluxo de uso, como a virada de mês ou o significado de um status
-  (atualize [07-fluxos-aplicacao.md](07-fluxos-aplicacao.md) e [09-contexto-do-produto.md](09-contexto-do-produto.md)).
+  (atualize [07-fluxos-aplicacao.md](07-fluxos-aplicacao.md) e [09-contexto-do-produto.md](09-contexto-do-produto.md));
+- mudou um formato de fatura, a chave de importação, um provedor de IA, o
+  prompt ou um limite do serviço de IA
+  (atualize [11-importacao-e-ia.md](11-importacao-e-ia.md)).
 
 Documentação que descreve algo que não existe mais é pior que documentação
 ausente: ela faz o próximo agente implementar contra uma realidade falsa. Se
@@ -125,30 +129,38 @@ Estas valem sempre, sem precisar pedir:
    [08-responsividade-mobile.md](08-responsividade-mobile.md).
 7. **Componentes nunca falam com o Firestore.** Todo acesso a dados passa por
    `src/services/`. Se falta uma operação, crie a função no serviço certo, não
-   importe `firebase/firestore` dentro de um componente.
-8. **Nunca grave `undefined` no Firestore.** O SDK rejeita o documento inteiro.
+   importe `firebase/firestore` dentro de um componente. O mesmo vale para as
+   chamadas externas (provedores de IA e Gmail): elas moram em
+   `services/aiProviders.ts` e `services/emailImport.ts`.
+8. **Segredo nunca vai em claro para o Firestore.** O documento do
+   compartimento é legível por quem sabe o id. Chave de API, senha de ZIP e
+   afins passam por `sealSecret` com a chave de `compartmentSecret` (ver
+   [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.8).
+9. **Nunca grave `undefined` no Firestore.** O SDK rejeita o documento inteiro.
    Use `null` para campo vazio (é o que `normalizeFixedInput` faz com as
    parcelas) ou omita a chave.
-9. **Status de linha vem de `ENTRY_STATUSES`** em
+10. **Status de linha vem de `ENTRY_STATUSES`** em
    [`src/types.ts`](../src/types.ts). Nunca escreva a string solta em um
    componente, e ao adicionar um status novo atualize também `STATUS_CLASS` no
    `MonthScreen`, o CSS `.st-*` e o [06-banco-de-dados.md](06-banco-de-dados.md).
-10. **Reaproveite antes de criar.** Procure em
+11. **Reaproveite antes de criar.** Procure em
     [`src/components/shared.tsx`](../src/components/shared.tsx),
     `src/hooks/` e `src/utils/` (inventário em
     [04-componentes-e-telas.md](04-componentes-e-telas.md)) antes de escrever
     qualquer coisa nova.
-11. **Comente o POR QUÊ, não o o quê.** O padrão da casa é explicar a decisão e o
+12. **Comente o POR QUÊ, não o o quê.** O padrão da casa é explicar a decisão e o
     defeito que ela evita. Ver
     [10-manutencao-e-granularidade.md](10-manutencao-e-granularidade.md).
-12. **Rode `npm run typecheck` antes de entregar.** Nenhuma alteração entra com
+13. **Rode `npm run typecheck` antes de entregar.** Nenhuma alteração entra com
     erro de tipo. Se mexeu em build, PWA ou dependências, rode `npm run build`
     também.
-13. **Nunca faça commit na branch `main`.** Trabalhe em branch própria e envie
+14. **Nunca faça commit na branch `main`.** Trabalhe em branch própria e envie
     para ela.
-14. **Não adicione dependência sem necessidade real.** O projeto tem quatro
+15. **Não adicione dependência sem necessidade real.** O projeto tem quatro
     dependências de runtime de propósito. Ícone novo sai do `lucide-react`, que
-    já está instalado.
+    já está instalado. A importação de fatura e a IA foram feitas sem
+    dependência nova: CSV, ZIP e chamadas aos provedores usam a plataforma
+    (`fetch`, `DecompressionStream`, Web Crypto).
 
 ## 0.3 Checklist de fim de tarefa
 
@@ -160,6 +172,7 @@ Antes de dizer que terminou:
 - [ ] Nenhuma cor hardcoded; peça nova usa o sistema `.frame` e o chanfro `--c`.
 - [ ] Valores monetários em centavos, formatados com `formatBRL`.
 - [ ] Nenhum acesso a `firebase/firestore` fora de `src/services/`.
+- [ ] Nenhum segredo (chave de API, senha) gravado em claro no Firestore.
 - [ ] Testei (no navegador ou mentalmente) em 360px de largura, sem scroll
       horizontal da página.
 - [ ] Não criei componente, hook ou utilitário duplicado do que já existia.

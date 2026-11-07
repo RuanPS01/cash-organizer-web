@@ -25,6 +25,8 @@ compartments/{compartmentId}
   categories/{categoryId}
   origins/{originId}
   plans/{planId}
+  settings/{ai | emailImport}
+  importedItems/{hash da chave}
   months/{YYYY-MM}
     fixedEntries/{fixedExpenseId}
     categoryEntries/{categoryId}
@@ -47,6 +49,7 @@ uma comparação direta de ids.
 | `weekCategoryId` | string ou null | categoria acompanhada no card de estatísticas da aba Adicionar. Fica aqui, e não no dispositivo, para a escolha valer em qualquer aparelho |
 | `weekOriginId` | string ou null | origem acompanhada no mesmo card, pela mesma razão |
 | `addStatsTab` | `'month'`, `'category'` ou `'origin'` | aba aberta no mesmo card; ausente vale `month`, o resumo do mês |
+| `addMode` | `'import'` ou `'manual'` | modo da tela Adicionar (importar fatura ou lançar à mão); ausente vale `import` |
 | `monthlyIncome` | number | renda mensal líquida em centavos, editada na tela Gerenciar. Ausente (compartimento criado antes do campo) ou zero significa renda não informada. Cada mês guarda a própria cópia em `months/{ym}.income` |
 | `createdAt` | number | ms |
 
@@ -65,6 +68,7 @@ mesmo texto de senha em compartimentos diferentes gera hashes diferentes.
 | `installmentCurrent` | number ou null | parcela atual, começa em 1 |
 | `installmentTotal` | number ou null | total de parcelas; `null` significa gasto sem parcelamento |
 | `planId` | string ou null | plano que criou o gasto ("gasto fixo de planejamento"); `null` no gasto fixo comum e ausente no cadastrado antes do campo |
+| `importKey` | string | chave da compra parcelada que veio de uma fatura importada (`p1\|título\|valor\|parcelas`); ausente no gasto fixo cadastrado à mão. Não vai para a linha do mês |
 | `active` | boolean | `false` some dos próximos meses |
 | `createdAt` | number | ms |
 
@@ -262,6 +266,61 @@ ao planejado). Excluir o plano também tira o gasto fixo. Plano que terminou
 (gasto fixo desativado na última parcela) fica com o histórico e aparece como
 concluído.
 
+## 6.5.3 `settings/{id}` (configurações com segredo)
+
+Dois documentos fixos por compartimento. Os segredos chegam cifrados no app
+com a chave derivada da senha do compartimento (`sealSecret`, formato `v1.`
+mais base64), porque a leitura é aberta a quem sabe o id, como em todo o resto.
+Detalhes em [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.8.
+
+`settings/ai`:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `chain` | lista (até 6) | fila de modelos, o primeiro é o principal: `{ provider, model, sealedKey, baseUrl }`. `provider` é `claude`, `openai`, `gemini` ou `ollama`; `model` vazio usa o padrão; `sealedKey` vazio herda a chave do item anterior do mesmo provedor; `baseUrl` só no Ollama |
+| `instructions` | map | `{ categorize }`: as regras do usuário para organizar a fatura, até 4000 caracteres |
+| `updatedAt` | number | ms |
+
+`settings/emailImport`:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `mailboxes` | lista (até 10) | `{ email, addedAt }`, as caixas do Gmail conectadas. O token de acesso nunca é gravado |
+| `senders` | lista (até 30) | `{ address, originId, originName, sealedZipPassword }`: remetente (endereço ou domínio), a origem da fatura e a senha do ZIP cifrada (vazia quando não há) |
+| `lookbackDays` | number | quantos dias para trás a busca olha, de 1 a 365 (a tela oferece 15 a 90) |
+| `updatedAt` | number | ms |
+
+Apagar é permitido (o "Remover" da tela de IA).
+
+## 6.5.4 `importedItems/{hash}` (registro de importação de fatura)
+
+Um documento por compra de fatura que já passou pela revisão. O id é o
+SHA-256 da chave da compra, e é por ele que a importação seguinte sabe o que já
+entrou, em qualquer mês (ver [11-importacao-e-ia.md](11-importacao-e-ia.md),
+seção 11.4).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `kind` | `'expense'`, `'fixed'` ou `'skipped'` | virou lançamento variável, gasto fixo parcelado, ou foi desmarcada na revisão |
+| `key` | string | a chave em texto: `v1\|data\|título\|valor\|ocorrência` (à vista) ou `p1\|título\|valor\|parcelas` (parcelada) |
+| `ym` | string | mês do app em que a compra entrou |
+| `refId` | string | id do lançamento ou do gasto fixo criado; vazio quando ignorada |
+| `title`, `merchant` | string | título como veio no arquivo e o estabelecimento normalizado (`merchantKey`), que ensina a categoria nas próximas importações |
+| `categoryId`, `categoryName` | string | categoria escolhida (vazia no fixo e no ignorado) |
+| `amount` | number | centavos |
+| `until` | string ou null | último mês em que a compra parcelada ainda aparece nas faturas (`YYYY-MM`); depois dele a chave deixa de bloquear. `null` na compra à vista |
+| `createdAt` | number | ms |
+
+O registro não se apaga: excluir o lançamento no histórico não faz a compra
+voltar na próxima importação, porque ela já foi revisada. A gravação usa `set`
+(o mesmo id volta a ser gravado quando uma parcelada idêntica entra depois do
+fim da anterior).
+
+> As coleções `settings` e `importedItems`, o campo `importKey` (em `expenses`
+> e em `fixedExpenses`) e a preferência `addMode` do compartimento precisam
+> das regras do `cash-organizer-functions` publicadas. Sem elas a importação
+> falha com `permission-denied` e a tela de IA não grava.
+
 ## 6.6 `months/{YYYY-MM}`
 
 | Campo | Tipo | Notas |
@@ -386,6 +445,11 @@ primeira edição pode ser justamente o que cria a linha do mês.
 | `week` | number | 1 a 4: a semana em que o mês estava quando o gasto foi lançado (`month.currentWeek`). Não muda ao editar a data, e tem campo próprio no modal de edição |
 | `originId` | string ou null | id da origem escolhida; `null` quando não havia origem cadastrada |
 | `originName` | string | denormalizado, mantém o histórico legível se a origem for renomeada ou removida |
+| `importKey` | string | chave da compra na fatura importada; ausente no lançamento digitado à mão. Não muda depois de criado (fora da lista do `update` nas regras) |
+
+O lançamento importado nasce com `createdAt` na data da compra (com a hora do
+relógio mais um milissegundo por linha, para manter a ordem da fatura) e com a
+semana corrente do mês, como o lançamento à mão.
 
 O modal de edição do histórico grava tudo de uma vez: `amount`, `description`,
 `categoryId`, `categoryName`, `originId`, `originName`, `createdAt` (quando a
@@ -469,9 +533,11 @@ O documento do mês de origem permanece, vazio: as regras não permitem apagar
 Operações que precisam ser atômicas usam `writeBatch`: criação do compartimento
 com a categoria padrão, seed do mês, reordenação de categorias e de origens
 (troca de `sortOrder` entre duas), troca da padrão, fechamento do mês,
-reinicialização de mês, reclassificação em lote de lançamentos e
+reinicialização de mês, reclassificação em lote de lançamentos,
 `setOriginStatus`, que grava o status da origem junto com o dos gastos fixos
-dela.
+dela, e `commitImport`, que grava cada compra da fatura (lançamento, ou
+cadastro e linha do gasto fixo) no mesmo lote que o registro dela, sem partir
+uma compra entre dois lotes.
 
 ## 6.11 Índices e consultas
 
@@ -479,6 +545,11 @@ O cadastro de origens é lido inteiro por `onSnapshot` (`useConfig`), sem filtro
 composto: o volume é de poucas dezenas de documentos. Os planejamentos também
 (`usePlans`, ordenados por `createdAt` decrescente, índice de campo único); o
 filtro de `active` é feito no cliente, como nos demais cadastros.
+
+O registro de importação é lido de dois jeitos, os dois com índice de campo
+único: por id em grupos de 30 (`where(documentId(), 'in', ...)`) e os 400 mais
+recentes por `createdAt` decrescente, para aprender a categoria pelo
+estabelecimento.
 
 As consultas são simples de propósito. As únicas com filtro são as de
 desativação: `removeCategory` (`where('categoryId', '==', id)` mais `limit(1)`
@@ -492,6 +563,9 @@ atende as três com índice de campo único.
 |---|---|
 | `cash-organizer.session` | JSON com `compartmentId`, `name` e a senha cifrada em AES-GCM |
 | `cash-organizer.device-key` | chave AES-GCM de 256 bits do dispositivo, em JWK |
+
+A chave dos segredos do compartimento (derivada da senha) e os tokens do Gmail
+ficam só em memória, nunca no `localStorage`.
 | IndexedDB do Firestore | cache offline gerenciado pelo SDK, não mexer |
 
 A sessão restaurada é sempre revalidada contra o Firestore antes de liberar o

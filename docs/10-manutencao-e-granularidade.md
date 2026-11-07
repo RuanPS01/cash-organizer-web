@@ -2,36 +2,56 @@
 
 ## 10.1 Tamanho atual dos arquivos
 
-Referência de outubro de 2026, depois do planejamento em curso (linhas):
+Referência de novembro de 2026, depois da importação de fatura e da IA
+(linhas):
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 2907 |
+| `styles.css` | 3431 |
 | `services/months.ts` | 696 |
 | `components/MonthScreen.tsx` | 694 |
-| `components/ExpenseHistory.tsx` | 679 |
-| `components/ManageScreen.tsx` | 555 |
-| `components/PlanView.tsx` | 552 |
+| `components/ExpenseHistory.tsx` | 682 |
+| `components/PlanView.tsx` | 568 |
+| `components/ManageScreen.tsx` | 558 |
+| `services/aiProviders.ts` | 541 |
+| `types.ts` | 530 |
 | `services/expenses.ts` | 473 |
-| `components/PlanForm.tsx` | 422 |
-| `types.ts` | 401 |
+| `components/PlanForm.tsx` | 427 |
+| `components/StatementImport.tsx` | 425 |
+| `services/imports.ts` | 421 |
 | `utils/projection.ts` | 398 |
+| `utils/statement.ts` | 355 |
+| `services/emailImport.ts` | 348 |
+| `components/ManageEmailImport.tsx` | 335 |
 | `components/ManageOrigins.tsx` | 320 |
 | `components/AddStatsCard.tsx` | 315 |
+| `services/ai.ts` | 314 |
+| `components/AddExpenseScreen.tsx` | 309 |
+| `components/ImportReview.tsx` | 296 |
 | `components/shared.tsx` | 281 |
-| `components/AddExpenseScreen.tsx` | 269 |
+| `components/AiModelChain.tsx` | 275 |
 | `components/PlanningScreen.tsx` | 266 |
-| `services/plans.ts` | 242 |
+| `services/plans.ts` | 250 |
+| `components/AiSettingsScreen.tsx` | 235 |
+| `hooks/useMonthData.ts` | 228 |
+| `App.tsx` | 215 |
 | `components/PlanChart.tsx` | 206 |
-| `App.tsx` | 193 |
+| `utils/csv.ts` | 194 |
+| `utils/zip.ts` | 189 |
 | `services/origins.ts` | 183 |
-| `components/ExpenseEditModal.tsx` | 161 |
-| `hooks/useMonthData.ts` | 159 |
-| `components/StatsView.tsx` | 154 |
-| demais | menos de 125 cada |
+| demais | menos de 165 cada |
 
-O projeto inteiro tem cerca de 11,5 mil linhas, das quais perto de 3,5 mil
-vieram com o Planejamento.
+O projeto inteiro tem cerca de 16,3 mil linhas, das quais perto de 4,8 mil
+vieram com a importação de fatura e a IA.
+
+A importação nasceu dividida pelo critério da seção 10.2: a leitura do arquivo
+é pura e mora em `utils/` (`csv.ts`, `statement.ts`, `zip.ts`), testável sem
+navegador; o serviço separa o banco (`imports.ts`) da IA (`ai.ts`, a
+funcionalidade, e `aiProviders.ts`, os provedores) e do email
+(`emailImport.ts`); e a tela separa o card de importação, a revisão, a tela de
+IA e o editor da fila. `aiProviders.ts` passou de 500 linhas, mas é um bloco
+só (quatro adaptadores, a fila e a lista de modelos que dependem uns dos
+outros); se crescer, o primeiro candidato a sair é a lista de modelos ao vivo.
 
 `MonthScreen` e `services/months.ts` passaram de 650 linhas com o planejamento
 em curso. Os dois blocos novos deles são pequenos e presos ao arquivo (o modal
@@ -138,6 +158,10 @@ truque levam comentário na seção.
    do `ManageScreen`, que repassa tudo antes do patch).
 6. Atualizar [06-banco-de-dados.md](06-banco-de-dados.md).
 
+### Ensinar um banco novo à importação de fatura ou acrescentar um provedor de IA
+
+Ver as receitas em [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.13.
+
 ### Adicionar uma origem ao catálogo de ícones
 
 1. Nova chave em `ORIGIN_ICONS` ([`types.ts`](../src/types.ts)); a chave é o que
@@ -202,3 +226,17 @@ credenciais do Firebase, há dois caminhos já usados:
 - **Harness com stub**: subir um harness temporário do Vite com um stub de
   `firebase/firestore` e renderizar os componentes com dados fabricados. Se
   fizer isso, apague o harness antes de commitar.
+
+A importação de fatura foi validada no emulador, com o Playwright do ambiente:
+
+- **Leitores puros** (`utils/csv.ts`, `utils/statement.ts`, `utils/zip.ts`):
+  um script de teste empacotado com o `rolldown` que já vem no
+  `node_modules` (`npx rolldown teste.ts --format esm --platform node -o
+  teste.mjs`) e rodado no Node, contra faturas reais e ZIPs gerados com
+  `zip -e -P` (senha de teste própria);
+- **IA sem chave**: um servidor local de mentira no formato do Ollama
+  (`/api/tags` e `/api/chat`, com CORS liberado) na porta 11434, que responde
+  o JSON do formato esperado. A tela de IA aponta para ele como Ollama;
+- **Gmail sem conta**: no Playwright, `page.route` troca o script do Google
+  Identity Services por um que devolve um token falso e responde as rotas da
+  API do Gmail com uma mensagem cujo anexo é a fatura de teste.
