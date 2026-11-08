@@ -14,8 +14,6 @@ import { compartmentRef } from '../services/compartments';
 import { compartmentSecret } from '../services/session';
 import { EMPTY_AI_CONFIG, aiSettingsRef, openAiSettings } from '../services/ai';
 import type { AiConfig } from '../services/ai';
-import { EMPTY_EMAIL_CONFIG, emailSettingsRef, openEmailSettings } from '../services/emailImport';
-import type { EmailConfig } from '../services/emailImport';
 import type {
   Category,
   CategoryEntry,
@@ -26,7 +24,6 @@ import type {
   OriginEntry,
   Plan,
   StoredAiSettings,
-  StoredEmailImportSettings,
   VariableExpense,
 } from '../types';
 
@@ -214,15 +211,5 @@ export function useAiConfig(compartmentId: string): { loading: boolean; config: 
     aiSettingsRef(compartmentId),
     EMPTY_AI_CONFIG,
     openAiSettings,
-  );
-}
-
-/** Configuração da importação por email, com as senhas de ZIP já decifradas. */
-export function useEmailConfig(compartmentId: string): { loading: boolean; config: EmailConfig } {
-  return useSecretSettings<StoredEmailImportSettings, EmailConfig>(
-    compartmentId,
-    emailSettingsRef(compartmentId),
-    EMPTY_EMAIL_CONFIG,
-    openEmailSettings,
   );
 }

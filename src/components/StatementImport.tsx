@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { DragEvent, FormEvent } from 'react';
-import { Check, FileUp, Mail, Search } from 'lucide-react';
+import { Check, FileUp } from 'lucide-react';
 import { readStatementFile, StatementError } from '../utils/statement';
 import { ZipError } from '../utils/zip';
 import { writeErrorMessage } from '../utils/errors';
@@ -8,22 +8,13 @@ import { commitImport, prepareImport } from '../services/imports';
 import type { DraftRow, ImportDraft } from '../services/imports';
 import { categorizeWithAi } from '../services/ai';
 import { aiChainUsable, providerMessage } from '../services/aiProviders';
-import {
-  EMAIL_PROVIDER_LABEL,
-  emailProviderAvailable,
-  mailboxConnected,
-  preloadEmailLogin,
-  providerOf,
-  searchInvoices,
-} from '../services/emailImport';
-import type { FoundInvoice } from '../services/emailImport';
 import { monthWeek } from '../services/months';
-import { useAiConfig, useEmailConfig } from '../hooks/useMonthData';
+import { useAiConfig } from '../hooks/useMonthData';
 import type { MonthData } from '../hooks/useMonthData';
 import { ImportReview } from './ImportReview';
 import type { AiRunState } from './ImportReview';
 import { OriginIcon } from './OriginIcon';
-import type { Category, EmailMailbox, Origin } from '../types';
+import type { Category, Origin } from '../types';
 
 /** Arquivo lido, aguardando a senha do ZIP. */
 interface PendingFile {
@@ -36,11 +27,9 @@ interface PendingFile {
 // anexo errado (um PDF de 30 MB, por exemplo).
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
 /**
  * Importação de fatura da aba Adicionar: escolhe a origem (a mesma para a
- * fatura inteira), recebe o CSV ou o ZIP (anexado ou buscado no email), monta
+ * fatura inteira), recebe o CSV ou o ZIP com o CSV dentro, monta
  * a revisão sem o que já estava no app e grava o que o usuário confirmar.
  * Com a IA configurada e ligada, as categorias e descrições vêm sugeridas.
  */
@@ -54,7 +43,6 @@ export function StatementImport(props: {
 }) {
   const { compartmentId, currentMonth, categories, origins, data } = props;
   const ai = useAiConfig(compartmentId);
-  const email = useEmailConfig(compartmentId);
   const aiReady = aiChainUsable(ai.config.chain);
 
   const defaultOrigin = origins.find((o) => o.isDefault) ?? origins[0];
@@ -70,8 +58,6 @@ export function StatementImport(props: {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [found, setFound] = useState<FoundInvoice[] | null>(null);
-  const [searching, setSearching] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   // Linhas que o usuário já mexeu: a sugestão da IA que chega depois não
   // passa por cima da escolha dele.
@@ -79,13 +65,6 @@ export function StatementImport(props: {
   // Cada leitura ganha um número: a resposta da IA de uma fatura anterior,
   // que chegue depois de o usuário abrir outra, é descartada.
   const run = useRef(0);
-
-  // Só as caixas cujo provedor tem o id do app no build: sem ele não há login.
-  const mailboxes = email.config.mailboxes.filter((m) => emailProviderAvailable(providerOf(m)));
-  const emailReady = mailboxes.length > 0;
-  useEffect(() => {
-    if (emailReady) preloadEmailLogin();
-  }, [emailReady]);
 
   const reset = () => {
     run.current++;
@@ -235,28 +214,6 @@ export function StatementImport(props: {
     }
   };
 
-  // Precisa sair direto do toque: sem token válido, a busca abre a janela de
-  // login do Google, que o navegador só deixa abrir dentro do gesto.
-  const searchMailbox = async (mailbox: EmailMailbox) => {
-    setSearching(mailbox.email);
-    setError(null);
-    try {
-      const invoices = await searchInvoices(mailbox, email.config);
-      setFound((prev) => [...(prev ?? []).filter((f) => f.mailbox !== mailbox.email), ...invoices]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível buscar no email.');
-    } finally {
-      setSearching(null);
-    }
-  };
-
-  const reviewFound = (inv: FoundInvoice) => {
-    if (inv.sender?.originId && origins.some((o) => o.id === inv.sender?.originId)) {
-      setOriginId(inv.sender.originId);
-    }
-    void openFile(inv.filename, inv.bytes, inv.sender?.zipPassword || undefined);
-  };
-
   return (
     <>
       <section className="card import-card">
@@ -353,62 +310,6 @@ export function StatementImport(props: {
             ? 'A IA sugere categoria e descrição de cada compra a partir das suas categorias e do que você já importou.'
             : 'Importação direta: a categoria vem do que você já importou e da categoria do banco; o resto cai na categoria padrão.'}
         </p>
-
-        {emailReady && (
-          <div className="email-search">
-            <span className="origin-label">
-              <Mail size={13} aria-hidden /> Faturas no email
-            </span>
-            <div className="email-boxes">
-              {mailboxes.map((m) => (
-                <button
-                  key={`${providerOf(m)}:${m.email}`}
-                  type="button"
-                  className="btn small"
-                  disabled={busy || searching !== null}
-                  onClick={() => searchMailbox(m)}
-                  title={
-                    mailboxConnected(m)
-                      ? `${EMAIL_PROVIDER_LABEL[providerOf(m)]}: conectada`
-                      : `${EMAIL_PROVIDER_LABEL[providerOf(m)]}: pede o login`
-                  }
-                >
-                  <Search size={13} aria-hidden />
-                  {searching === m.email ? 'Buscando…' : m.email}
-                </button>
-              ))}
-            </div>
-            {found !== null && (
-              <ul className="found-list">
-                {found.length === 0 && (
-                  <li className="muted small">
-                    Nenhuma fatura dos remetentes cadastrados nos últimos {email.config.lookbackDays}{' '}
-                    dias.
-                  </li>
-                )}
-                {found.map((inv) => (
-                  <li key={inv.id}>
-                    <span className="found-text">
-                      <span className="found-name">{inv.filename}</span>
-                      <span className="muted small">
-                        {dateFormatter.format(new Date(inv.date))} · {inv.subject || inv.from}
-                        {inv.sender?.originName ? ` · ${inv.sender.originName}` : ''}
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      className="btn small"
-                      disabled={busy}
-                      onClick={() => reviewFound(inv)}
-                    >
-                      Revisar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
 
         {error && <p className="form-error">{error}</p>}
         {flash && <p className="flash">{flash}</p>}

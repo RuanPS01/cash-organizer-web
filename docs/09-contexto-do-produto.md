@@ -13,12 +13,12 @@ guardar por mês, e por quanto tempo, para chegar onde quero? A resposta volta
 para o controle do mês como um gasto fixo, e é isso que liga o planejamento ao
 resto do app.
 
-Por isso a tela de abertura é a de adicionar gasto, e não um painel. O caminho
-principal para alimentar o mês é **importar a fatura do cartão**: o CSV (ou o
-ZIP com o CSV, anexado ou buscado no email) vira os gastos do mês depois de uma
-revisão de categorias, e a IA, quando configurada, adianta essa revisão. Lançar
-um gasto à mão continua cabendo em poucos toques, para o que não passa pelo
-cartão, com o contexto (quanto resta na semana e no mês) visível na mesma tela.
+Por isso a tela de abertura é a de adicionar gasto, e não um painel. Lançar um
+gasto à mão é o modo padrão e tem que caber em poucos toques, com o contexto
+(quanto resta na semana e no mês) visível na mesma tela. Na aba ao lado, a
+fatura do cartão pode ser **importada**: o CSV (ou o ZIP com o CSV) vira os
+gastos do mês depois de uma revisão de categorias, e a IA, quando configurada,
+adianta essa revisão.
 
 ## 9.2 Para quem
 
@@ -150,7 +150,7 @@ linha `Pendente`.
 | Rendimento recolhível e opcional | o plano mais comum (guardar um valor por um tempo) não precisa dele, e aberto ele dobraria o formulário no celular |
 | Depósito no fim do mês na projeção | é a hipótese conservadora e bate com o gasto fixo, que é pago ao longo do mês |
 | Meta arredondada para cima no centavo | um centavo a menos por mês deixaria a meta para trás |
-| Importar a fatura é o modo padrão da tela Adicionar | os gastos do cartão já estão na fatura; digitar um por um era retrabalho. O lançamento à mão fica para Pix e dinheiro |
+| Lançar à mão é o modo padrão; importar a fatura fica na aba da direita | lançar é a ação feita várias vezes por dia; importar acontece uma vez por fatura e já traz os gastos do cartão de uma vez |
 | Leitura direta do CSV primeiro, IA depois | a importação funciona sem chave, sem custo e offline; a IA melhora a organização, mas nunca é condição |
 | Origem uma vez por fatura, categoria por compra | a fatura é de um cartão só; a categoria é que muda de compra para compra |
 | Revisão antes de gravar, sempre | a categoria sugerida (pela IA ou pelo histórico) é palpite; gravar sem olhar espalharia erro pelo orçamento do mês |
@@ -160,8 +160,6 @@ linha `Pendente`.
 | Escolha do histórico vence a sugestão da IA | o histórico é a classificação do próprio usuário; a IA completa o que ele ainda não sabia |
 | Categoria padrão não ensina | é onde cai o que ninguém classificou; aprender com ela travaria a compra no padrão |
 | IA chamada do navegador, chave cifrada com a senha | o app não tem servidor, e a chave em claro no Firestore seria de quem soubesse o id do compartimento |
-| Email buscado ao tocar, sem escuta contínua | escutar a caixa exige servidor (plano pago do Firebase); buscar quando o usuário pede resolve sem ele |
-| Gmail e Outlook, e não IMAP | os dois têm login próprio e API que o navegador chama; IMAP é conexão que o navegador não abre, e pediria servidor guardando a senha da caixa |
 | Tema único e escuro, sem botão de troca | a identidade é ouro sobre preto puro; uma versão clara exigiria uma segunda paleta e não traria nada ao uso no celular |
 
 ## 9.5 O que o produto não faz (e não deveria fazer sem decisão explícita)
@@ -170,10 +168,9 @@ linha `Pendente`.
 - importa só fatura de cartão em CSV (direto ou em ZIP): não lê PDF, não faz
   OCR de nota e não importa extrato de conta corrente (Pix e transferências
   continuam à mão);
-- não escuta a caixa de email: a busca de faturas roda quando o usuário toca,
-  e só no Gmail e nas contas Microsoft (Outlook, Hotmail). Provedor só com
-  IMAP (Yahoo, iCloud, UOL) pediria servidor; até lá, vale redirecionar os
-  emails do banco para uma caixa conectada;
+- não busca a fatura no email: ela entra só pelo arquivo anexado na tela (a
+  busca no Gmail e no Outlook existiu e foi removida por decisão do usuário,
+  ver [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.6);
 - não tem lançamento de receita, extrato nem saldo acumulado: a renda é um
   número só, configurado no compartimento, que serve de referência do mês;
 - o planejamento acompanha só o que foi pago no Pagamento: não registra aportes
@@ -209,4 +206,3 @@ linha `Pendente`.
 | Importar fatura | `prepareImport` e `commitImport` |
 | Registro de importação | `ImportedItem`, coleção `importedItems` |
 | Configurações de IA | `settings/ai`, `AiSettingsScreen` |
-| Faturas por email | `settings/emailImport`, `ManageEmailImport` |

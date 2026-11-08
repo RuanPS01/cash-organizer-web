@@ -19,7 +19,7 @@ precisar reconstruir o contexto lendo o código inteiro.
 | [08-responsividade-mobile.md](08-responsividade-mobile.md) | Breakpoints, tabela em telas estreitas, safe areas. |
 | [09-contexto-do-produto.md](09-contexto-do-produto.md) | O que o produto é, para quem, decisões de produto, glossário. |
 | [10-manutencao-e-granularidade.md](10-manutencao-e-granularidade.md) | Quando criar arquivo novo, tamanho, comentários, receitas de tarefas comuns. |
-| [11-importacao-e-ia.md](11-importacao-e-ia.md) | Importação de fatura (CSV, ZIP, email), registro anti-duplicata e serviço de IA. |
+| [11-importacao-e-ia.md](11-importacao-e-ia.md) | Importação de fatura (CSV e ZIP), registro anti-duplicata e serviço de IA. |
 
 ## Por onde começar
 

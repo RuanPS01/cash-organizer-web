@@ -266,11 +266,10 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Mensagem de sucesso | `.flash` | ouro |
 | Modal | `.modal-backdrop`, `.modal`, `.modal-body`, `.modal-actions` | `.modal-form` para formulário |
 | Texto de apoio do card | `.card-hint` | |
-| Modo da tela Adicionar | `.subtabs.add-mode` | as mesmas `.subtab` do histórico, coladas no título |
+| Modo da tela Adicionar | `.subtabs.add-mode` | as mesmas `.subtab` do histórico, coladas no título: "Lançar à mão" à esquerda, "Importar fatura" à direita |
 | Área de anexo da fatura | `.file-drop` | moldura tracejada (o sinal do chip "+ categoria"), com o input de arquivo invisível cobrindo a peça; `.dragging` e o hover trocam para ouro pleno, `.busy` apaga |
 | Senha do ZIP | `.zip-password` | campo e botão em grade, com a mensagem em cima |
 | Liga e desliga a IA da importação | `.plan-check.ai-toggle` | `.off` quando a IA não está configurada |
-| Faturas achadas no email | `.email-search`, `.email-boxes`, `.found-list` | um botão por caixa; o endereço quebra dentro do botão |
 | Revisão da fatura | `.import-review`, `.import-summary`, `.import-origin`, `.import-ai-status`, `.review-list`, `.import-totals`, `.import-actions` | `li.row-off` apaga a compra desmarcada e risca o valor |
 | Linha da revisão | `.review-desc` (campo inline), `.review-value`, `.review-meta`, `.review-class`, `.review-kind`, `.review-category` | grade com a caixa de marcação à esquerda nas três linhas |
 | Origem da sugestão | `.badge.source` | `.ai` em ouro (sugestão da IA); neutro para histórico e banco |
@@ -278,9 +277,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Botão de IA no topo | `.btn.icon.topbar-ai` | `.active` com a tela de IA aberta |
 | Fila de modelos de IA | `.ai-chain`, `.ai-model` (peça com moldura), `.ai-model-head`, `.ai-model-num` (número em quadrado chanfrado), `.ai-model-grid` | uma coluna no celular, duas a partir de 560px |
 | Chave herdada da reserva | `.ai-inherit` | faixa discreta com moldura no lugar do campo de chave |
-| Subtítulo dentro do card | `.settings-subtitle` | "Modelos", "Caixas de email", "Remetentes de fatura" |
-| Rótulo na mesma linha do seletor | `.settings-row`, `.settings-inline` | "Buscar nos últimos [45 dias]" |
-| Caixas de email conectadas | `.mailbox-name`, `.badge.provider`, `.mailbox-connect` | o provedor (Gmail ou Outlook/Hotmail) em selo neutro; um botão de conexão por provedor configurado |
+| Subtítulo dentro do card | `.settings-subtitle` | "Modelos", na tela de IA |
 | Texto longo em campo | `.field > textarea` | cresce só na vertical (instruções da IA) |
 
 Utilitários globais: `.muted`, `.small`, `.center`, `.neg` (terracota),
@@ -371,8 +368,7 @@ Em uso hoje: `Wallet`, `Plus`, `BarChart3`, `Banknote`, `Settings`,
 `Check`, `Trash2` (excluir planejamento), `PiggyBank` (aba Planejamento e selo
 do gasto fixo de planejamento), `Coins` ("quanto vou juntar"), `Target`
 ("quanto guardar por mês"), `Sparkles` (botão e tela de IA), `FileUp`
-(importar fatura e área de anexo), `PenLine` (lançar à mão), `Mail` (caixas de
-email), `KeyRound` (credenciais e chave herdada), e os glifos de
+(importar fatura e área de anexo), `PenLine` (lançar à mão), `KeyRound` (credenciais e chave herdada), e os glifos de
 origem `QrCode` (Pix), `ArrowLeftRight` (transferência), `CreditCard` (cartão),
 `Banknote` (dinheiro), `TrendingUp` (investimento), `CalendarSync` (débito
 automático) e `Barcode` (boleto).
