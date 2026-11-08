@@ -13,9 +13,12 @@ guardar por mês, e por quanto tempo, para chegar onde quero? A resposta volta
 para o controle do mês como um gasto fixo, e é isso que liga o planejamento ao
 resto do app.
 
-Por isso a tela de abertura é a de adicionar gasto, e não um painel. Lançar um
-gasto tem que caber em poucos toques, com o contexto (quanto resta na semana e no
-mês) visível na mesma tela.
+Por isso a tela de abertura é a de adicionar gasto, e não um painel. O caminho
+principal para alimentar o mês é **importar a fatura do cartão**: o CSV (ou o
+ZIP com o CSV, anexado ou buscado no email) vira os gastos do mês depois de uma
+revisão de categorias, e a IA, quando configurada, adianta essa revisão. Lançar
+um gasto à mão continua cabendo em poucos toques, para o que não passa pelo
+cartão, com o contexto (quanto resta na semana e no mês) visível na mesma tela.
 
 ## 9.2 Para quem
 
@@ -90,6 +93,20 @@ diz de cada mês volta para ele: mês pago segue o planejado; mês pulado
 aparece em vermelho, e o que faltou vai para o fim, prorrogando o prazo e
 refazendo a projeção. Na última parcela o plano fica concluído.
 
+**Importação de fatura.** O CSV da fatura do cartão (Nubank, C6 ou genérico)
+lido direto, sem IA, e revisado antes de gravar. A origem é a mesma para a
+fatura inteira; a categoria é revisada compra por compra. Compra à vista vira
+lançamento variável; compra parcelada vira gasto fixo parcelado.
+
+**Registro de importação.** O que impede a mesma compra de entrar duas vezes:
+cada compra revisada fica registrada (importada ou ignorada), e a importação
+seguinte só mostra o que ainda não entrou.
+
+**IA do compartimento.** Configuração opcional (provedor, modelos de reserva,
+chave e instruções) que sugere a categoria e uma descrição legível de cada
+compra importada, a partir das categorias do usuário e do que ele já
+classificou.
+
 **Virada de mês.** Fecha o mês atual (gravando os totais para estatísticas) e
 abre o próximo mantendo fixos e categorias. Só é liberada quando não há nenhuma
 linha `Pendente`.
@@ -133,12 +150,30 @@ linha `Pendente`.
 | Rendimento recolhível e opcional | o plano mais comum (guardar um valor por um tempo) não precisa dele, e aberto ele dobraria o formulário no celular |
 | Depósito no fim do mês na projeção | é a hipótese conservadora e bate com o gasto fixo, que é pago ao longo do mês |
 | Meta arredondada para cima no centavo | um centavo a menos por mês deixaria a meta para trás |
+| Importar a fatura é o modo padrão da tela Adicionar | os gastos do cartão já estão na fatura; digitar um por um era retrabalho. O lançamento à mão fica para Pix e dinheiro |
+| Leitura direta do CSV primeiro, IA depois | a importação funciona sem chave, sem custo e offline; a IA melhora a organização, mas nunca é condição |
+| Origem uma vez por fatura, categoria por compra | a fatura é de um cartão só; a categoria é que muda de compra para compra |
+| Revisão antes de gravar, sempre | a categoria sugerida (pela IA ou pelo histórico) é palpite; gravar sem olhar espalharia erro pelo orçamento do mês |
+| Compra parcelada vira gasto fixo parcelado | o parcelamento do app já avança na virada e sai no fim: as próximas parcelas aparecem sozinhas, sem esperar a próxima fatura |
+| Compra desmarcada não volta | desmarcar é decidir; perguntar de novo a cada importação seria ruído |
+| Excluir um lançamento importado não o faz voltar | a compra já foi revisada; voltar na próxima importação desfaria a exclusão |
+| Escolha do histórico vence a sugestão da IA | o histórico é a classificação do próprio usuário; a IA completa o que ele ainda não sabia |
+| Categoria padrão não ensina | é onde cai o que ninguém classificou; aprender com ela travaria a compra no padrão |
+| IA chamada do navegador, chave cifrada com a senha | o app não tem servidor, e a chave em claro no Firestore seria de quem soubesse o id do compartimento |
+| Email buscado ao tocar, sem escuta contínua | escutar a caixa exige servidor (plano pago do Firebase); buscar quando o usuário pede resolve sem ele |
+| Gmail e Outlook, e não IMAP | os dois têm login próprio e API que o navegador chama; IMAP é conexão que o navegador não abre, e pediria servidor guardando a senha da caixa |
 | Tema único e escuro, sem botão de troca | a identidade é ouro sobre preto puro; uma versão clara exigiria uma segunda paleta e não traria nada ao uso no celular |
 
 ## 9.5 O que o produto não faz (e não deveria fazer sem decisão explícita)
 
 - não tem múltiplos usuários, permissões nem trilha de auditoria;
-- não importa extrato bancário nem OCR de nota;
+- importa só fatura de cartão em CSV (direto ou em ZIP): não lê PDF, não faz
+  OCR de nota e não importa extrato de conta corrente (Pix e transferências
+  continuam à mão);
+- não escuta a caixa de email: a busca de faturas roda quando o usuário toca,
+  e só no Gmail e nas contas Microsoft (Outlook, Hotmail). Provedor só com
+  IMAP (Yahoo, iCloud, UOL) pediria servidor; até lá, vale redirecionar os
+  emails do banco para uma caixa conectada;
 - não tem lançamento de receita, extrato nem saldo acumulado: a renda é um
   número só, configurado no compartimento, que serve de referência do mês;
 - o planejamento acompanha só o que foi pago no Pagamento: não registra aportes
@@ -171,3 +206,7 @@ linha `Pendente`.
 | Planejamento em curso | `Plan.trackedFrom` preenchido e o gasto fixo dele ativo |
 | Mês pulado / pago em parte | `PlanMonthRecord` com `paid` zero / menor que `planned`; na linha, `paidAmount` |
 | Virar mês | `closeMonth` |
+| Importar fatura | `prepareImport` e `commitImport` |
+| Registro de importação | `ImportedItem`, coleção `importedItems` |
+| Configurações de IA | `settings/ai`, `AiSettingsScreen` |
+| Faturas por email | `settings/emailImport`, `ManageEmailImport` |

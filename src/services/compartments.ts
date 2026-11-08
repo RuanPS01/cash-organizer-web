@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { hashPassword } from '../utils/crypto';
 import { isMonthOpen, monthRef } from './months';
 import { monthKey } from '../utils/dates';
-import type { AddStatsTab, Compartment } from '../types';
+import type { AddMode, AddStatsTab, Compartment } from '../types';
 
 /** Normaliza o nome do compartimento para usar como id do documento. */
 export function slugify(name: string): string {
@@ -42,10 +42,10 @@ export async function openCompartment(name: string, password: string): Promise<O
 }
 
 /**
- * Preferências de leitura do card de estatísticas da aba Adicionar: a
- * categoria e a origem acompanhadas e a aba aberta. Ficam no compartimento, e
- * não no dispositivo, para a escolha valer em qualquer aparelho que abrir o
- * mesmo compartimento.
+ * Preferências de leitura da aba Adicionar: o modo (importar a fatura ou
+ * lançar à mão) e, no card de estatísticas, a categoria e a origem
+ * acompanhadas e a aba aberta. Ficam no compartimento, e não no dispositivo,
+ * para a escolha valer em qualquer aparelho que abrir o mesmo compartimento.
  */
 // Declarado com `type` e não `interface` de propósito: o SDK exige um payload
 // com assinatura de índice, e só o alias de tipo ganha a implícita.
@@ -53,6 +53,7 @@ export type ViewPrefs = {
   weekCategoryId: string | null;
   weekOriginId: string | null;
   addStatsTab: AddStatsTab;
+  addMode: AddMode;
 };
 
 export async function setViewPrefs(

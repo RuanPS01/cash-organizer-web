@@ -145,6 +145,9 @@
 .check-box,
 .plan-kind-option,
 .plan-collapse,
+.file-drop,
+.ai-model,
+.ai-inherit,
 .modal {
   position: relative;
   isolation: isolate;
@@ -179,6 +182,9 @@
 .check-box::before,
 .plan-kind-option::before,
 .plan-collapse::before,
+.file-drop::before,
+.ai-model::before,
+.ai-inherit::before,
 .modal::before {
   content: '';
   position: absolute;
@@ -383,7 +389,8 @@ td.num,
 }
 
 .field > input,
-.field > select {
+.field > select,
+.field > textarea {
   width: 100%;
   border: 0;
   background: none;
@@ -400,9 +407,20 @@ td.num,
 }
 
 .field > input:focus,
-.field > select:focus { outline: none; }
+.field > select:focus,
+.field > textarea:focus { outline: none; }
 
-.field > input::placeholder { color: var(--muted-dim); }
+/* O campo de texto longo (instruções da IA) cresce na vertical, nunca na
+   horizontal: arrastar a alça para o lado passaria da largura do card. */
+.field > textarea {
+  display: block;
+  resize: vertical;
+  min-height: 8rem;
+  line-height: 1.45;
+}
+
+.field > input::placeholder,
+.field > textarea::placeholder { color: var(--muted-dim); }
 
 input,
 select,
@@ -2761,6 +2779,532 @@ td .badge.plan { margin-left: 0.4rem; }
   .plan-hero { font-size: 1.7rem; }
   .plan-chart-plot { height: 10rem; }
   .plan-month-list li { padding-left: 0.4rem; }
+}
+
+/* --------------------------------------------------------------------------
+   Importação de fatura (aba Adicionar)
+
+   O card de importação (origem, anexo, IA e email) e, abaixo dele, o card de
+   revisão com uma linha por compra nova. A linha da revisão segue a mesma
+   ideia do histórico do mês: caixa de marcação à esquerda ocupando a altura
+   toda, texto em minmax(0, 1fr) e o valor à direita, que nunca quebra.
+   -------------------------------------------------------------------------- */
+
+/* A fileira de modo fica colada no título, como o seletor de um formulário. */
+.subtabs.add-mode { margin-bottom: 0; }
+
+/* Área de anexo: moldura tracejada (o mesmo sinal do chip "+ categoria"), com
+   o input de arquivo invisível cobrindo a peça inteira para o toque abrir o
+   seletor de arquivo do sistema. */
+.file-drop {
+  --c: 12px;
+  --frame-w: 1.5px;
+  --frame-edge: repeating-linear-gradient(
+    45deg,
+    rgba(212, 175, 55, 0.55) 0 7px,
+    rgba(212, 175, 55, 0.12) 7px 14px
+  );
+  --frame-fill: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.85rem;
+  padding: 1.4rem 1rem;
+  color: var(--gold-soft);
+  text-align: center;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.file-drop:hover,
+.file-drop.dragging {
+  --frame-edge: var(--gold-edge-bright);
+  --frame-fill: var(--gold-tint);
+  box-shadow: var(--glow);
+}
+
+.file-drop.busy { cursor: progress; opacity: 0.75; }
+
+.file-drop-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.file-drop input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.zip-password {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.zip-password p { grid-column: 1 / -1; margin: 0; }
+
+.import-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+}
+
+.ai-toggle.off { color: var(--muted-dim); cursor: not-allowed; }
+
+.import-mode-hint { margin: 0.4rem 0 0; max-width: 60ch; }
+
+.email-search {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--line);
+}
+
+.email-search .origin-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.email-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* O endereço da caixa pode ser longo: quebra dentro do botão em vez de
+   empurrar a fileira para fora da tela em 360px. */
+.email-boxes .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.found-list {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+}
+
+.found-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.found-list li:last-child { border-bottom: none; }
+
+.found-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.found-name { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+
+.found-list .btn { flex: 0 0 auto; }
+
+.import-card .form-error,
+.import-card .flash { margin-top: 0.8rem; }
+
+/* Revisão */
+
+.import-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.import-review-head h3 { margin: 0; }
+
+.import-review-head .muted { overflow-wrap: anywhere; }
+
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+  margin-bottom: 0.6rem;
+}
+
+.import-summary strong {
+  font-family: var(--font-num);
+  color: var(--gold-soft);
+}
+
+.import-summary .neg strong { color: var(--danger); }
+
+.import-origin {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.import-ai-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  color: var(--gold-soft);
+}
+
+.import-ai-status svg { flex: 0 0 auto; }
+
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.review-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'check desc value'
+    'check meta meta'
+    'check class class';
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 0.35rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-list li:last-child { border-bottom: none; }
+
+.review-list .check-box { align-self: start; margin-top: 0.3rem; }
+
+/* Compra desmarcada continua na lista (pode voltar), mas apagada. */
+.review-list li.row-off { opacity: 0.55; }
+.review-list li.row-off .review-value { text-decoration: line-through; }
+
+.field.review-desc {
+  grid-area: desc;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.field.review-desc > input {
+  font-weight: 600;
+  font-size: 0.86rem;
+  padding: 0.4rem 0.55rem;
+}
+
+.review-value {
+  grid-area: value;
+  font: 600 0.86rem/1.2 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.review-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  min-width: 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.review-meta .when {
+  font-family: var(--font-num);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.review-original { overflow-wrap: anywhere; }
+
+.review-class {
+  grid-area: class;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  min-width: 0;
+}
+
+.review-kind { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.review-kind .chip { padding: 0.35rem 0.7rem; font-size: 0.74rem; }
+
+.field.review-category {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 22rem;
+}
+
+.field.review-category > select { padding-top: 0.5rem; padding-bottom: 0.5rem; font-size: 0.84rem; }
+
+/* De onde veio a sugestão: neutro para histórico e banco, ouro para a IA. */
+.badge.source {
+  --frame-edge: var(--line-soft);
+  --frame-fill: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.badge.source.ai {
+  --frame-edge: var(--gold);
+  --frame-fill: var(--gold-tint);
+  color: var(--gold-soft);
+}
+
+/* Lançamento que veio de fatura importada, no histórico do mês. */
+.badge.imported {
+  --frame-edge: var(--line-soft);
+  --frame-fill: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.56rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.import-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.8rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--line);
+}
+
+.import-totals > span { display: flex; flex-direction: column; gap: 0.1rem; }
+
+.import-totals strong {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-soft);
+}
+
+.import-review .form-error { margin-top: 0.8rem; }
+
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Configurações de IA e de email
+
+   A tela de IA abre pelo botão do topo e usa o cabeçalho de subpágina do
+   Planejamento. Cada modelo da fila é uma peça com moldura, numerada, com os
+   campos em uma coluna no celular e em duas a partir de 560px.
+   -------------------------------------------------------------------------- */
+
+/* No topo o botão de IA é só o ícone: em 360px o nome do compartimento e o
+   "Sair" já disputam a largura. */
+.topbar-ai { --c: 6px; padding: 0.4rem 0.5rem; }
+
+.topbar-ai.active {
+  --frame-edge: var(--gold-edge-bright);
+  --frame-fill: var(--gold-tint);
+  box-shadow: var(--glow);
+}
+
+.ai-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* O ícone acompanha o título, mas o vazado em ouro não pinta SVG. */
+.ai-title svg { color: var(--gold-bright); flex: 0 0 auto; }
+
+.settings-subtitle {
+  display: block;
+  margin: 1.1rem 0 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-strong);
+}
+
+.card > .settings-subtitle:first-of-type { margin-top: 0.2rem; }
+
+.ai-chain-hint { margin: 0 0 0.9rem; max-width: 70ch; line-height: 1.5; }
+
+.ai-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.ai-chain > .btn { align-self: flex-start; }
+
+.ai-model {
+  --c: 10px;
+  --frame-w: 1px;
+  --frame-edge: var(--line-soft);
+  --frame-fill: var(--surface);
+  padding: 0.9rem;
+}
+
+.ai-model-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.ai-model-head strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.ai-model-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.7rem;
+  height: 1.7rem;
+  background: var(--gold-tint-strong);
+  /* Chanfro também aqui: a identidade não tem canto arredondado. */
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
+  color: var(--gold-soft);
+  font: 700 0.78rem/1 var(--font-num);
+}
+
+.ai-model-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 0.8rem;
+}
+
+.ai-model-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+}
+
+.ai-model label { margin-bottom: 0.9rem; }
+.ai-model > label:last-of-type { margin-bottom: 0; }
+
+.ai-key-hint {
+  display: block;
+  margin-top: 0.35rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+/* Reserva que herda a chave: faixa discreta no lugar do campo, com o botão
+   para separar. */
+.ai-inherit {
+  --c: 7px;
+  --frame-w: 1px;
+  --frame-edge: var(--line);
+  --frame-fill: var(--surface-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+  padding: 0.65rem 0.8rem;
+}
+
+.ai-inherit .muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-model .form-error { margin-top: 0.7rem; }
+
+.ai-restore { margin-top: 0.7rem; }
+
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+/* Rótulo na mesma linha do seletor ("Buscar nos últimos [45 dias]"). */
+.settings-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.settings-inline .field { width: auto; margin-top: 0; }
+
+.card .manage-list + .btn,
+.card .manage-list + .settings-row,
+.card .manage-list + .mailbox-connect { margin-top: 0.4rem; }
+
+/* Um botão de conexão por provedor de email configurado no build. */
+.mailbox-connect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Endereço de email longo quebra em vez de empurrar o selo para fora. */
+.mailbox-name { overflow-wrap: anywhere; min-width: 0; }
+
+/* Provedor da caixa (Gmail ou Outlook/Hotmail): classificação, neutro. */
+.badge.provider {
+  --frame-edge: var(--line-soft);
+  --frame-fill: var(--surface-2);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+@media (min-width: 560px) {
+  .ai-model-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ai-model-grid > label { margin-bottom: 0.9rem; }
 }
 
 /* --------------------------------------------------------------------------

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Banknote, BarChart3, PiggyBank, Plus, Settings } from 'lucide-react';
+import { Banknote, BarChart3, PiggyBank, Plus, Settings, Sparkles } from 'lucide-react';
 import { LoginScreen } from './components/LoginScreen';
 import { AddExpenseScreen } from './components/AddExpenseScreen';
 import { MonthScreen } from './components/MonthScreen';
 import { ManageScreen } from './components/ManageScreen';
 import { PlanningScreen } from './components/PlanningScreen';
+import { AiSettingsScreen } from './components/AiSettingsScreen';
 import { BrandMark } from './components/shared';
 import { clearSession, restoreSession } from './services/session';
 import { setViewPrefs } from './services/compartments';
@@ -16,8 +17,16 @@ import type { Compartment } from './types';
 
 type View = 'add' | 'stats' | 'payment' | 'manage' | 'planning';
 
+/** A tela de configurações de IA abre pelo topo e volta para a aba de onde veio. */
+type Screen = View | 'ai';
+
 function Shell(props: { compartment: Compartment; onLogout: () => void }) {
-  const [view, setView] = useState<View>('add');
+  const [view, setView] = useState<Screen>('add');
+  const [lastView, setLastView] = useState<View>('add');
+  const openAiSettings = () => {
+    if (view !== 'ai') setLastView(view);
+    setView('ai');
+  };
   const [currentMonth, setCurrentMonth] = useState(props.compartment.currentMonth);
   const { categories, fixedExpenses, origins, monthlyIncome } = useConfig(props.compartment.id);
   const monthData = useMonthData(props.compartment.id, currentMonth);
@@ -28,6 +37,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
     weekCategoryId: props.compartment.weekCategoryId ?? null,
     weekOriginId: props.compartment.weekOriginId ?? null,
     addStatsTab: props.compartment.addStatsTab ?? 'month',
+    addMode: props.compartment.addMode ?? 'import',
   });
 
   const changePrefs = (patch: Partial<ViewPrefs>) => {
@@ -46,6 +56,14 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
         </span>
         <span className="compartment">
           <span className="name">{props.compartment.name}</span>
+          <button
+            className={`btn icon topbar-ai${view === 'ai' ? ' active' : ''}`}
+            onClick={openAiSettings}
+            aria-label="Configurações de IA"
+            title="Configurações de IA"
+          >
+            <Sparkles size={16} aria-hidden />
+          </button>
           <button className="btn ghost small" onClick={props.onLogout}>
             Sair
           </button>
@@ -62,7 +80,11 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
             data={monthData}
             prefs={prefs}
             onPrefsChange={changePrefs}
+            onOpenAiSettings={openAiSettings}
           />
+        )}
+        {view === 'ai' && (
+          <AiSettingsScreen compartmentId={props.compartment.id} onBack={() => setView(lastView)} />
         )}
         {view === 'stats' && (
           <MonthScreen

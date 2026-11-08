@@ -31,7 +31,57 @@ Ao abrir o app: lê o `localStorage`, decifra a senha com a chave do dispositivo
 revalida com `openCompartment` e chama `ensureMonth`. Qualquer falha limpa a
 sessão e cai no login. Enquanto isso, a tela mostra "Abrindo seu compartimento…".
 
-## 7.3 Adicionar um gasto variável
+## 7.3 Importar a fatura
+
+É o modo padrão da aba Adicionar ("Importar fatura"; a outra aba é "Lançar à
+mão"). A escolha do modo fica guardada no compartimento.
+
+```mermaid
+flowchart TD
+  A["Escolhe a origem da fatura"] --> B{"De onde vem o arquivo?"}
+  B -- "anexo" --> C["Anexa o CSV ou o ZIP"]
+  B -- "email" --> D["Toca na caixa (Gmail ou Outlook) e em Revisar na fatura achada"]
+  D --> E["Origem e senha do ZIP vêm do remetente cadastrado"]
+  C --> F{"ZIP protegido?"}
+  E --> F
+  F -- "sim" --> G["Digita a senha do ZIP"]
+  G --> F
+  F -- "não" --> H["Revisão só com as compras novas"]
+  H --> I{"IA ligada?"}
+  I -- "sim" --> J["Categoria e descrição sugeridas pela IA"]
+  I -- "não" --> K["Categoria pelo histórico e pela categoria do banco"]
+  J --> L["Confere, desmarca o que não entra, ajusta categorias"]
+  K --> L
+  L --> M["Importar: variáveis, fixos parcelados e o registro de cada compra"]
+```
+
+1. **Origem.** A fileira de origens vale para a fatura inteira (o cartão de
+   onde ela veio). Na fatura achada no email, o remetente já escolhe a origem.
+2. **Arquivo.** CSV direto ou ZIP com CSV dentro. O banco é reconhecido pelo
+   cabeçalho: Nubank, C6 ou genérico. ZIP protegido pede a senha (no email, a
+   senha cadastrada no remetente é usada sozinha).
+3. **Revisão.** Só aparecem as compras que ainda não entraram no app; o resumo
+   conta as que já estavam e os pagamentos e créditos da fatura, que não são
+   gasto. Compra com o mesmo valor no mesmo dia de um lançamento feito à mão
+   vem desmarcada, com o aviso "parece já lançada à mão".
+4. **Categoria.** Vem do que o usuário já classificou (o mesmo estabelecimento
+   em importações anteriores ou no mês), da categoria do banco (C6) ou da IA,
+   com um selo dizendo de onde veio. A IA pode sugerir uma categoria nova, que
+   aparece como "Nova: Nome" no seletor e é criada ao importar.
+5. **Parcelada.** Compra com parcela ("2/3") entra como **gasto fixo
+   parcelado** na origem da fatura: as próximas parcelas já ficam nos meses
+   seguintes e ela sai depois da última. "Só esta parcela" a importa como
+   lançamento variável.
+6. **Importar.** Grava no mês em aberto, na semana corrente. Compra
+   desmarcada não entra e não volta nas próximas importações. Reimportar a
+   mesma fatura (ou a seguinte, que repete parcelas) não cria nada repetido:
+   a próxima parcela de uma compra que já virou gasto fixo nem aparece.
+
+Detalhes técnicos em [11-importacao-e-ia.md](11-importacao-e-ia.md).
+
+## 7.3.1 Adicionar um gasto variável à mão
+
+No modo "Lançar à mão":
 
 1. A categoria padrão já vem selecionada; o usuário pode trocar no chip ou criar
    uma categoria na hora pelo chip "+ categoria".
@@ -84,7 +134,7 @@ Quando o dia é domingo e a semana ainda não virou naquele dia, o card mostra u
 aviso sugerindo a virada. O app nunca vira a semana sozinho: lembrar é
 reversível, virar não.
 
-## 7.3.1 Histórico do mês (aba Adicionar)
+## 7.3.2 Histórico do mês (aba Adicionar)
 
 No rodapé da aba Adicionar, abaixo do card de estatísticas, fica o
 histórico do mês em duas subabas:
@@ -165,6 +215,13 @@ O ideal da origem funciona como o da categoria: vale para todo mês, é copiado
 para a linha do mês em aberto e alimenta uma comparação própria na aba
 Estatísticas. Ele não entra no ideal do mês, porque origem e categoria são dois
 eixos do mesmo dinheiro e somar os dois contaria cada gasto duas vezes.
+
+Faturas por email: a quinta seção conecta as caixas de email ("Conectar Gmail"
+abre o login do Google e "Conectar Outlook/Hotmail" o da Microsoft, os dois só
+leitura) e cadastra os remetentes de
+fatura, cada um com a origem e, quando o banco manda ZIP protegido, a senha
+dele. A busca em si fica na aba Adicionar, um botão por caixa, e roda quando o
+usuário toca: o app não tem servidor para escutar a caixa o tempo todo.
 
 Remoção é sempre desativação (`active: false`), com efeito no mês em aberto:
 
@@ -373,7 +430,26 @@ O plano conta com o que foi pago no Pagamento, e não com um saldo informado: o
 foco do app é o controle do mês, e o plano é a conta de onde se chega guardando
 aquele valor.
 
-## 7.10 Offline e instalação
+## 7.10 Configurações de IA
+
+O botão com o ícone de brilho no topo abre a tela "Configurações de IA", que
+vale para o compartimento inteiro, em qualquer aparelho:
+
+1. **Provedor e credenciais.** A fila de modelos: o principal e até cinco
+   reservas, cada um com provedor (Claude, OpenAI, Gemini ou Ollama), modelo
+   (a lista vem do próprio provedor, com a chave digitada) e chave de API.
+   Reserva do mesmo provedor herda a chave ("Chave já preenchida no modelo
+   N"). Quando um modelo bate no limite ou falha, o app tenta o próximo, e o
+   que falhou sai da frente por alguns minutos.
+2. **Instruções.** Regras do usuário para a organização da fatura ("Uber vai
+   em Transporte"), com o padrão sugerido para restaurar.
+3. **Testar e salvar.** "Testar" manda uma pergunta curta e diz qual modelo
+   respondeu. A chave é gravada cifrada com a senha do compartimento.
+
+Sem IA configurada a importação funciona do mesmo jeito, com as sugestões
+vindo só do histórico e da categoria do banco.
+
+## 7.11 Offline e instalação
 
 O app é um PWA instalável. O shell é pré-cacheado pelo service worker e os dados
 vêm do cache offline do SDK do Firestore em IndexedDB: sem rede, os últimos dados
