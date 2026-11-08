@@ -36,6 +36,10 @@ export default defineConfig(() => ({
         // interceptadas (o SDK já tem cache offline próprio via IndexedDB).
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         navigationPreload: false,
+        // A página de retorno do login da Microsoft é um arquivo próprio
+        // (public/auth-redirect.html), e não o app: a navegação até ela nunca
+        // pode cair no index.html.
+        navigateFallbackDenylist: [/auth-redirect\.html/],
         cleanupOutdatedCaches: true,
         // As fontes da identidade (Chakra Petch e Oxanium) vêm do Google
         // Fonts: sem cache elas sumiriam offline e o app cairia na fonte do

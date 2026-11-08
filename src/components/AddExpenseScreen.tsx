@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { CalendarDays, Eraser, Plus } from 'lucide-react';
+import { CalendarDays, Eraser, FileUp, PenLine, Plus } from 'lucide-react';
 import { addCategory, addVariableExpense } from '../services/expenses';
 import { monthWeek } from '../services/months';
 import type { ViewPrefs } from '../services/compartments';
@@ -15,6 +15,7 @@ import {
 import { MoneyInput } from './shared';
 import { AddStatsCard } from './AddStatsCard';
 import { ExpenseHistory } from './ExpenseHistory';
+import { StatementImport } from './StatementImport';
 import { OriginIcon } from './OriginIcon';
 import type { MonthData } from '../hooks/useMonthData';
 import type { Category, Origin } from '../types';
@@ -28,6 +29,7 @@ export function AddExpenseScreen(props: {
   /** Preferências do card de estatísticas, guardadas no compartimento. */
   prefs: ViewPrefs;
   onPrefsChange: (patch: Partial<ViewPrefs>) => void;
+  onOpenAiSettings: () => void;
 }) {
   const { compartmentId, currentMonth, categories, origins, data } = props;
   // Pré-seleção: a categoria padrão do compartimento (Avulso, até o usuário
@@ -127,125 +129,163 @@ export function AddExpenseScreen(props: {
     }
   };
 
+  const mode = props.prefs.addMode;
+
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2 className="h2-gold">Novo gasto</h2>
+        <h2 className="h2-gold">{mode === 'import' ? 'Importar fatura' : 'Novo gasto'}</h2>
         <span className="muted">{monthLabel(currentMonth)}</span>
       </header>
 
-      <form className="add-form card" onSubmit={submit}>
-        <div className="chip-row" role="radiogroup" aria-label="Categoria">
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={`chip${selected?.id === c.id ? ' selected' : ''}`}
-              onClick={() => setCategoryId(c.id)}
-            >
-              {c.name}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="chip new"
-            onClick={() => setShowNewCategory((v) => !v)}
-          >
-            <Plus size={14} aria-hidden /> categoria
-          </button>
-        </div>
+      {/* A fatura é o caminho principal de alimentar o mês; o lançamento à
+          mão continua para o que não passa pelo cartão (dinheiro, Pix). */}
+      <div className="subtabs add-mode" role="tablist" aria-label="Como adicionar">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'import'}
+          className={`subtab${mode === 'import' ? ' active' : ''}`}
+          onClick={() => props.onPrefsChange({ addMode: 'import' })}
+        >
+          <FileUp size={14} aria-hidden /> Importar fatura
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'manual'}
+          className={`subtab${mode === 'manual' ? ' active' : ''}`}
+          onClick={() => props.onPrefsChange({ addMode: 'manual' })}
+        >
+          <PenLine size={14} aria-hidden /> Lançar à mão
+        </button>
+      </div>
 
-        {showNewCategory && (
-          <div className="new-category">
+      {mode === 'import' && (
+        <StatementImport
+          compartmentId={compartmentId}
+          currentMonth={currentMonth}
+          categories={categories}
+          origins={origins}
+          data={data}
+          onOpenAiSettings={props.onOpenAiSettings}
+        />
+      )}
+
+      {mode === 'manual' && (
+        <form className="add-form card" onSubmit={submit}>
+          <div className="chip-row" role="radiogroup" aria-label="Categoria">
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`chip${selected?.id === c.id ? ' selected' : ''}`}
+                onClick={() => setCategoryId(c.id)}
+              >
+                {c.name}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="chip new"
+              onClick={() => setShowNewCategory((v) => !v)}
+            >
+              <Plus size={14} aria-hidden /> categoria
+            </button>
+          </div>
+
+          {showNewCategory && (
+            <div className="new-category">
+              <span className="field">
+                <input
+                  placeholder="Nome da categoria"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                />
+              </span>
+              <MoneyInput
+                valueCents={newCatIdeal}
+                onChange={setNewCatIdeal}
+                placeholder="Gasto ideal/mês"
+              />
+              <button className="btn small" type="button" onClick={createCategory} disabled={busy}>
+                Criar
+              </button>
+            </div>
+          )}
+
+          <MoneyInput valueCents={cents} onChange={setCents} big autoFocus />
+          <div className="desc-row">
             <span className="field">
               <input
-                placeholder="Nome da categoria"
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="Descrição (opcional)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </span>
-            <MoneyInput
-              valueCents={newCatIdeal}
-              onChange={setNewCatIdeal}
-              placeholder="Gasto ideal/mês"
-            />
-            <button className="btn small" type="button" onClick={createCategory} disabled={busy}>
-              Criar
+            {/* O input nativo fica invisível por cima do botão: o toque real
+                abre o calendário do sistema, sem campos extras na tela. */}
+            <div className={`btn icon date-btn${isToday ? '' : ' custom'}`}>
+              <CalendarDays size={18} aria-hidden />
+              <input
+                ref={dateInputRef}
+                type="date"
+                className="date-native"
+                aria-label={dateSummary}
+                title={dateSummary}
+                value={date}
+                onClick={openDatePicker}
+                onChange={(e) => {
+                  // "Limpar" no seletor do celular devolve valor vazio: volta
+                  // para hoje e reescreve o campo, já que o estado pode não
+                  // mudar (e aí não haveria re-render para corrigi-lo).
+                  if (!e.target.value) e.target.value = today;
+                  pickDate(e.target.value);
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn icon date-clear"
+              aria-label="Limpar a data escolhida e voltar para hoje"
+              title="Limpar a data escolhida e voltar para hoje"
+              disabled={isToday}
+              onClick={() => setDate(today)}
+            >
+              <Eraser size={18} aria-hidden />
             </button>
           </div>
-        )}
 
-        <MoneyInput valueCents={cents} onChange={setCents} big autoFocus />
-        <div className="desc-row">
-          <span className="field">
-            <input
-              placeholder="Descrição (opcional)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </span>
-          {/* O input nativo fica invisível por cima do botão: o toque real
-              abre o calendário do sistema, sem campos extras na tela. */}
-          <div className={`btn icon date-btn${isToday ? '' : ' custom'}`}>
-            <CalendarDays size={18} aria-hidden />
-            <input
-              ref={dateInputRef}
-              type="date"
-              className="date-native"
-              aria-label={dateSummary}
-              title={dateSummary}
-              value={date}
-              onClick={openDatePicker}
-              onChange={(e) => {
-                // "Limpar" no seletor do celular devolve valor vazio: volta
-                // para hoje e reescreve o campo, já que o estado pode não
-                // mudar (e aí não haveria re-render para corrigi-lo).
-                if (!e.target.value) e.target.value = today;
-                pickDate(e.target.value);
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            className="btn icon date-clear"
-            aria-label="Limpar a data escolhida e voltar para hoje"
-            title="Limpar a data escolhida e voltar para hoje"
-            disabled={isToday}
-            onClick={() => setDate(today)}
-          >
-            <Eraser size={18} aria-hidden />
-          </button>
-        </div>
+          <p className={`date-status${isToday ? '' : ' custom'}`}>
+            Data:{' '}
+            <strong>{isToday ? `hoje (${dayKeyLabel(date)})` : dayKeyFullLabel(date)}</strong>
+          </p>
 
-        <p className={`date-status${isToday ? '' : ' custom'}`}>
-          Data:{' '}
-          <strong>{isToday ? `hoje (${dayKeyLabel(date)})` : dayKeyFullLabel(date)}</strong>
-        </p>
-
-        {origins.length > 0 && (
-          <div className="origin-picker">
-            <span className="origin-label">Origem</span>
-            <div className="chip-row" role="radiogroup" aria-label="Origem do gasto">
-              {origins.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`chip${selectedOrigin?.id === o.id ? ' selected' : ''}`}
-                  onClick={() => setOriginId(o.id)}
-                >
-                  <OriginIcon icon={o.icon} color={o.color} />
-                  {o.name}
-                </button>
-              ))}
+          {origins.length > 0 && (
+            <div className="origin-picker">
+              <span className="origin-label">Origem</span>
+              <div className="chip-row" role="radiogroup" aria-label="Origem do gasto">
+                {origins.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className={`chip${selectedOrigin?.id === o.id ? ' selected' : ''}`}
+                    onClick={() => setOriginId(o.id)}
+                  >
+                    <OriginIcon icon={o.icon} color={o.color} />
+                    {o.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <button className="btn primary block" type="submit" disabled={busy || cents <= 0}>
-          {busy ? 'Salvando…' : `Adicionar em "${selected?.name ?? '…'}"`}
-        </button>
-        {flash && <p className="flash">{flash}</p>}
-      </form>
+          <button className="btn primary block" type="submit" disabled={busy || cents <= 0}>
+            {busy ? 'Salvando…' : `Adicionar em "${selected?.name ?? '…'}"`}
+          </button>
+          {flash && <p className="flash">{flash}</p>}
+        </form>
+      )}
 
       <AddStatsCard
         compartmentId={compartmentId}

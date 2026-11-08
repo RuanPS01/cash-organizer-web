@@ -501,6 +501,9 @@ export function ExpenseHistory(props: {
                   ) : (
                     <ClassBadge kind="origin" label="sem origem" empty />
                   )}
+                  {/* Veio de uma fatura importada: é o que explica o lançamento
+                      não voltar ao reimportar a mesma fatura. */}
+                  {e.importKey && <span className="badge imported">fatura</span>}
                 </span>
                 <span className="history-value">
                   <strong>{formatBRL(e.amount)}</strong>

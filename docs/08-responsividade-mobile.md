@@ -151,6 +151,34 @@ grade de ícones, é mais alto que a tela de um celular.
 - **Selo do gasto fixo de planejamento.** `white-space: nowrap`: dentro da
   linha de selos do histórico ele quebrava no meio ("faltam 23 / meses").
 
+## 8.4.3 Importação de fatura e configurações de IA
+
+- **Revisão da fatura.** Cada compra é uma grade de três colunas e três
+  linhas, em qualquer largura:
+
+  ```
+  'check desc  value'
+  'check meta  meta'
+  'check class class'
+  ```
+
+  A caixa de marcação ocupa as três linhas, a descrição é um campo em
+  `minmax(0, 1fr)` e o valor nunca quebra. Na linha de baixo, o seletor de
+  categoria cresce até 22rem e desce com o selo da sugestão quando não cabe; o
+  título original e o cartão quebram com `overflow-wrap: anywhere`.
+- **Área de anexo.** O input de arquivo fica invisível por cima da peça
+  inteira: o toque em qualquer ponto abre o seletor de arquivo do sistema, e no
+  desktop dá para arrastar o arquivo.
+- **Botões das caixas de email.** O endereço pode ser longo: o botão quebra o
+  texto por dentro (`overflow-wrap: anywhere`) em vez de empurrar a fileira.
+- **Topo.** O botão de IA é só o ícone, entre o nome do compartimento e o
+  "Sair": em 360px os três já disputam a largura, e o nome é o que encurta.
+- **Fila de modelos.** Provedor e modelo ficam em uma coluna no celular e lado a
+  lado a partir de 560px; a chave ocupa a largura toda. As abas da tela de IA
+  quebram o rótulo em duas linhas em 360px.
+- Conferido em 360px nas abas Adicionar (os dois modos), Gerenciar, Pagamento e
+  na tela de IA, sem rolagem horizontal da página, e em 1280px.
+
 ## 8.5 Rolagem horizontal permitida
 
 Só dois contêineres rolam na horizontal, e de propósito:

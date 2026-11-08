@@ -37,6 +37,14 @@ export const ADD_STATS_TABS = ['month', 'category', 'origin'] as const;
 
 export type AddStatsTab = (typeof ADD_STATS_TABS)[number];
 
+/**
+ * Modo da tela Adicionar: importar a fatura (o padrão) ou lançar à mão. Fica
+ * no compartimento, com as outras preferências da tela.
+ */
+export const ADD_MODES = ['import', 'manual'] as const;
+
+export type AddMode = (typeof ADD_MODES)[number];
+
 /** Todos os valores monetários são armazenados em centavos (inteiro). */
 export interface Compartment {
   id: string;
@@ -54,6 +62,8 @@ export interface Compartment {
   weekOriginId?: string | null;
   /** Aba aberta no card; ausente vale "month", que é o resumo do mês. */
   addStatsTab?: AddStatsTab;
+  /** Modo da tela Adicionar; ausente vale "import", a importação da fatura. */
+  addMode?: AddMode;
   /**
    * Renda mensal líquida, em centavos: o que entra todo mês, já descontado o
    * que não chega na conta. É a referência do restante do mês, e cada mês
@@ -97,6 +107,11 @@ export interface FixedExpense {
    * comum.
    */
   planId?: string | null;
+  /**
+   * Chave da compra parcelada que veio de uma fatura importada. Ausente no
+   * gasto fixo cadastrado à mão.
+   */
+  importKey?: string;
   active: boolean;
   createdAt: number;
 }
@@ -310,6 +325,12 @@ export interface VariableExpense {
   originId?: string | null;
   /** Denormalizado, mantém o histórico legível se a origem for renomeada. */
   originName?: string;
+  /**
+   * Chave da compra na fatura importada (ver `utils/statement.ts`). Ausente no
+   * lançamento digitado à mão. É o que liga o lançamento ao registro de
+   * importação (`ImportedItem`), que impede a mesma compra de entrar de novo.
+   */
+  importKey?: string;
 }
 
 export interface Session {
@@ -398,4 +419,126 @@ export interface Plan {
   progress?: Record<string, PlanMonthRecord>;
   active: boolean;
   createdAt: number;
+}
+
+// ---------------------------------------------------------------------------
+// Importação de fatura e IA
+// ---------------------------------------------------------------------------
+
+/**
+ * O que aconteceu com uma compra de fatura já vista pelo app:
+ * - `expense`: virou lançamento variável;
+ * - `fixed`: virou gasto fixo parcelado (as próximas parcelas vêm sozinhas);
+ * - `skipped`: o usuário desmarcou na revisão e não quer vê-la de novo.
+ */
+export const IMPORTED_KINDS = ['expense', 'fixed', 'skipped'] as const;
+
+export type ImportedKind = (typeof IMPORTED_KINDS)[number];
+
+/**
+ * Registro de importação: um documento por compra de fatura que já passou
+ * pela revisão, com id derivado da chave da compra. É ele que faz a
+ * importação criar só o que ainda não entrou, mesmo que o lançamento esteja
+ * em outro mês.
+ */
+export interface ImportedItem {
+  id: string;
+  kind: ImportedKind;
+  /** A chave da compra em texto (o id do documento é o hash dela). */
+  key: string;
+  /** Mês do app em que a compra entrou. */
+  ym: string;
+  /** Lançamento ou gasto fixo criado; vazio quando ignorada. */
+  refId: string;
+  /** Título como veio no arquivo e o estabelecimento normalizado. */
+  title: string;
+  merchant: string;
+  /** Categoria escolhida na revisão (vazia no gasto fixo e no ignorado). */
+  categoryId: string;
+  categoryName: string;
+  amount: number;
+  /**
+   * Último mês em que a compra parcelada ainda aparece nas faturas
+   * (`YYYY-MM`). Depois dele a chave deixa de bloquear, para uma compra nova
+   * idêntica (mesma loja, valor e parcelas) poder entrar. `null` na compra à
+   * vista, que bloqueia para sempre.
+   */
+  until: string | null;
+  createdAt: number;
+}
+
+export const AI_PROVIDERS = ['claude', 'openai', 'gemini', 'ollama'] as const;
+
+export type AiProvider = (typeof AI_PROVIDERS)[number];
+
+/**
+ * Um item da fila de modelos de IA, já com a chave em claro (só em memória).
+ * Reserva sem chave herda a do item anterior do mesmo provedor; no Ollama a
+ * credencial é a URL do servidor.
+ */
+export interface AiModelEntry {
+  provider: AiProvider;
+  /** Vazio usa o modelo padrão do provedor. */
+  model: string;
+  apiKey: string;
+  /** Só no Ollama. */
+  baseUrl: string;
+}
+
+/** Instruções editáveis da IA, por uso. Hoje só a organização da fatura. */
+export interface AiInstructions {
+  categorize: string;
+}
+
+/**
+ * Configuração de IA como fica gravada (`settings/ai`). A chave de API vai
+ * cifrada com a chave derivada da senha do compartimento (`sealedKey`): quem
+ * lê o documento sem a senha não chega à chave.
+ */
+export interface StoredAiSettings {
+  chain: { provider: AiProvider; model: string; sealedKey: string; baseUrl: string }[];
+  instructions: AiInstructions;
+  updatedAt: number;
+}
+
+/**
+ * Provedores de email de onde a fatura pode ser buscada sem servidor: os dois
+ * têm login próprio e API que aceita chamada do navegador. Provedor só com
+ * IMAP (Yahoo, iCloud, UOL) pediria um servidor.
+ */
+export const EMAIL_PROVIDERS = ['gmail', 'microsoft'] as const;
+
+export type EmailProvider = (typeof EMAIL_PROVIDERS)[number];
+
+/** Caixa de email conectada para buscar faturas. */
+export interface EmailMailbox {
+  email: string;
+  /**
+   * Gmail ou conta Microsoft (Outlook, Hotmail, Live, Microsoft 365).
+   * Ausente na caixa conectada antes do Outlook existir, que é do Gmail.
+   */
+  provider?: EmailProvider;
+  addedAt: number;
+}
+
+/**
+ * Remetente de fatura: de quem vem o email, para qual origem do gasto a fatura
+ * vai e, quando o banco manda ZIP protegido, a senha dele (cifrada como a
+ * chave de API).
+ */
+export interface EmailSender {
+  /** Endereço completo ou só o domínio ("nubank.com.br"). */
+  address: string;
+  originId: string | null;
+  originName: string;
+  sealedZipPassword: string;
+}
+
+/** Configuração da importação por email (`settings/emailImport`). */
+export interface StoredEmailImportSettings {
+  mailboxes: EmailMailbox[];
+  senders: EmailSender[];
+  /** Quantos dias para trás a busca olha. */
+  lookbackDays: number;
+  updatedAt: number;
 }
