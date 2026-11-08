@@ -38,10 +38,11 @@ export const ADD_STATS_TABS = ['month', 'category', 'origin'] as const;
 export type AddStatsTab = (typeof ADD_STATS_TABS)[number];
 
 /**
- * Modo da tela Adicionar: importar a fatura (o padrão) ou lançar à mão. Fica
- * no compartimento, com as outras preferências da tela.
+ * Modo da tela Adicionar: lançar à mão (o padrão, na aba da esquerda) ou
+ * importar a fatura. Fica no compartimento, com as outras preferências da
+ * tela.
  */
-export const ADD_MODES = ['import', 'manual'] as const;
+export const ADD_MODES = ['manual', 'import'] as const;
 
 export type AddMode = (typeof ADD_MODES)[number];
 
@@ -62,7 +63,7 @@ export interface Compartment {
   weekOriginId?: string | null;
   /** Aba aberta no card; ausente vale "month", que é o resumo do mês. */
   addStatsTab?: AddStatsTab;
-  /** Modo da tela Adicionar; ausente vale "import", a importação da fatura. */
+  /** Modo da tela Adicionar; ausente vale "manual", o lançamento à mão. */
   addMode?: AddMode;
   /**
    * Renda mensal líquida, em centavos: o que entra todo mês, já descontado o
@@ -498,47 +499,5 @@ export interface AiInstructions {
 export interface StoredAiSettings {
   chain: { provider: AiProvider; model: string; sealedKey: string; baseUrl: string }[];
   instructions: AiInstructions;
-  updatedAt: number;
-}
-
-/**
- * Provedores de email de onde a fatura pode ser buscada sem servidor: os dois
- * têm login próprio e API que aceita chamada do navegador. Provedor só com
- * IMAP (Yahoo, iCloud, UOL) pediria um servidor.
- */
-export const EMAIL_PROVIDERS = ['gmail', 'microsoft'] as const;
-
-export type EmailProvider = (typeof EMAIL_PROVIDERS)[number];
-
-/** Caixa de email conectada para buscar faturas. */
-export interface EmailMailbox {
-  email: string;
-  /**
-   * Gmail ou conta Microsoft (Outlook, Hotmail, Live, Microsoft 365).
-   * Ausente na caixa conectada antes do Outlook existir, que é do Gmail.
-   */
-  provider?: EmailProvider;
-  addedAt: number;
-}
-
-/**
- * Remetente de fatura: de quem vem o email, para qual origem do gasto a fatura
- * vai e, quando o banco manda ZIP protegido, a senha dele (cifrada como a
- * chave de API).
- */
-export interface EmailSender {
-  /** Endereço completo ou só o domínio ("nubank.com.br"). */
-  address: string;
-  originId: string | null;
-  originName: string;
-  sealedZipPassword: string;
-}
-
-/** Configuração da importação por email (`settings/emailImport`). */
-export interface StoredEmailImportSettings {
-  mailboxes: EmailMailbox[];
-  senders: EmailSender[];
-  /** Quantos dias para trás a busca olha. */
-  lookbackDays: number;
   updatedAt: number;
 }

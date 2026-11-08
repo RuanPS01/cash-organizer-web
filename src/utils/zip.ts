@@ -1,7 +1,8 @@
 /**
- * Leitor mínimo de ZIP, sem dependência: só o que a fatura por email precisa
+ * Leitor mínimo de ZIP, sem dependência: só o que a fatura em ZIP precisa
  * (arquivos guardados ou comprimidos com deflate, com ou sem a criptografia
- * tradicional do ZIP, cuja senha o próprio usuário informa).
+ * tradicional do ZIP, cuja senha o próprio usuário informa). O C6, por
+ * exemplo, manda a fatura em ZIP protegido.
  *
  * A descompressão usa o `DecompressionStream('deflate-raw')` do navegador. ZIP
  * com criptografia AES (método 99) não é aberto: a mensagem pede o arquivo

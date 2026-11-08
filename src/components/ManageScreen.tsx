@@ -17,7 +17,6 @@ import type { FixedExpenseInput } from '../services/expenses';
 import { formatBRL } from '../utils/money';
 import { EditableMoney, EditableText, MoneyInput, ConfirmModal } from './shared';
 import { ManageOrigins } from './ManageOrigins';
-import { ManageEmailImport } from './ManageEmailImport';
 import { OriginIcon } from './OriginIcon';
 import { PlanBadge } from './PlanBadge';
 import type { MonthData } from '../hooks/useMonthData';
@@ -518,8 +517,6 @@ export function ManageScreen(props: {
         currentMonth={currentMonth}
         origins={origins}
       />
-
-      <ManageEmailImport compartmentId={compartmentId} origins={origins} />
 
       {fixedModal !== 'closed' && (
         <FixedExpenseModal

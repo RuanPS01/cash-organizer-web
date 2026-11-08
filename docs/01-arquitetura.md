@@ -7,11 +7,9 @@ próprio e sem servidor de API. Não há autenticação do Firebase Auth: o cont
 de acesso é o par nome + senha do compartimento, validado no cliente contra o
 hash guardado no documento do compartimento.
 
-Fora do Firestore, o navegador fala com dois serviços externos, sempre por
+Fora do Firestore, o navegador fala com um serviço externo, sempre por
 `services/`: os provedores de IA (Claude, OpenAI, Gemini ou Ollama), que
-organizam a fatura importada, e o email (Gmail ou conta Microsoft, com Outlook
-e Hotmail), de onde a fatura pode ser buscada.
-Os dois estão em [11-importacao-e-ia.md](11-importacao-e-ia.md).
+organizam a fatura importada. Ver [11-importacao-e-ia.md](11-importacao-e-ia.md).
 
 As regras de segurança e as functions do Firebase vivem em outro repositório,
 `cash-organizer-functions`. Alterações de permissão de leitura e escrita não são
@@ -30,9 +28,9 @@ flowchart TD
   D --> Q["AiSettingsScreen (botão do topo)"]
   E --> R["StatementImport e ImportReview"]
   E --> I["hooks useMonthData, useConfig e usePlans"]
-  R --> S["services imports, ai, aiProviders, emailImport"]
+  R --> S["services imports, ai, aiProviders"]
   Q --> S
-  S --> T[("Provedores de IA, Gmail e Microsoft")]
+  S --> T[("Provedores de IA")]
   F --> I
   G --> I
   P --> I
@@ -55,12 +53,11 @@ src/
   types.ts                  tipos de domínio e ENTRY_STATUSES
   components/
     LoginScreen.tsx         entrada e criação de compartimento
-    AddExpenseScreen.tsx    tela principal: importar fatura ou lançar à mão
-    StatementImport.tsx     card de importação de fatura (anexo, ZIP, email, IA)
+    AddExpenseScreen.tsx    tela principal: lançar à mão ou importar fatura
+    StatementImport.tsx     card de importação de fatura (anexo, ZIP, IA)
     ImportReview.tsx        revisão da fatura importada, uma linha por compra
     AiSettingsScreen.tsx    configurações de IA (botão do topo)
     AiModelChain.tsx        editor da fila de modelos de IA
-    ManageEmailImport.tsx   seção "Faturas por email" da tela Gerenciar
     MonthScreen.tsx         mês corrente: pagamento e estatísticas
     ManageScreen.tsx        renda mensal, cadastro de fixos e categorias
     StatsView.tsx           subtela de estatísticas usada pelo MonthScreen
@@ -77,7 +74,7 @@ src/
     PlanBadge.tsx           selo do gasto fixo de planejamento nas listas do mês
     shared.tsx              componentes genéricos reutilizáveis
   hooks/
-    useMonthData.ts         useMonthData, useConfig, usePlans, useAiConfig e useEmailConfig
+    useMonthData.ts         useMonthData, useConfig, usePlans e useAiConfig
     useKeyboardInset.ts     mede o teclado virtual e publica --keyboard-inset
   services/
     compartments.ts         criar, abrir, buscar, preferências e renda do compartimento
@@ -89,9 +86,6 @@ src/
     imports.ts              rascunho da revisão e gravação da fatura importada
     ai.ts                   configuração de IA e a organização da fatura
     aiProviders.ts          provedores de IA, fila de modelos e quarentena
-    emailImport.ts          configuração de faturas por email e a escolha do provedor
-    gmail.ts                login do Google e busca na API do Gmail
-    outlook.ts              login da Microsoft (PKCE) e busca no Microsoft Graph
   utils/
     crypto.ts               SHA-256 da senha, AES-GCM da sessão e dos segredos
     csv.ts                  leitura de CSV, valor e data de fatura
@@ -101,7 +95,6 @@ src/
     money.ts                formatBRL, formatBRLCompact e digitsToCents
     projection.ts           conta da projeção do planejamento (juros, IR, meta)
 public/icons/               ícones do PWA
-public/auth-redirect.html   retorno do login da Microsoft (não carrega o app)
 .github/workflows/deploy.yml  build e deploy no GitHub Pages
 ```
 
@@ -114,7 +107,7 @@ public/auth-redirect.html   retorno do login da Microsoft (não carrega o app)
 | Telas | `components/*Screen.tsx` | estado de formulário, chamadas a serviços, montagem visual | montar query do Firestore |
 | Componentes genéricos | `components/shared.tsx` | UI sem conhecimento de domínio | importar serviços ou tipos de domínio |
 | Hooks | `hooks/*.ts` | assinar coleções com `onSnapshot` e devolver estado, ou observar o ambiente do navegador | escrever no banco |
-| Serviços | `services/*.ts` | toda leitura e escrita no Firestore, chamadas aos provedores de IA, ao Gmail e à Microsoft, regras de consistência | renderizar JSX |
+| Serviços | `services/*.ts` | toda leitura e escrita no Firestore, chamadas aos provedores de IA, regras de consistência | renderizar JSX |
 | Utilitários | `utils/*.ts` | funções puras, sem React e sem Firestore | acessar `db` |
 
 Regra prática: se um componente precisa de `collection`, `doc` ou `onSnapshot`,
@@ -186,10 +179,6 @@ lista.
 - `VITE_BASE_PATH` define o `base` do Vite. Local fica `/`; no GitHub Pages o
   workflow injeta `/cash-organizer-web/`.
 - `VITE_FIRESTORE_EMULATOR_HOST` (opcional) aponta o SDK para o emulador local.
-- `VITE_GOOGLE_CLIENT_ID` e `VITE_MICROSOFT_CLIENT_ID` (opcionais) são os ids
-  do app no Google e na Microsoft que ligam a busca de faturas no Gmail e no
-  Outlook/Hotmail. Sem nenhum dos dois a seção de email avisa e a busca fica
-  desligada; com um só, aparece só o botão daquele provedor.
 - O Firestore é inicializado com `persistentLocalCache` e
   `persistentSingleTabManager`, o que dá cache offline em IndexedDB e sincronismo
   ao reconectar. Por isso o app abre e mostra os últimos dados mesmo sem rede.

@@ -37,7 +37,7 @@ function Shell(props: { compartment: Compartment; onLogout: () => void }) {
     weekCategoryId: props.compartment.weekCategoryId ?? null,
     weekOriginId: props.compartment.weekOriginId ?? null,
     addStatsTab: props.compartment.addStatsTab ?? 'month',
-    addMode: props.compartment.addMode ?? 'import',
+    addMode: props.compartment.addMode ?? 'manual',
   });
 
   const changePrefs = (patch: Partial<ViewPrefs>) => {

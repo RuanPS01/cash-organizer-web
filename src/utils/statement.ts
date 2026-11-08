@@ -239,7 +239,7 @@ export function parseStatement(text: string): ParsedStatement {
 }
 
 /**
- * Lê o arquivo anexado ou baixado do email: CSV direto, ou ZIP com um ou mais
+ * Lê o arquivo anexado: CSV direto, ou ZIP com um ou mais
  * CSVs dentro (juntados em uma fatura só, na ordem do ZIP). A senha só é usada
  * se o ZIP estiver protegido; sem ela, lança `ZipError` do tipo `password`.
  */
