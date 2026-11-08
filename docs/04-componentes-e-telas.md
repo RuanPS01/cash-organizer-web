@@ -35,9 +35,10 @@ chama `onEnter`.
 Tela principal, com dois modos na fileira de abas logo abaixo do título
 (`prefs.addMode`, guardado no compartimento):
 
-- **Importar fatura** (o padrão): o `StatementImport` e, quando há fatura
-  aberta, o `ImportReview`. O título da tela vira "Importar fatura";
-- **Lançar à mão**: o formulário de novo gasto descrito abaixo.
+- **Lançar à mão** (o padrão, aba da esquerda): o formulário de novo gasto
+  descrito abaixo;
+- **Importar fatura** (aba da direita): o `StatementImport` e, quando há
+  fatura aberta, o `ImportReview`. O título da tela vira "Importar fatura".
 
 O card de estatísticas e o histórico ficam embaixo nos dois modos. O
 formulário de lançamento à mão contém:
@@ -116,11 +117,9 @@ guardado.
 Card de importação: a fileira de origens (a origem vale para a fatura
 inteira), a área de anexo (`.file-drop`, CSV ou ZIP, também por arrastar no
 desktop), o pedido de senha quando o ZIP é protegido, a caixa "Organizar com
-IA" (desligada sem IA configurada, com o atalho "configurar IA") e, com caixas
-de email conectadas, um botão de busca por caixa e a lista das faturas
-achadas, cada uma com "Revisar". Lê o arquivo com `readStatementFile`, monta a
+IA" (desligada sem IA configurada, com o atalho "configurar IA"). Lê o arquivo com `readStatementFile`, monta a
 revisão com `prepareImport`, chama `categorizeWithAi` quando a IA está ligada e
-grava com `commitImport`. Assina `useAiConfig` e `useEmailConfig`.
+grava com `commitImport`. Assina `useAiConfig`.
 
 A IA chega depois da revisão aberta: linha que o usuário já mexeu não muda, a
 categoria que veio do histórico não é trocada, e a resposta de uma fatura
@@ -183,7 +182,7 @@ planejamento aparece na lista sem lápis, sem remoção e com o valor só para
 leitura, com a nota "Gerenciado na aba Planejamento": ele espelha o plano, e
 qualquer mudança passa por lá. A quarta seção, de
 origens do gasto (com o gasto ideal do mês de cada uma), é delegada ao
-`ManageOrigins`, e a quinta, "Faturas por email", ao `ManageEmailImport`.
+`ManageOrigins`.
 
 ### `PlanningScreen` (aba Planejamento)
 
@@ -435,18 +434,6 @@ ideal e remover refletem na linha do mês em aberto (é ela que a aba Pagamento
 lista), daí o `currentMonth` nas props. Modais ficam fora do `.card` de propósito: `clip-path`
 recorta até descendente `position: fixed`.
 
-### `components/ManageEmailImport.tsx`
-
-`props: { compartmentId, origins }`
-
-Seção "Faturas por email" da tela Gerenciar: caixas conectadas, com o selo do
-provedor ("Conectar Gmail" e "Conectar Outlook/Hotmail", um botão por provedor
-com o id do app no build, que abrem o login), remetentes de fatura
-(modal `SenderModal`, interno, com endereço ou domínio, origem e senha do ZIP)
-e a janela da busca em dias. Toda mudança grava a configuração inteira com
-`saveEmailSettings`. Sem nenhum id de provedor no build, mostra o aviso e desliga a
-conexão. Modais fora do `.card`, como em `ManageOrigins`.
-
 ### `components/OriginIcon.tsx`
 
 `props: { icon?, color?, size? }`
@@ -490,9 +477,8 @@ Os dois de dados ficam em
 | `useConfig(compartmentId)` | `{ fixedExpenses, categories, origins, monthlyIncome }` | cadastros do compartimento, já filtrados por `active` e ordenados, mais a renda mensal líquida (documento do compartimento) |
 | `usePlans(compartmentId)` | `{ loading, plans }` | planejamentos ativos, do mais recente para o mais antigo. Fica fora do `useConfig` porque só a aba Planejamento usa, e as outras telas não precisam manter a assinatura aberta |
 | `useAiConfig(compartmentId)` | `{ loading, config }` | `settings/ai`, entregue aberto (`openAiSettings`, chaves decifradas com `compartmentSecret`). Sem documento, a configuração vazia |
-| `useEmailConfig(compartmentId)` | `{ loading, config }` | `settings/emailImport`, com as senhas de ZIP decifradas (`openEmailSettings`) |
 
-Os dois últimos usam o mesmo `useSecretSettings` interno: a decifragem é
+O `useAiConfig` passa pelo `useSecretSettings` interno: a decifragem é
 assíncrona, e um snapshot antigo que termine depois do novo é descartado.
 
 `useKeyboardInset`, em
@@ -612,32 +598,6 @@ Tipos `DraftRow`, `ImportDraft`, `SuggestionSource` e `CommitResult`.
 classes `AiProviderError` e `AiContentError` e as constantes
 `AI_PROVIDER_LABEL`, `DEFAULT_AI_MODELS`, `AI_MODEL_CATALOG`,
 `DEFAULT_OLLAMA_URL`, `MAX_AI_MODEL_CHAIN` e `CALL_TIMEOUT_MS`.
-
-### `services/emailImport.ts`
-
-`emailSettingsRef`, `EMAIL_PROVIDER_LABEL`, `providerOf` (caixa sem o campo é
-do Gmail), `emailProviderAvailable`, `emailImportAvailable`,
-`openEmailSettings`, `saveEmailSettings`, `removeEmailSettings`,
-`connectMailbox(provider)`, `mailboxConnected(mailbox)`,
-`searchInvoices(mailbox, config)` (escolhe o provedor e casa cada anexo com o
-remetente), `matchSender` e `preloadEmailLogin`. Tipos `EmailConfig`,
-`EmailSenderConfig`, `RawInvoice` (o contrato com os provedores) e
-`FoundInvoice`. A conexão e a busca não esperam nada antes de chamar o
-provedor: a janela de login só abre dentro do gesto do usuário.
-
-### `services/gmail.ts`
-
-`GOOGLE_CLIENT_ID`, `gmailAvailable`, `preloadGoogleLogin`, `gmailConnected`,
-`connectGmail`, `searchGmail` e `GmailAuthError`. Login pelo Google Identity
-Services e busca na API do Gmail.
-
-### `services/outlook.ts`
-
-`MICROSOFT_CLIENT_ID`, `outlookAvailable`, `outlookRedirectUri`,
-`outlookConnected`, `connectOutlook`, `searchOutlook` e `OutlookAuthError`.
-Login da Microsoft com PKCE em janela (sem biblioteca), renovação do token sem
-janela e busca no Microsoft Graph. A página de retorno é
-`public/auth-redirect.html`.
 
 ## 4.5 Utilitários
 

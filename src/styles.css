@@ -2784,7 +2784,7 @@ td .badge.plan { margin-left: 0.4rem; }
 /* --------------------------------------------------------------------------
    Importação de fatura (aba Adicionar)
 
-   O card de importação (origem, anexo, IA e email) e, abaixo dele, o card de
+   O card de importação (origem, anexo e IA) e, abaixo dele, o card de
    revisão com uma linha por compra nova. A linha da revisão segue a mesma
    ideia do histórico do mês: caixa de marcação à esquerda ocupando a altura
    toda, texto em minmax(0, 1fr) e o valor à direita, que nunca quebra.
@@ -2863,64 +2863,6 @@ td .badge.plan { margin-left: 0.4rem; }
 .ai-toggle.off { color: var(--muted-dim); cursor: not-allowed; }
 
 .import-mode-hint { margin: 0.4rem 0 0; max-width: 60ch; }
-
-.email-search {
-  margin-top: 1rem;
-  padding-top: 0.9rem;
-  border-top: 1px dashed var(--line);
-}
-
-.email-search .origin-label {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.email-boxes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-/* O endereço da caixa pode ser longo: quebra dentro do botão em vez de
-   empurrar a fileira para fora da tela em 360px. */
-.email-boxes .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  max-width: 100%;
-  text-transform: none;
-  letter-spacing: 0.04em;
-  overflow-wrap: anywhere;
-}
-
-.found-list {
-  list-style: none;
-  margin: 0.7rem 0 0;
-  padding: 0;
-}
-
-.found-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.found-list li:last-child { border-bottom: none; }
-
-.found-text {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.found-name { font-size: 0.85rem; font-weight: 600; color: var(--text); }
-
-.found-list .btn { flex: 0 0 auto; }
 
 .import-card .form-error,
 .import-card .flash { margin-top: 0.8rem; }
@@ -3121,7 +3063,7 @@ td .badge.plan { margin-left: 0.4rem; }
 }
 
 /* --------------------------------------------------------------------------
-   Configurações de IA e de email
+   Configurações de IA
 
    A tela de IA abre pelo botão do topo e usa o cabeçalho de subpágina do
    Planejamento. Cada modelo da fila é uma peça com moldura, numerada, com os
@@ -3259,47 +3201,6 @@ td .badge.plan { margin-left: 0.4rem; }
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
-}
-
-.settings-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem 1rem;
-}
-
-/* Rótulo na mesma linha do seletor ("Buscar nos últimos [45 dias]"). */
-.settings-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-}
-
-.settings-inline .field { width: auto; margin-top: 0; }
-
-.card .manage-list + .btn,
-.card .manage-list + .settings-row,
-.card .manage-list + .mailbox-connect { margin-top: 0.4rem; }
-
-/* Um botão de conexão por provedor de email configurado no build. */
-.mailbox-connect {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-/* Endereço de email longo quebra em vez de empurrar o selo para fora. */
-.mailbox-name { overflow-wrap: anywhere; min-width: 0; }
-
-/* Provedor da caixa (Gmail ou Outlook/Hotmail): classificação, neutro. */
-.badge.provider {
-  --frame-edge: var(--line-soft);
-  --frame-fill: var(--surface-2);
-  color: var(--muted);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
 }
 
 @media (min-width: 560px) {

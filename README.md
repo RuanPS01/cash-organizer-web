@@ -40,8 +40,8 @@ manutenção. Agentes de IA devem começar por
   fechado (com totais gravados para estatísticas) e o próximo é criado mantendo os
   fixos e categorias. Meses anteriores continuam consultáveis.
 - **Importação de fatura**: o CSV da fatura do cartão (Nubank, C6 ou qualquer
-  CSV com data, descrição e valor), direto ou em ZIP, anexado ou buscado no
-  email (Gmail, Outlook ou Hotmail), vira os gastos do mês depois de uma revisão de categorias. Só entra o
+  CSV com data, descrição e valor), direto ou em ZIP, anexado na tela, vira os
+  gastos do mês depois de uma revisão de categorias. Só entra o
   que ainda não foi importado; compra parcelada vira gasto fixo parcelado. A
   IA (Claude, OpenAI, Gemini ou Ollama, configurada pelo botão do topo) é
   opcional e sugere categoria e descrição. Detalhes em
@@ -60,8 +60,9 @@ manutenção. Agentes de IA devem começar por
 ## Telas
 
 1. **Entrada**: nome + senha do compartimento (com modal de confirmação de criação).
-2. **Adicionar** (principal): importar a fatura (anexo, ZIP ou email, com
-   revisão de categorias) ou lançar à mão (categoria mais valor), com um
+2. **Adicionar** (principal): lançar à mão (categoria mais valor, o modo
+   padrão) ou, na aba ao lado, importar a fatura (CSV ou ZIP, com revisão de
+   categorias), com um
    informe de contexto (limite semanal, quanto falta no mês e na semana, total
    de fixos e variáveis).
 3. **Mês**: tabela de fixos, categorias com soma (expansível para ver os lançamentos),
@@ -79,7 +80,7 @@ compartments/{id}                    nome, hash da senha, mês corrente, renda m
   fixedExpenses/{id}                 cadastro dos gastos fixos
   categories/{id}                    cadastro das categorias (Avulso é padrão)
   plans/{id}                         planejamentos (entradas da simulação)
-  settings/{ai|emailImport}          configuração de IA e de faturas por email (segredos cifrados)
+  settings/ai                        configuração de IA (chave cifrada)
   importedItems/{hash}               registro das compras de fatura já importadas
   months/{YYYY-MM}                   status open/closed, renda do mês + totais ao fechar
     fixedEntries/{fixedId}           snapshot do fixo no mês (valor, status)

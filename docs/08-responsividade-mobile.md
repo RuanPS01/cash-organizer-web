@@ -169,8 +169,6 @@ grade de ícones, é mais alto que a tela de um celular.
 - **Área de anexo.** O input de arquivo fica invisível por cima da peça
   inteira: o toque em qualquer ponto abre o seletor de arquivo do sistema, e no
   desktop dá para arrastar o arquivo.
-- **Botões das caixas de email.** O endereço pode ser longo: o botão quebra o
-  texto por dentro (`overflow-wrap: anywhere`) em vez de empurrar a fileira.
 - **Topo.** O botão de IA é só o ícone, entre o nome do compartimento e o
   "Sair": em 360px os três já disputam a largura, e o nome é o que encurta.
 - **Fila de modelos.** Provedor e modelo ficam em uma coluna no celular e lado a

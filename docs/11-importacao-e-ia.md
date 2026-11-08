@@ -2,8 +2,7 @@
 
 Documento de referência da alimentação do mês por fatura de cartão: os
 formatos de CSV conhecidos, o caminho do arquivo até a revisão, o registro que
-impede duplicata, a busca no email (Gmail, Outlook e Hotmail) e o serviço de IA
-que organiza a fatura.
+impede duplicata e o serviço de IA que organiza a fatura.
 
 O serviço de IA segue o desenho do serviço de IA do Colab Notebook Arena
 (provedores atrás de uma função só, fila de modelos com reserva e quarentena,
@@ -19,16 +18,14 @@ fora.
 
 ## 11.1 Visão geral e decisões
 
-A tela Adicionar abre no modo **Importar fatura**: o usuário escolhe a origem
-(a mesma para a fatura inteira), anexa o CSV (ou o ZIP com o CSV dentro, ou
-busca o anexo no email) e revisa a categoria de cada compra antes de gravar.
-Só aparece o que ainda não entrou no app. O lançamento à mão continua no modo
-**Lançar à mão**, para o que não passa pelo cartão.
+A tela Adicionar abre no modo **Lançar à mão**, o principal; a aba ao lado,
+**Importar fatura**, é onde o usuário escolhe a origem (a mesma para a fatura
+inteira), anexa o CSV (ou o ZIP com o CSV dentro) e revisa a categoria de cada
+compra antes de gravar. Só aparece o que ainda não entrou no app.
 
 ```mermaid
 flowchart TD
   A["CSV ou ZIP anexado"] --> C["readStatementFile"]
-  B["Anexo baixado do Gmail ou do Outlook"] --> C
   C --> D{"ZIP protegido?"}
   D -- "sim, sem senha" --> E["Pede a senha do ZIP"]
   E --> C
@@ -43,8 +40,8 @@ flowchart TD
 
 | Decisão | Como ficou | Por quê |
 |---|---|---|
-| Importar é o modo padrão da tela Adicionar | A fatura vira a fonte principal dos gastos do cartão; o lançamento à mão fica na segunda aba | O usuário pediu a fatura no lugar do formulário. O formulário continua porque Pix e dinheiro não vêm em fatura |
-| Origem escolhida uma vez por fatura | Fileira de chips da origem no card de importação; no email, o remetente já diz a origem | A fatura é de um cartão só: perguntar compra por compra seria repetir a mesma resposta |
+| Lançar à mão é o modo padrão, importar fica ao lado | Aba "Lançar à mão" à esquerda e aberta por padrão; "Importar fatura" à direita | Lançar é a ação feita várias vezes por dia; importar acontece uma vez por fatura. A escolha da aba fica guardada no compartimento |
+| Origem escolhida uma vez por fatura | Fileira de chips da origem no card de importação | A fatura é de um cartão só: perguntar compra por compra seria repetir a mesma resposta |
 | Compra parcelada vira gasto fixo parcelado | "Parcela 2/3" entra como fixo com parcela 2 de 3, na origem da fatura | O parcelamento que já existe no app avança na virada e sai sozinho no fim: as próximas parcelas aparecem nos meses seguintes sem nova importação |
 | Registro de importação por compra | `importedItems`, um documento por compra revisada, com id igual ao hash da chave | A importação só cria o que não entrou, mesmo que o lançamento esteja em outro mês ou que a fatura repita dias da anterior |
 | Compra desmarcada também vai para o registro | Como `skipped` | Desmarcar é decidir que ela não entra; voltar a perguntar a cada importação seria ruído |
@@ -54,7 +51,7 @@ flowchart TD
 | Chamada direta do navegador | `fetch` para a API de cada provedor, sem SDK e sem servidor | O app não tem servidor (plano Spark do Firebase) e evita dependência nova |
 | Chave cifrada com a senha do compartimento | AES-GCM com chave derivada por PBKDF2 da senha | O documento do compartimento é legível por quem sabe o id; a chave em claro ali seria de qualquer um |
 | Saída por JSON no texto | O prompt pede "responda APENAS com o objeto JSON", o app extrai e valida à mão | Funciona igual nos quatro provedores, sem JSON mode nem tool use |
-| Email pelo navegador, sob demanda | Gmail (Google Identity Services e API do Gmail) e conta Microsoft (login com PKCE e Microsoft Graph), só leitura, ao tocar em "Buscar" | Escutar a caixa o tempo todo, ou ler provedor só com IMAP, exige servidor; buscar quando o usuário pede resolve o caso de uso sem um |
+| Só arquivo anexado, sem email | A fatura entra pelo anexo da tela; a busca no Gmail e no Outlook foi removida | Decisão do usuário (ver seção 11.6) |
 
 ## 11.2 Mapa de arquivos
 
@@ -67,17 +64,12 @@ flowchart TD
 | Serviço | [`services/imports.ts`](../src/services/imports.ts) | `prepareImport` (rascunho da revisão) e `commitImport` (gravação em lote com o registro) |
 | Serviço | [`services/aiProviders.ts`](../src/services/aiProviders.ts) | Adaptadores dos quatro provedores, `runCompletion`, quarentena, `resolveAiChain`, `chainHealth`, `listModels`, `parseJsonObject`, `providerMessage` |
 | Serviço | [`services/ai.ts`](../src/services/ai.ts) | Configuração gravada (`settings/ai`), instruções padrão, `testAiChain`, `categorizeWithAi` (prompt, validação, repetição, prazo) |
-| Serviço | [`services/emailImport.ts`](../src/services/emailImport.ts) | Configuração gravada (`settings/emailImport`), provedor de cada caixa, conexão e busca (escolhe Gmail ou Outlook) e o casamento com o remetente |
-| Serviço | [`services/gmail.ts`](../src/services/gmail.ts) | Login do Google e busca dos anexos na API do Gmail |
-| Serviço | [`services/outlook.ts`](../src/services/outlook.ts) | Login da Microsoft com PKCE, renovação do token e busca dos anexos no Microsoft Graph |
-| Página | [`public/auth-redirect.html`](../public/auth-redirect.html) | Retorno do login da Microsoft: repassa o código para a janela do app e se fecha |
 | Serviço | [`services/session.ts`](../src/services/session.ts) | `unlockSecrets` e `compartmentSecret`: a chave dos segredos em memória |
-| Hook | [`hooks/useMonthData.ts`](../src/hooks/useMonthData.ts) | `useAiConfig` e `useEmailConfig`: assinam a configuração e entregam decifrada |
-| Tela | [`components/StatementImport.tsx`](../src/components/StatementImport.tsx) | Card de importação: origem, anexo, senha do ZIP, IA, busca no email |
+| Hook | [`hooks/useMonthData.ts`](../src/hooks/useMonthData.ts) | `useAiConfig`: assina a configuração de IA e a entrega decifrada |
+| Tela | [`components/StatementImport.tsx`](../src/components/StatementImport.tsx) | Card de importação: origem, anexo, senha do ZIP e IA |
 | Tela | [`components/ImportReview.tsx`](../src/components/ImportReview.tsx) | Revisão: uma linha por compra nova |
 | Tela | [`components/AiSettingsScreen.tsx`](../src/components/AiSettingsScreen.tsx) | Configurações de IA (botão do topo): fila de modelos e instruções |
 | Tela | [`components/AiModelChain.tsx`](../src/components/AiModelChain.tsx) | Editor da fila e seletor de modelo com a lista ao vivo |
-| Tela | [`components/ManageEmailImport.tsx`](../src/components/ManageEmailImport.tsx) | Seção "Faturas por email" da tela Gerenciar |
 
 ## 11.3 Formatos de fatura
 
@@ -183,123 +175,20 @@ todas as linhas.
 A semana é a corrente, como no lançamento à mão: no app a semana é contada pelo
 usuário e não pelo calendário (ver [09-contexto-do-produto.md](09-contexto-do-produto.md)).
 
-## 11.6 Importação por email
+## 11.6 Sem importação por email
 
-Configuração na tela Gerenciar, seção "Faturas por email"
-(`ManageEmailImport`); busca na tela Adicionar, no card de importação. Dois
-provedores, os dois sem servidor, porque têm login próprio e API que aceita
-chamada do navegador:
+A fatura entra só pelo arquivo anexado na tela. Houve uma versão que buscava o
+anexo no Gmail (login do Google e API do Gmail) e no Outlook e Hotmail (login
+da Microsoft com PKCE e Microsoft Graph), com caixas e remetentes cadastrados
+na tela Gerenciar; ela foi **removida por decisão do usuário**, junto com o
+documento `settings/emailImport`, as variáveis `VITE_GOOGLE_CLIENT_ID` e
+`VITE_MICROSOFT_CLIENT_ID` e a página de retorno do login.
 
-| Provedor | Contas | Login | API |
-|---|---|---|---|
-| Gmail (`gmail`) | `@gmail.com` e Google Workspace | Google Identity Services, token de 1 hora | API do Gmail, escopo `gmail.readonly` |
-| Microsoft (`microsoft`) | `@hotmail.com`, `@outlook.com`, `@live.com` e Microsoft 365 | Plataforma de identidade da Microsoft, código de autorização com PKCE | Microsoft Graph, permissão `Mail.Read` |
-
-O que vale para os dois:
-
-- **Caixas**: "Conectar Gmail" e "Conectar Outlook/Hotmail" (só aparece o
-  botão do provedor com o id do app no build) abrem o login com escolha de
-  conta, leem o endereço e gravam a caixa em `settings/emailImport`, com o
-  provedor. Caixa gravada antes do Outlook existir não tem o campo e vale como
-  Gmail.
-- **Remetentes**: endereço completo ou só o domínio (`c6bank.com.br`), a
-  origem da fatura e, para banco que manda ZIP protegido, a senha do ZIP
-  (cifrada como a chave de API). Valem para todas as caixas.
-- **Janela**: a busca olha os últimos 15 a 90 dias (padrão 45).
-- **Busca**: um botão por caixa. Os anexos CSV e ZIP dos remetentes
-  cadastrados são baixados e listados; "Revisar" escolhe a origem do
-  remetente, abre o arquivo com a senha dele e cai na mesma revisão do anexo
-  manual.
-- **Só leitura**: o app nunca envia, apaga nem marca email.
-- **Tokens só em memória**, por caixa. Gravar token no banco o deixaria
-  legível por quem sabe o id do compartimento.
-- **A janela de login abre antes de qualquer espera.** O navegador só deixa
-  abrir janela dentro do gesto do usuário, então o caminho do toque até a
-  janela não pode ter `await` no meio (ver `connectMailbox` e
-  `searchInvoices`).
-- **Não há escuta contínua.** Sem servidor, a busca roda quando o usuário toca.
-
-### Gmail (`services/gmail.ts`)
-
-- O script do Google Identity Services é carregado **sob demanda** (sem
-  dependência no `package.json`) e pré-carregado quando o card tem caixas:
-  esperar o script baixar depois do toque passaria do limite do gesto.
-- A consulta é
-  `from:(remetentes) has:attachment (filename:csv OR filename:zip) newer_than:Nd`,
-  até 20 mensagens: o filtro de remetente vai na busca do próprio Gmail.
-- Token de uma hora, sem renovação: vencido, a busca abre o login de novo (com
-  a conta já sugerida).
-
-Configuração no Google Cloud (uma vez):
-
-1. Criar um projeto (pode ser o mesmo do Firebase) e ativar a **Gmail API**.
-2. Tela de consentimento OAuth: tipo externo, com o escopo
-   `https://www.googleapis.com/auth/gmail.readonly`. Em modo de teste, cadastrar
-   os emails que vão conectar como usuários de teste.
-3. Credenciais: "ID do cliente OAuth", tipo **Aplicativo da Web**, com as
-   origens JavaScript autorizadas (`http://localhost:5173` e a URL do GitHub
-   Pages).
-4. Colocar o id em `VITE_GOOGLE_CLIENT_ID` (`.env` local e secret do deploy).
-
-### Outlook e Hotmail (`services/outlook.ts`)
-
-- **Login escrito à mão**, sem a biblioteca da Microsoft (o projeto evita
-  dependência nova): fluxo de código de autorização com PKCE (S256), no
-  endereço `common`, que aceita conta pessoal e de trabalho. A janela abre em
-  branco no toque, recebe a URL de login depois que o PKCE fica pronto
-  (`crypto.subtle` é assíncrono) e volta para `auth-redirect.html` com o código
-  no **fragmento** da URL (`response_mode=fragment`): o código não vai para
-  servidor nenhum, nem para o service worker.
-- **Página de retorno** (`public/auth-redirect.html`): não carrega o app. A
-  janela do app lê a URL dela assim que ela volta para a origem do app, e a
-  página também manda o fragmento pelo `BroadcastChannel`
-  (`cash-organizer-auth`), para o navegador que corta o vínculo entre as
-  janelas. Depois ela se fecha sozinha. O `state` confere que a resposta é
-  desta tentativa. O service worker não pode servir o `index.html` no lugar
-  dela (`navigateFallbackDenylist` no `vite.config.ts`).
-- **Tokens**: o código vira token na API de token da Microsoft, que aceita a
-  chamada do navegador para app registrado como "aplicativo de página única".
-  O token de acesso vale uma hora; o de renovação (`offline_access`, 24 horas
-  para esse tipo de app) renova sem janela enquanto a aba está aberta.
-  Renovação recusada pede um toque novo, porque a janela de login já não
-  estaria dentro do gesto. Login feito com outra conta que não a da caixa é
-  recusado.
-- **Endereço**: `GET /me` (`mail`, ou `userPrincipalName` na conta pessoal,
-  que vem sem `mail`).
-- **Busca**: `GET /me/messages` com
-  `$filter=receivedDateTime ge <data> and hasAttachments eq true`, ordenado pela
-  data (o Graph exige o campo da ordenação primeiro no filtro), páginas de 50
-  seguindo o `@odata.nextLink`, até 250 mensagens lidas e 20 de fatura. O Graph
-  não combina busca por remetente com filtro de data, então o remetente é
-  conferido no app (`matchSender`) antes de baixar os anexos
-  (`/me/messages/{id}/attachments`, só `fileAttachment` CSV ou ZIP).
-
-Configuração no Microsoft Entra (uma vez, gratuita):
-
-1. Em [entra.microsoft.com](https://entra.microsoft.com), "Registros de
-   aplicativo", novo registro. Tipos de conta: **contas em qualquer diretório
-   organizacional e contas pessoais da Microsoft** (é o que deixa o Hotmail
-   entrar pelo endereço `common`).
-2. Plataforma **Aplicativo de página única (SPA)**, com os URIs de
-   redirecionamento `http://localhost:5173/auth-redirect.html` e
-   `https://<usuario>.github.io/<repositorio>/auth-redirect.html` (a URL do
-   GitHub Pages mais `auth-redirect.html`). Tipo SPA é obrigatório: é ele que
-   libera a troca do código pelo token direto do navegador.
-3. Permissões de API, Microsoft Graph, delegadas: `Mail.Read`, `User.Read`,
-   `offline_access`, `openid` e `profile`. Conta pessoal consente no primeiro
-   login; conta de trabalho pode exigir o consentimento do administrador.
-4. Colocar o "ID do aplicativo (cliente)" em `VITE_MICROSOFT_CLIENT_ID` (`.env`
-   local e secret do deploy).
-
-### Provedores só com IMAP
-
-Yahoo, iCloud, UOL, BOL, Terra e servidores corporativos só oferecem IMAP, e o
-navegador não abre esse tipo de conexão: eles pedem um servidor (Cloud
-Functions no plano Blaze), que também permitiria a escuta contínua de verdade
-(verificação periódica ou notificação do provedor). Até lá, o atalho é uma
-regra no provedor que **redireciona** os emails do banco para uma caixa
-conectada. Precisa ser redirecionar, e não encaminhar: o redirecionamento
-mantém o remetente original, que é o que o app confere.
+Se a ideia voltar, o que já se sabe: Gmail e contas Microsoft dão para fazer
+sem servidor, com a busca rodando quando o usuário toca (a janela de login só
+abre dentro do gesto dele); provedor só com IMAP (Yahoo, iCloud, UOL) e a
+escuta contínua da caixa exigem servidor (Cloud Functions no plano Blaze).
+Não reintroduza sem decisão explícita.
 
 ## 11.7 Camada de provedores
 
@@ -388,7 +277,6 @@ cobre o resto.
   sessão, os dois momentos em que a senha está em mãos. `clearSession` a apaga.
 - **Chave que não abre** (gravada com outra senha, ou sessão sem a chave):
   `locked` na configuração aberta, e a tela pede para digitar de novo.
-- O mesmo vale para a senha do ZIP em `settings/emailImport`.
 
 A tela "Configurações de IA" abre pelo botão com o ícone de brilho no topo e
 volta para a aba de onde veio. Duas abas:
@@ -445,8 +333,8 @@ volta para a aba de onde veio. Duas abas:
 - A saída da IA é texto não confiável: ela só preenche campos de formulário
   (descrição e categoria), sempre revisados antes de gravar, e nunca vira HTML.
 - O título da compra é tratado como dado no prompt, não como instrução.
-- Gmail e Outlook só com leitura, tokens só em memória, código do login da
-  Microsoft só no fragmento da URL e conferido pelo `state`.
+- A senha do ZIP digitada na importação não é gravada: vale só para abrir
+  aquele arquivo.
 
 ## 11.11 Estado em memória
 
@@ -455,8 +343,6 @@ volta para a aba de onde veio. Duas abas:
 | Chave dos segredos | `services/session.ts` | Refeita na restauração da sessão |
 | Quarentena dos modelos | `services/aiProviders.ts` | Volta a tentar todos |
 | Cache da lista de modelos | `services/aiProviders.ts` | Consulta de novo |
-| Tokens do Gmail | `services/gmail.ts` | Pede o login do Google de novo |
-| Tokens da Microsoft (acesso e renovação) | `services/outlook.ts` | Pede o login da Microsoft de novo |
 
 ## 11.12 Do serviço de referência para cá
 
@@ -508,5 +394,3 @@ volta para a aba de onde veio. Duas abas:
 | Operações por lote | 400 | `services/imports.ts` |
 | Tamanho máximo do arquivo | 5 MB | `components/StatementImport.tsx` |
 | Iterações do PBKDF2 | 210 mil | `utils/crypto.ts` |
-| Mensagens por busca no Gmail e janela padrão | 20 e 45 dias | `services/gmail.ts` e `services/emailImport.ts` |
-| Outlook: mensagens lidas, de fatura e por página | 250, 20 e 50 | `services/outlook.ts` |

@@ -138,18 +138,10 @@ export function AddExpenseScreen(props: {
         <span className="muted">{monthLabel(currentMonth)}</span>
       </header>
 
-      {/* A fatura é o caminho principal de alimentar o mês; o lançamento à
-          mão continua para o que não passa pelo cartão (dinheiro, Pix). */}
+      {/* Lançar à mão é o modo principal (a ação feita várias vezes por dia) e
+          fica à esquerda; importar a fatura, feito uma vez por fatura, vem ao
+          lado. */}
       <div className="subtabs add-mode" role="tablist" aria-label="Como adicionar">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'import'}
-          className={`subtab${mode === 'import' ? ' active' : ''}`}
-          onClick={() => props.onPrefsChange({ addMode: 'import' })}
-        >
-          <FileUp size={14} aria-hidden /> Importar fatura
-        </button>
         <button
           type="button"
           role="tab"
@@ -158,6 +150,15 @@ export function AddExpenseScreen(props: {
           onClick={() => props.onPrefsChange({ addMode: 'manual' })}
         >
           <PenLine size={14} aria-hidden /> Lançar à mão
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'import'}
+          className={`subtab${mode === 'import' ? ' active' : ''}`}
+          onClick={() => props.onPrefsChange({ addMode: 'import' })}
+        >
+          <FileUp size={14} aria-hidden /> Importar fatura
         </button>
       </div>
 

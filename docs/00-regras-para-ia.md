@@ -28,7 +28,7 @@ que você vai mexer:
 | Login, novo gasto, pagamento, virada de mês | [07-fluxos-aplicacao.md](07-fluxos-aplicacao.md) |
 | Layout, largura, tabela, qualquer coisa visual | [08-responsividade-mobile.md](08-responsividade-mobile.md) |
 | Criar arquivo, componente, hook ou serviço novo | [10-manutencao-e-granularidade.md](10-manutencao-e-granularidade.md) |
-| Importação de fatura, email, provedores de IA, prompt | [11-importacao-e-ia.md](11-importacao-e-ia.md) |
+| Importação de fatura, provedores de IA, prompt | [11-importacao-e-ia.md](11-importacao-e-ia.md) |
 
 Consultar não é opcional: quase toda necessidade de "componente novo" já tem um
 componente pronto em [`src/components/shared.tsx`](../src/components/shared.tsx),
@@ -130,8 +130,8 @@ Estas valem sempre, sem precisar pedir:
 7. **Componentes nunca falam com o Firestore.** Todo acesso a dados passa por
    `src/services/`. Se falta uma operação, crie a função no serviço certo, não
    importe `firebase/firestore` dentro de um componente. O mesmo vale para as
-   chamadas externas (provedores de IA, Gmail e Microsoft): elas moram em
-   `services/aiProviders.ts`, `services/gmail.ts` e `services/outlook.ts`.
+   chamadas externas (provedores de IA): elas moram em
+   `services/aiProviders.ts`.
 8. **Segredo nunca vai em claro para o Firestore.** O documento do
    compartimento é legível por quem sabe o id. Chave de API, senha de ZIP e
    afins passam por `sealSecret` com a chave de `compartmentSecret` (ver

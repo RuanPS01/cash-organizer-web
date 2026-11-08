@@ -25,7 +25,7 @@ compartments/{compartmentId}
   categories/{categoryId}
   origins/{originId}
   plans/{planId}
-  settings/{ai | emailImport}
+  settings/ai
   importedItems/{hash da chave}
   months/{YYYY-MM}
     fixedEntries/{fixedExpenseId}
@@ -49,7 +49,7 @@ uma comparação direta de ids.
 | `weekCategoryId` | string ou null | categoria acompanhada no card de estatísticas da aba Adicionar. Fica aqui, e não no dispositivo, para a escolha valer em qualquer aparelho |
 | `weekOriginId` | string ou null | origem acompanhada no mesmo card, pela mesma razão |
 | `addStatsTab` | `'month'`, `'category'` ou `'origin'` | aba aberta no mesmo card; ausente vale `month`, o resumo do mês |
-| `addMode` | `'import'` ou `'manual'` | modo da tela Adicionar (importar fatura ou lançar à mão); ausente vale `import` |
+| `addMode` | `'manual'` ou `'import'` | modo da tela Adicionar (lançar à mão ou importar fatura); ausente vale `manual` |
 | `monthlyIncome` | number | renda mensal líquida em centavos, editada na tela Gerenciar. Ausente (compartimento criado antes do campo) ou zero significa renda não informada. Cada mês guarda a própria cópia em `months/{ym}.income` |
 | `createdAt` | number | ms |
 
@@ -266,28 +266,17 @@ ao planejado). Excluir o plano também tira o gasto fixo. Plano que terminou
 (gasto fixo desativado na última parcela) fica com o histórico e aparece como
 concluído.
 
-## 6.5.3 `settings/{id}` (configurações com segredo)
+## 6.5.3 `settings/ai` (configuração de IA)
 
-Dois documentos fixos por compartimento. Os segredos chegam cifrados no app
+Um documento fixo por compartimento. A chave de API chega cifrada no app
 com a chave derivada da senha do compartimento (`sealSecret`, formato `v1.`
 mais base64), porque a leitura é aberta a quem sabe o id, como em todo o resto.
 Detalhes em [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.8.
-
-`settings/ai`:
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `chain` | lista (até 6) | fila de modelos, o primeiro é o principal: `{ provider, model, sealedKey, baseUrl }`. `provider` é `claude`, `openai`, `gemini` ou `ollama`; `model` vazio usa o padrão; `sealedKey` vazio herda a chave do item anterior do mesmo provedor; `baseUrl` só no Ollama |
 | `instructions` | map | `{ categorize }`: as regras do usuário para organizar a fatura, até 4000 caracteres |
-| `updatedAt` | number | ms |
-
-`settings/emailImport`:
-
-| Campo | Tipo | Notas |
-|---|---|---|
-| `mailboxes` | lista (até 10) | `{ email, provider, addedAt }`, as caixas conectadas. `provider` é `gmail` ou `microsoft` (Outlook, Hotmail, Live, Microsoft 365); ausente na caixa conectada antes do Outlook existir, que vale como Gmail. Token nenhum é gravado |
-| `senders` | lista (até 30) | `{ address, originId, originName, sealedZipPassword }`: remetente (endereço ou domínio), a origem da fatura e a senha do ZIP cifrada (vazia quando não há) |
-| `lookbackDays` | number | quantos dias para trás a busca olha, de 1 a 365 (a tela oferece 15 a 90) |
 | `updatedAt` | number | ms |
 
 Apagar é permitido (o "Remover" da tela de IA).
@@ -564,8 +553,8 @@ atende as três com índice de campo único.
 | `cash-organizer.session` | JSON com `compartmentId`, `name` e a senha cifrada em AES-GCM |
 | `cash-organizer.device-key` | chave AES-GCM de 256 bits do dispositivo, em JWK |
 
-A chave dos segredos do compartimento (derivada da senha) e os tokens do Gmail
-e da Microsoft ficam só em memória, nunca no `localStorage`.
+A chave dos segredos do compartimento (derivada da senha) fica só em memória,
+nunca no `localStorage`.
 | IndexedDB do Firestore | cache offline gerenciado pelo SDK, não mexer |
 
 A sessão restaurada é sempre revalidada contra o Firestore antes de liberar o
