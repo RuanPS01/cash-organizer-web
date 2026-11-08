@@ -9,7 +9,8 @@ hash guardado no documento do compartimento.
 
 Fora do Firestore, o navegador fala com dois serviços externos, sempre por
 `services/`: os provedores de IA (Claude, OpenAI, Gemini ou Ollama), que
-organizam a fatura importada, e o Gmail, de onde a fatura pode ser buscada.
+organizam a fatura importada, e o email (Gmail ou conta Microsoft, com Outlook
+e Hotmail), de onde a fatura pode ser buscada.
 Os dois estão em [11-importacao-e-ia.md](11-importacao-e-ia.md).
 
 As regras de segurança e as functions do Firebase vivem em outro repositório,
@@ -31,7 +32,7 @@ flowchart TD
   E --> I["hooks useMonthData, useConfig e usePlans"]
   R --> S["services imports, ai, aiProviders, emailImport"]
   Q --> S
-  S --> T[("Provedores de IA e Gmail")]
+  S --> T[("Provedores de IA, Gmail e Microsoft")]
   F --> I
   G --> I
   P --> I
@@ -88,7 +89,9 @@ src/
     imports.ts              rascunho da revisão e gravação da fatura importada
     ai.ts                   configuração de IA e a organização da fatura
     aiProviders.ts          provedores de IA, fila de modelos e quarentena
-    emailImport.ts          configuração e busca de faturas no Gmail
+    emailImport.ts          configuração de faturas por email e a escolha do provedor
+    gmail.ts                login do Google e busca na API do Gmail
+    outlook.ts              login da Microsoft (PKCE) e busca no Microsoft Graph
   utils/
     crypto.ts               SHA-256 da senha, AES-GCM da sessão e dos segredos
     csv.ts                  leitura de CSV, valor e data de fatura
@@ -98,6 +101,7 @@ src/
     money.ts                formatBRL, formatBRLCompact e digitsToCents
     projection.ts           conta da projeção do planejamento (juros, IR, meta)
 public/icons/               ícones do PWA
+public/auth-redirect.html   retorno do login da Microsoft (não carrega o app)
 .github/workflows/deploy.yml  build e deploy no GitHub Pages
 ```
 
@@ -110,7 +114,7 @@ public/icons/               ícones do PWA
 | Telas | `components/*Screen.tsx` | estado de formulário, chamadas a serviços, montagem visual | montar query do Firestore |
 | Componentes genéricos | `components/shared.tsx` | UI sem conhecimento de domínio | importar serviços ou tipos de domínio |
 | Hooks | `hooks/*.ts` | assinar coleções com `onSnapshot` e devolver estado, ou observar o ambiente do navegador | escrever no banco |
-| Serviços | `services/*.ts` | toda leitura e escrita no Firestore, chamadas aos provedores de IA e ao Gmail, regras de consistência | renderizar JSX |
+| Serviços | `services/*.ts` | toda leitura e escrita no Firestore, chamadas aos provedores de IA, ao Gmail e à Microsoft, regras de consistência | renderizar JSX |
 | Utilitários | `utils/*.ts` | funções puras, sem React e sem Firestore | acessar `db` |
 
 Regra prática: se um componente precisa de `collection`, `doc` ou `onSnapshot`,
@@ -182,9 +186,10 @@ lista.
 - `VITE_BASE_PATH` define o `base` do Vite. Local fica `/`; no GitHub Pages o
   workflow injeta `/cash-organizer-web/`.
 - `VITE_FIRESTORE_EMULATOR_HOST` (opcional) aponta o SDK para o emulador local.
-- `VITE_GOOGLE_CLIENT_ID` (opcional) é o id do cliente OAuth do Google que
-  liga a busca de faturas no Gmail. Sem ele a seção de email avisa e a busca
-  fica desligada.
+- `VITE_GOOGLE_CLIENT_ID` e `VITE_MICROSOFT_CLIENT_ID` (opcionais) são os ids
+  do app no Google e na Microsoft que ligam a busca de faturas no Gmail e no
+  Outlook/Hotmail. Sem nenhum dos dois a seção de email avisa e a busca fica
+  desligada; com um só, aparece só o botão daquele provedor.
 - O Firestore é inicializado com `persistentLocalCache` e
   `persistentSingleTabManager`, o que dá cache offline em IndexedDB e sincronismo
   ao reconectar. Por isso o app abre e mostra os últimos dados mesmo sem rede.

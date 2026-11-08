@@ -501,9 +501,23 @@ export interface StoredAiSettings {
   updatedAt: number;
 }
 
+/**
+ * Provedores de email de onde a fatura pode ser buscada sem servidor: os dois
+ * têm login próprio e API que aceita chamada do navegador. Provedor só com
+ * IMAP (Yahoo, iCloud, UOL) pediria um servidor.
+ */
+export const EMAIL_PROVIDERS = ['gmail', 'microsoft'] as const;
+
+export type EmailProvider = (typeof EMAIL_PROVIDERS)[number];
+
 /** Caixa de email conectada para buscar faturas. */
 export interface EmailMailbox {
   email: string;
+  /**
+   * Gmail ou conta Microsoft (Outlook, Hotmail, Live, Microsoft 365).
+   * Ausente na caixa conectada antes do Outlook existir, que é do Gmail.
+   */
+  provider?: EmailProvider;
   addedAt: number;
 }
 

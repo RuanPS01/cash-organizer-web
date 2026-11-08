@@ -285,7 +285,7 @@ Detalhes em [11-importacao-e-ia.md](11-importacao-e-ia.md), seção 11.8.
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `mailboxes` | lista (até 10) | `{ email, addedAt }`, as caixas do Gmail conectadas. O token de acesso nunca é gravado |
+| `mailboxes` | lista (até 10) | `{ email, provider, addedAt }`, as caixas conectadas. `provider` é `gmail` ou `microsoft` (Outlook, Hotmail, Live, Microsoft 365); ausente na caixa conectada antes do Outlook existir, que vale como Gmail. Token nenhum é gravado |
 | `senders` | lista (até 30) | `{ address, originId, originName, sealedZipPassword }`: remetente (endereço ou domínio), a origem da fatura e a senha do ZIP cifrada (vazia quando não há) |
 | `lookbackDays` | number | quantos dias para trás a busca olha, de 1 a 365 (a tela oferece 15 a 90) |
 | `updatedAt` | number | ms |
@@ -565,7 +565,7 @@ atende as três com índice de campo único.
 | `cash-organizer.device-key` | chave AES-GCM de 256 bits do dispositivo, em JWK |
 
 A chave dos segredos do compartimento (derivada da senha) e os tokens do Gmail
-ficam só em memória, nunca no `localStorage`.
+e da Microsoft ficam só em memória, nunca no `localStorage`.
 | IndexedDB do Firestore | cache offline gerenciado pelo SDK, não mexer |
 
 A sessão restaurada é sempre revalidada contra o Firestore antes de liberar o

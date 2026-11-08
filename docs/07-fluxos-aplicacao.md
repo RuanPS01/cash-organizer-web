@@ -40,7 +40,7 @@ mão"). A escolha do modo fica guardada no compartimento.
 flowchart TD
   A["Escolhe a origem da fatura"] --> B{"De onde vem o arquivo?"}
   B -- "anexo" --> C["Anexa o CSV ou o ZIP"]
-  B -- "email" --> D["Toca na caixa do Gmail e em Revisar na fatura achada"]
+  B -- "email" --> D["Toca na caixa (Gmail ou Outlook) e em Revisar na fatura achada"]
   D --> E["Origem e senha do ZIP vêm do remetente cadastrado"]
   C --> F{"ZIP protegido?"}
   E --> F
@@ -216,8 +216,9 @@ para a linha do mês em aberto e alimenta uma comparação própria na aba
 Estatísticas. Ele não entra no ideal do mês, porque origem e categoria são dois
 eixos do mesmo dinheiro e somar os dois contaria cada gasto duas vezes.
 
-Faturas por email: a quinta seção conecta as caixas do Gmail ("Conectar caixa
-do Gmail" abre o login do Google, só leitura) e cadastra os remetentes de
+Faturas por email: a quinta seção conecta as caixas de email ("Conectar Gmail"
+abre o login do Google e "Conectar Outlook/Hotmail" o da Microsoft, os dois só
+leitura) e cadastra os remetentes de
 fatura, cada um com a origem e, quando o banco manda ZIP protegido, a senha
 dele. A busca em si fica na aba Adicionar, um botão por caixa, e roda quando o
 usuário toca: o app não tem servidor para escutar a caixa o tempo todo.

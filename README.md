@@ -41,7 +41,7 @@ manutenção. Agentes de IA devem começar por
   fixos e categorias. Meses anteriores continuam consultáveis.
 - **Importação de fatura**: o CSV da fatura do cartão (Nubank, C6 ou qualquer
   CSV com data, descrição e valor), direto ou em ZIP, anexado ou buscado no
-  Gmail, vira os gastos do mês depois de uma revisão de categorias. Só entra o
+  email (Gmail, Outlook ou Hotmail), vira os gastos do mês depois de uma revisão de categorias. Só entra o
   que ainda não foi importado; compra parcelada vira gasto fixo parcelado. A
   IA (Claude, OpenAI, Gemini ou Ollama, configurada pelo botão do topo) é
   opcional e sugere categoria e descrição. Detalhes em

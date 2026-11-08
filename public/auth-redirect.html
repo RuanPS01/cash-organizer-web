@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Cash Organizer</title>
+    <!-- Página de retorno do login da Microsoft (Outlook e Hotmail). Ela não
+      carrega o app: só repassa o código que voltou no fragmento da URL para a
+      janela do app, que lê a URL desta janela ou recebe a mensagem abaixo, e
+      depois se fecha. As cores são as da identidade escritas à mão porque esta
+      página não carrega o styles.css. Ver docs/11-importacao-e-ia.md. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #000;
+        color: #e2c86a;
+        font: 500 0.95rem/1.4 system-ui, sans-serif;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 1rem;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Conectando a caixa de email&hellip; esta janela fecha sozinha.</p>
+    <script>
+      // O BroadcastChannel cobre o navegador que corta o vínculo entre as duas
+      // janelas depois de passar pelo site da Microsoft. O nome do canal é o
+      // mesmo de AUTH_CHANNEL em src/services/outlook.ts.
+      try {
+        new BroadcastChannel('cash-organizer-auth').postMessage(window.location.hash);
+      } catch (e) {
+        // sem BroadcastChannel: a janela do app lê a URL desta
+      }
+      // A espera dá tempo para a janela do app ler a URL antes do fechamento.
+      setTimeout(function () {
+        window.close();
+      }, 1500);
+    </script>
+  </body>
+</html>

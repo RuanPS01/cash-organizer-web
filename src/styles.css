@@ -3280,7 +3280,27 @@ td .badge.plan { margin-left: 0.4rem; }
 .settings-inline .field { width: auto; margin-top: 0; }
 
 .card .manage-list + .btn,
-.card .manage-list + .settings-row { margin-top: 0.4rem; }
+.card .manage-list + .settings-row,
+.card .manage-list + .mailbox-connect { margin-top: 0.4rem; }
+
+/* Um botão de conexão por provedor de email configurado no build. */
+.mailbox-connect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Endereço de email longo quebra em vez de empurrar o selo para fora. */
+.mailbox-name { overflow-wrap: anywhere; min-width: 0; }
+
+/* Provedor da caixa (Gmail ou Outlook/Hotmail): classificação, neutro. */
+.badge.provider {
+  --frame-edge: var(--line-soft);
+  --frame-fill: var(--surface-2);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
 
 @media (min-width: 560px) {
   .ai-model-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

@@ -439,11 +439,12 @@ recorta até descendente `position: fixed`.
 
 `props: { compartmentId, origins }`
 
-Seção "Faturas por email" da tela Gerenciar: caixas do Gmail conectadas
-("Conectar caixa do Gmail", que abre o login do Google), remetentes de fatura
+Seção "Faturas por email" da tela Gerenciar: caixas conectadas, com o selo do
+provedor ("Conectar Gmail" e "Conectar Outlook/Hotmail", um botão por provedor
+com o id do app no build, que abrem o login), remetentes de fatura
 (modal `SenderModal`, interno, com endereço ou domínio, origem e senha do ZIP)
 e a janela da busca em dias. Toda mudança grava a configuração inteira com
-`saveEmailSettings`. Sem `VITE_GOOGLE_CLIENT_ID`, mostra o aviso e desliga a
+`saveEmailSettings`. Sem nenhum id de provedor no build, mostra o aviso e desliga a
 conexão. Modais fora do `.card`, como em `ManageOrigins`.
 
 ### `components/OriginIcon.tsx`
@@ -614,11 +615,29 @@ classes `AiProviderError` e `AiContentError` e as constantes
 
 ### `services/emailImport.ts`
 
-`emailSettingsRef`, `GOOGLE_CLIENT_ID`, `emailImportAvailable`,
+`emailSettingsRef`, `EMAIL_PROVIDER_LABEL`, `providerOf` (caixa sem o campo é
+do Gmail), `emailProviderAvailable`, `emailImportAvailable`,
 `openEmailSettings`, `saveEmailSettings`, `removeEmailSettings`,
-`connectMailbox`, `mailboxConnected`, `searchInvoices`, `matchSender` e
-`preloadGoogleLogin`. Tipos `EmailConfig`, `EmailSenderConfig` e
-`FoundInvoice`.
+`connectMailbox(provider)`, `mailboxConnected(mailbox)`,
+`searchInvoices(mailbox, config)` (escolhe o provedor e casa cada anexo com o
+remetente), `matchSender` e `preloadEmailLogin`. Tipos `EmailConfig`,
+`EmailSenderConfig`, `RawInvoice` (o contrato com os provedores) e
+`FoundInvoice`. A conexão e a busca não esperam nada antes de chamar o
+provedor: a janela de login só abre dentro do gesto do usuário.
+
+### `services/gmail.ts`
+
+`GOOGLE_CLIENT_ID`, `gmailAvailable`, `preloadGoogleLogin`, `gmailConnected`,
+`connectGmail`, `searchGmail` e `GmailAuthError`. Login pelo Google Identity
+Services e busca na API do Gmail.
+
+### `services/outlook.ts`
+
+`MICROSOFT_CLIENT_ID`, `outlookAvailable`, `outlookRedirectUri`,
+`outlookConnected`, `connectOutlook`, `searchOutlook` e `OutlookAuthError`.
+Login da Microsoft com PKCE em janela (sem biblioteca), renovação do token sem
+janela e busca no Microsoft Graph. A página de retorno é
+`public/auth-redirect.html`.
 
 ## 4.5 Utilitários
 

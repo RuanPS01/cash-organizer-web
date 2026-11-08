@@ -161,6 +161,7 @@ linha `Pendente`.
 | Categoria padrão não ensina | é onde cai o que ninguém classificou; aprender com ela travaria a compra no padrão |
 | IA chamada do navegador, chave cifrada com a senha | o app não tem servidor, e a chave em claro no Firestore seria de quem soubesse o id do compartimento |
 | Email buscado ao tocar, sem escuta contínua | escutar a caixa exige servidor (plano pago do Firebase); buscar quando o usuário pede resolve sem ele |
+| Gmail e Outlook, e não IMAP | os dois têm login próprio e API que o navegador chama; IMAP é conexão que o navegador não abre, e pediria servidor guardando a senha da caixa |
 | Tema único e escuro, sem botão de troca | a identidade é ouro sobre preto puro; uma versão clara exigiria uma segunda paleta e não traria nada ao uso no celular |
 
 ## 9.5 O que o produto não faz (e não deveria fazer sem decisão explícita)
@@ -169,8 +170,10 @@ linha `Pendente`.
 - importa só fatura de cartão em CSV (direto ou em ZIP): não lê PDF, não faz
   OCR de nota e não importa extrato de conta corrente (Pix e transferências
   continuam à mão);
-- não escuta a caixa de email: a busca de faturas no Gmail roda quando o
-  usuário toca, e só Gmail;
+- não escuta a caixa de email: a busca de faturas roda quando o usuário toca,
+  e só no Gmail e nas contas Microsoft (Outlook, Hotmail). Provedor só com
+  IMAP (Yahoo, iCloud, UOL) pediria servidor; até lá, vale redirecionar os
+  emails do banco para uma caixa conectada;
 - não tem lançamento de receita, extrato nem saldo acumulado: a renda é um
   número só, configurado no compartimento, que serve de referência do mês;
 - o planejamento acompanha só o que foi pago no Pagamento: não registra aportes

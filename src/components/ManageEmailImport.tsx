@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { Mail, Pencil, Plus, X } from 'lucide-react';
 import {
   DEFAULT_LOOKBACK_DAYS,
+  EMAIL_PROVIDER_LABEL,
   connectMailbox,
   emailImportAvailable,
+  emailProviderAvailable,
+  providerOf,
   saveEmailSettings,
 } from '../services/emailImport';
 import type { EmailConfig, EmailSenderConfig } from '../services/emailImport';
@@ -12,7 +15,8 @@ import { useEmailConfig } from '../hooks/useMonthData';
 import { writeErrorMessage } from '../utils/errors';
 import { ConfirmModal } from './shared';
 import { OriginIcon } from './OriginIcon';
-import type { Origin } from '../types';
+import { EMAIL_PROVIDERS } from '../types';
+import type { EmailProvider, Origin } from '../types';
 
 const LOOKBACK_OPTIONS = [15, 30, 45, 60, 90];
 
@@ -116,9 +120,10 @@ function SenderModal(props: {
 }
 
 /**
- * Seção "Faturas por email" da tela Gerenciar: as caixas do Gmail conectadas,
- * os remetentes de fatura (cada um com a origem e a senha do ZIP) e quantos
- * dias para trás a busca olha. A busca em si fica na aba Adicionar.
+ * Seção "Faturas por email" da tela Gerenciar: as caixas conectadas (Gmail ou
+ * conta Microsoft), os remetentes de fatura (cada um com a origem e a senha do
+ * ZIP) e quantos dias para trás a busca olha. A busca em si fica na aba
+ * Adicionar.
  */
 export function ManageEmailImport(props: { compartmentId: string; origins: Origin[] }) {
   const { compartmentId, origins } = props;
@@ -155,11 +160,16 @@ export function ManageEmailImport(props: { compartmentId: string; origins: Origi
     }
   };
 
-  const connect = () =>
+  // Sem espera antes do connectMailbox: a janela de login só abre dentro do
+  // gesto do usuário.
+  const connect = (provider: EmailProvider) =>
     run(async () => {
-      const email = await connectMailbox();
-      if (config.mailboxes.some((m) => m.email === email)) return;
-      await persist({ ...config, mailboxes: [...config.mailboxes, { email, addedAt: Date.now() }] });
+      const email = await connectMailbox(provider);
+      if (config.mailboxes.some((m) => m.email === email && providerOf(m) === provider)) return;
+      await persist({
+        ...config,
+        mailboxes: [...config.mailboxes, { email, provider, addedAt: Date.now() }],
+      });
     });
 
   const saveSender = async (sender: EmailSenderConfig) => {
@@ -188,16 +198,16 @@ export function ManageEmailImport(props: { compartmentId: string; origins: Origi
       <section className="card">
         <h3>Faturas por email</h3>
         <p className="card-hint">
-          Conecte as caixas do Gmail onde as faturas chegam e cadastre os{' '}
+          Conecte as caixas onde as faturas chegam (Gmail, Outlook ou Hotmail) e cadastre os{' '}
           <strong>remetentes</strong> de cada banco. Na aba Adicionar, o botão de cada caixa
           procura os anexos CSV ou ZIP desses remetentes e abre a mesma revisão da fatura anexada à
           mão. O acesso é só de leitura e a busca roda quando você pede.
         </p>
         {!available && (
           <p className="form-error">
-            A busca no email precisa do id do cliente OAuth do Google (variável
-            VITE_GOOGLE_CLIENT_ID no build). Sem ele, os remetentes ficam guardados, mas a busca
-            fica desligada.
+            A busca no email precisa do id do app no Google (VITE_GOOGLE_CLIENT_ID) ou na
+            Microsoft (VITE_MICROSOFT_CLIENT_ID) no build. Sem eles, os remetentes ficam
+            guardados, mas a busca fica desligada.
           </p>
         )}
         {config.locked && (
@@ -210,10 +220,13 @@ export function ManageEmailImport(props: { compartmentId: string; origins: Origi
         <span className="settings-subtitle">Caixas de email</span>
         <ul className="manage-list">
           {config.mailboxes.map((m, i) => (
-            <li key={m.email}>
+            <li key={`${providerOf(m)}:${m.email}`}>
               <div className="row-main">
-                <span className="name">
+                <span className="name mailbox-name">
                   <Mail size={15} aria-hidden /> {m.email}
+                </span>
+                <span className="values">
+                  <span className="badge provider">{EMAIL_PROVIDER_LABEL[providerOf(m)]}</span>
                 </span>
               </div>
               <span className="row-actions">
@@ -231,9 +244,13 @@ export function ManageEmailImport(props: { compartmentId: string; origins: Origi
             <li className="muted">Nenhuma caixa conectada.</li>
           )}
         </ul>
-        <button className="btn" onClick={connect} disabled={busy || !available}>
-          <Plus size={16} aria-hidden /> Conectar caixa do Gmail
-        </button>
+        <div className="mailbox-connect">
+          {EMAIL_PROVIDERS.filter(emailProviderAvailable).map((p) => (
+            <button key={p} className="btn" onClick={() => connect(p)} disabled={busy}>
+              <Plus size={16} aria-hidden /> Conectar {EMAIL_PROVIDER_LABEL[p]}
+            </button>
+          ))}
+        </div>
 
         <span className="settings-subtitle">Remetentes de fatura</span>
         <ul className="manage-list">

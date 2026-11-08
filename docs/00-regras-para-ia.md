@@ -130,8 +130,8 @@ Estas valem sempre, sem precisar pedir:
 7. **Componentes nunca falam com o Firestore.** Todo acesso a dados passa por
    `src/services/`. Se falta uma operação, crie a função no serviço certo, não
    importe `firebase/firestore` dentro de um componente. O mesmo vale para as
-   chamadas externas (provedores de IA e Gmail): elas moram em
-   `services/aiProviders.ts` e `services/emailImport.ts`.
+   chamadas externas (provedores de IA, Gmail e Microsoft): elas moram em
+   `services/aiProviders.ts`, `services/gmail.ts` e `services/outlook.ts`.
 8. **Segredo nunca vai em claro para o Firestore.** O documento do
    compartimento é legível por quem sabe o id. Chave de API, senha de ZIP e
    afins passam por `sealSecret` com a chave de `compartmentSecret` (ver

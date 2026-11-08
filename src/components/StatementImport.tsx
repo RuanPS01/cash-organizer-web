@@ -9,9 +9,11 @@ import type { DraftRow, ImportDraft } from '../services/imports';
 import { categorizeWithAi } from '../services/ai';
 import { aiChainUsable, providerMessage } from '../services/aiProviders';
 import {
-  emailImportAvailable,
+  EMAIL_PROVIDER_LABEL,
+  emailProviderAvailable,
   mailboxConnected,
-  preloadGoogleLogin,
+  preloadEmailLogin,
+  providerOf,
   searchInvoices,
 } from '../services/emailImport';
 import type { FoundInvoice } from '../services/emailImport';
@@ -21,7 +23,7 @@ import type { MonthData } from '../hooks/useMonthData';
 import { ImportReview } from './ImportReview';
 import type { AiRunState } from './ImportReview';
 import { OriginIcon } from './OriginIcon';
-import type { Category, Origin } from '../types';
+import type { Category, EmailMailbox, Origin } from '../types';
 
 /** Arquivo lido, aguardando a senha do ZIP. */
 interface PendingFile {
@@ -78,9 +80,11 @@ export function StatementImport(props: {
   // que chegue depois de o usuário abrir outra, é descartada.
   const run = useRef(0);
 
-  const emailReady = emailImportAvailable() && email.config.mailboxes.length > 0;
+  // Só as caixas cujo provedor tem o id do app no build: sem ele não há login.
+  const mailboxes = email.config.mailboxes.filter((m) => emailProviderAvailable(providerOf(m)));
+  const emailReady = mailboxes.length > 0;
   useEffect(() => {
-    if (emailReady) preloadGoogleLogin();
+    if (emailReady) preloadEmailLogin();
   }, [emailReady]);
 
   const reset = () => {
@@ -233,12 +237,12 @@ export function StatementImport(props: {
 
   // Precisa sair direto do toque: sem token válido, a busca abre a janela de
   // login do Google, que o navegador só deixa abrir dentro do gesto.
-  const searchMailbox = async (mailbox: string) => {
-    setSearching(mailbox);
+  const searchMailbox = async (mailbox: EmailMailbox) => {
+    setSearching(mailbox.email);
     setError(null);
     try {
       const invoices = await searchInvoices(mailbox, email.config);
-      setFound((prev) => [...(prev ?? []).filter((f) => f.mailbox !== mailbox), ...invoices]);
+      setFound((prev) => [...(prev ?? []).filter((f) => f.mailbox !== mailbox.email), ...invoices]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível buscar no email.');
     } finally {
@@ -356,14 +360,18 @@ export function StatementImport(props: {
               <Mail size={13} aria-hidden /> Faturas no email
             </span>
             <div className="email-boxes">
-              {email.config.mailboxes.map((m) => (
+              {mailboxes.map((m) => (
                 <button
-                  key={m.email}
+                  key={`${providerOf(m)}:${m.email}`}
                   type="button"
                   className="btn small"
                   disabled={busy || searching !== null}
-                  onClick={() => searchMailbox(m.email)}
-                  title={mailboxConnected(m.email) ? 'Conectada' : 'Pede o login do Google'}
+                  onClick={() => searchMailbox(m)}
+                  title={
+                    mailboxConnected(m)
+                      ? `${EMAIL_PROVIDER_LABEL[providerOf(m)]}: conectada`
+                      : `${EMAIL_PROVIDER_LABEL[providerOf(m)]}: pede o login`
+                  }
                 >
                   <Search size={13} aria-hidden />
                   {searching === m.email ? 'Buscando…' : m.email}

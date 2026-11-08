@@ -7,22 +7,22 @@ Referência de novembro de 2026, depois da importação de fatura e da IA
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 3431 |
+| `styles.css` | 3451 |
 | `services/months.ts` | 696 |
 | `components/MonthScreen.tsx` | 694 |
 | `components/ExpenseHistory.tsx` | 682 |
 | `components/PlanView.tsx` | 568 |
 | `components/ManageScreen.tsx` | 558 |
 | `services/aiProviders.ts` | 541 |
-| `types.ts` | 530 |
+| `types.ts` | 544 |
 | `services/expenses.ts` | 473 |
 | `components/PlanForm.tsx` | 427 |
-| `components/StatementImport.tsx` | 425 |
+| `components/StatementImport.tsx` | 433 |
 | `services/imports.ts` | 421 |
 | `utils/projection.ts` | 398 |
 | `utils/statement.ts` | 355 |
-| `services/emailImport.ts` | 348 |
-| `components/ManageEmailImport.tsx` | 335 |
+| `services/outlook.ts` | 371 |
+| `components/ManageEmailImport.tsx` | 352 |
 | `components/ManageOrigins.tsx` | 320 |
 | `components/AddStatsCard.tsx` | 315 |
 | `services/ai.ts` | 314 |
@@ -32,23 +32,26 @@ Referência de novembro de 2026, depois da importação de fatura e da IA
 | `components/AiModelChain.tsx` | 275 |
 | `components/PlanningScreen.tsx` | 266 |
 | `services/plans.ts` | 250 |
+| `services/gmail.ts` | 244 |
 | `components/AiSettingsScreen.tsx` | 235 |
 | `hooks/useMonthData.ts` | 228 |
 | `App.tsx` | 215 |
 | `components/PlanChart.tsx` | 206 |
 | `utils/csv.ts` | 194 |
+| `services/emailImport.ts` | 198 |
 | `utils/zip.ts` | 189 |
 | `services/origins.ts` | 183 |
 | demais | menos de 165 cada |
 
-O projeto inteiro tem cerca de 16,3 mil linhas, das quais perto de 4,8 mil
-vieram com a importação de fatura e a IA.
+O projeto inteiro tem cerca de 16,8 mil linhas, das quais perto de 5,3 mil
+vieram com a importação de fatura, o email e a IA.
 
 A importação nasceu dividida pelo critério da seção 10.2: a leitura do arquivo
 é pura e mora em `utils/` (`csv.ts`, `statement.ts`, `zip.ts`), testável sem
 navegador; o serviço separa o banco (`imports.ts`) da IA (`ai.ts`, a
 funcionalidade, e `aiProviders.ts`, os provedores) e do email
-(`emailImport.ts`); e a tela separa o card de importação, a revisão, a tela de
+(`emailImport.ts`, a configuração e a escolha do provedor, mais `gmail.ts` e
+`outlook.ts`, um por provedor); e a tela separa o card de importação, a revisão, a tela de
 IA e o editor da fila. `aiProviders.ts` passou de 500 linhas, mas é um bloco
 só (quatro adaptadores, a fila e a lista de modelos que dependem uns dos
 outros); se crescer, o primeiro candidato a sair é a lista de modelos ao vivo.
@@ -239,4 +242,10 @@ A importação de fatura foi validada no emulador, com o Playwright do ambiente:
   o JSON do formato esperado. A tela de IA aponta para ele como Ollama;
 - **Gmail sem conta**: no Playwright, `page.route` troca o script do Google
   Identity Services por um que devolve um token falso e responde as rotas da
-  API do Gmail com uma mensagem cujo anexo é a fatura de teste.
+  API do Gmail com uma mensagem cujo anexo é a fatura de teste;
+- **Outlook sem conta**: `context.route` (no contexto, para valer também na
+  janela de login) responde o `authorize` da Microsoft com uma página que
+  volta para `auth-redirect.html` com um código e o `state` recebido, o
+  `token` com um token falso (o primeiro já vencido, para exercitar a
+  renovação) e as rotas do Microsoft Graph com mensagens paginadas e anexos em
+  base64.

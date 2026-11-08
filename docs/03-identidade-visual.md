@@ -280,6 +280,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Chave herdada da reserva | `.ai-inherit` | faixa discreta com moldura no lugar do campo de chave |
 | Subtítulo dentro do card | `.settings-subtitle` | "Modelos", "Caixas de email", "Remetentes de fatura" |
 | Rótulo na mesma linha do seletor | `.settings-row`, `.settings-inline` | "Buscar nos últimos [45 dias]" |
+| Caixas de email conectadas | `.mailbox-name`, `.badge.provider`, `.mailbox-connect` | o provedor (Gmail ou Outlook/Hotmail) em selo neutro; um botão de conexão por provedor configurado |
 | Texto longo em campo | `.field > textarea` | cresce só na vertical (instruções da IA) |
 
 Utilitários globais: `.muted`, `.small`, `.center`, `.neg` (terracota),

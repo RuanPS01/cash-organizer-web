@@ -42,6 +42,8 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           # Opcional: liga a busca de faturas no Gmail (id do cliente OAuth do Google).
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          # Opcional: liga a busca de faturas no Outlook e no Hotmail.
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.VITE_MICROSOFT_CLIENT_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
