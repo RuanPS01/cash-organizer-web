@@ -155,6 +155,7 @@ linha `Pendente`.
 | Origem uma vez por fatura, categoria por compra | a fatura é de um cartão só; a categoria é que muda de compra para compra |
 | Revisão antes de gravar, sempre | a categoria sugerida (pela IA ou pelo histórico) é palpite; gravar sem olhar espalharia erro pelo orçamento do mês |
 | Compra parcelada vira gasto fixo parcelado | o parcelamento do app já avança na virada e sai no fim: as próximas parcelas aparecem sozinhas, sem esperar a próxima fatura |
+| Compra com a mesma data e valor de algo do app vem desmarcada, como cópia | o CSV da fatura aberta pode ser importado todo dia, e o banco muda o título da compra de um dia para o outro: sem isso as mesmas compras voltariam sempre. Data e valor iguais não provam que é a mesma compra, então ela fica na revisão, recolhida, para o usuário marcar |
 | Compra desmarcada não volta | desmarcar é decidir; perguntar de novo a cada importação seria ruído |
 | Excluir um lançamento importado não o faz voltar | a compra já foi revisada; voltar na próxima importação desfaria a exclusão |
 | Escolha do histórico vence a sugestão da IA | o histórico é a classificação do próprio usuário; a IA completa o que ele ainda não sabia |

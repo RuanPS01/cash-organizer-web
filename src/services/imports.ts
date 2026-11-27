@@ -35,7 +35,14 @@ import {
 import type { ParsedStatement, StatementFormat, StatementItem } from '../utils/statement';
 import { addCategory } from './expenses';
 import { expensesCol, fixedEntriesCol, isMonthOpen } from './months';
-import type { Category, EntryStatus, ImportedItem, ImportedKind, VariableExpense } from '../types';
+import type {
+  Category,
+  EntryStatus,
+  FixedExpense,
+  ImportedItem,
+  ImportedKind,
+  VariableExpense,
+} from '../types';
 
 export function importedItemsCol(compartmentId: string) {
   return collection(db, 'compartments', compartmentId, 'importedItems');
@@ -62,8 +69,21 @@ export interface DraftRow {
   /** Categoria nova sugerida pela IA, criada ao confirmar. */
   newCategory: string | null;
   source: SuggestionSource;
-  /** Já existe lançamento manual no mês com o mesmo valor no mesmo dia. */
-  possibleDuplicate: boolean;
+  /**
+   * O que já está no app e parece ser esta mesma compra (mesma data e mesmo
+   * valor; na parcelada, mesmo valor e mesmo total de parcelas). A linha vem
+   * desmarcada e na seção de cópias da revisão. `null` na compra nova.
+   */
+  copyOf: CopyMatch | null;
+}
+
+/** O lançamento ou gasto fixo já existente com que a compra se parece. */
+export interface CopyMatch {
+  kind: 'expense' | 'fixed';
+  /** Descrição do lançamento ou nome do gasto fixo. */
+  description: string;
+  /** Data do lançamento (`YYYY-MM-DD`); `null` no gasto fixo. */
+  date: string | null;
 }
 
 export interface ImportDraft {
@@ -172,10 +192,87 @@ function matchBankCategory(bank: string | null, categories: Category[]): Categor
   return null;
 }
 
+// Meses do app lidos para achar cópias: o mês em aberto e os dois anteriores.
+// A fatura cobre de um a dois meses de compras, e o mês do app é a referência
+// da fatura, não o calendário: três meses cobrem a data de qualquer compra da
+// fatura que ainda pode estar no app.
+const COPY_MONTHS = 3;
+
+/**
+ * Fila de "já existe" por chave: cada lançamento existente só cobre uma
+ * compra do arquivo. Duas compras de R$ 4,00 no mesmo dia na fatura, com uma
+ * só no app, dão uma cópia e uma compra nova.
+ */
+class CopyPool {
+  private readonly map = new Map<string, CopyMatch[]>();
+  add(key: string, match: CopyMatch) {
+    const list = this.map.get(key);
+    if (list) list.push(match);
+    else this.map.set(key, [match]);
+  }
+  take(key: string): CopyMatch | null {
+    return this.map.get(key)?.shift() ?? null;
+  }
+}
+
+/**
+ * O que já está no app para comparar com a fatura: os lançamentos variáveis
+ * dos últimos meses (digitados à mão ou importados), por data e valor, e os
+ * gastos fixos parcelados ativos, por valor e total de parcelas. O mês em
+ * aberto vem da assinatura da tela, que já tem o que acabou de ser gravado.
+ */
+async function existingPools(
+  compartmentId: string,
+  currentMonth: string,
+  monthExpenses: VariableExpense[],
+): Promise<{ expenses: CopyPool; fixed: CopyPool }> {
+  const older = Array.from({ length: COPY_MONTHS - 1 }, (_, i) => addMonthsKey(currentMonth, -(i + 1)));
+  // Leituras de apoio: falhando, a revisão abre sem a detecção de cópias, que
+  // é ajuda e não condição para importar.
+  const [olderSnaps, fixedSnap] = await Promise.all([
+    Promise.all(older.map((ym) => getDocs(expensesCol(compartmentId, ym)).catch(() => null))),
+    getDocs(collection(db, 'compartments', compartmentId, 'fixedExpenses')).catch(() => null),
+  ]);
+  const expenses = new CopyPool();
+  const all = [
+    ...monthExpenses,
+    ...olderSnaps.flatMap((snap) => (snap?.docs ?? []).map((d) => d.data() as Omit<VariableExpense, 'id'>)),
+  ];
+  for (const e of all) {
+    const date = dayKey(new Date(e.createdAt));
+    expenses.add(`${date}|${e.amount}`, {
+      kind: 'expense',
+      description: e.description || e.categoryName,
+      date,
+    });
+  }
+  const fixed = new CopyPool();
+  for (const d of fixedSnap?.docs ?? []) {
+    const f = d.data() as Omit<FixedExpense, 'id'>;
+    if (f.active === false || !f.installmentTotal) continue;
+    fixed.add(`${f.amount}|${f.installmentTotal}`, { kind: 'fixed', description: f.name, date: null });
+  }
+  return { expenses, fixed };
+}
+
+/** Chave de comparação com o que já existe: data e valor, ou valor e parcelas. */
+function copyKey(item: StatementItem): { pool: 'expenses' | 'fixed'; key: string } {
+  return item.installment
+    ? { pool: 'fixed', key: `${item.amount}|${item.installment.total}` }
+    : { pool: 'expenses', key: `${item.date}|${item.amount}` };
+}
+
 /**
  * Monta o rascunho da revisão. Compra que já passou por uma importação (ou foi
  * ignorada) não aparece; a parcelada deixa de bloquear depois do último mês
  * dela, para uma compra nova idêntica poder entrar.
+ *
+ * Compra com a mesma data e o mesmo valor de um lançamento que já está no app
+ * (na parcelada, o mesmo valor e o mesmo total de parcelas de um gasto fixo)
+ * aparece como **cópia**: desmarcada, para não entrar a menos que o usuário a
+ * marque. É o que deixa importar o CSV todo dia sem trazer de novo o que já foi
+ * lançado, mesmo que o banco tenha mudado o título da compra de um dia para o
+ * outro, ou que ela tenha sido digitada à mão antes.
  */
 export async function prepareImport(
   compartmentId: string,
@@ -189,26 +286,31 @@ export async function prepareImport(
     item.installment ? installmentImportKey(item) : purchaseImportKey(item, occ[i]),
   );
   const docIds = await Promise.all(keys.map((k) => sha256Hex(k)));
-  const [registry, learned] = await Promise.all([
+  const [registry, learned, pools] = await Promise.all([
     fetchRegistry(compartmentId, docIds),
     learnCategories(compartmentId, ctx.categories, ctx.monthExpenses),
+    existingPools(compartmentId, currentMonth, ctx.monthExpenses),
   ]);
 
   const defaultCategory = ctx.categories.find((c) => c.isDefault) ?? ctx.categories[0] ?? null;
-  // Lançamento digitado à mão no mês, por dia e valor: a compra da fatura que
-  // bate com um deles provavelmente já foi lançada, e vem desmarcada.
-  const manual = new Map<string, number>();
-  for (const e of ctx.monthExpenses) {
-    if (e.importKey) continue;
-    const k = `${dayKey(new Date(e.createdAt))}|${e.amount}`;
-    manual.set(k, (manual.get(k) ?? 0) + 1);
-  }
+  const known = statement.items.map((_, i) => {
+    const prev = registry.get(docIds[i]);
+    return prev && (prev.until === null || prev.until >= currentMonth) ? prev : null;
+  });
+  // Primeiro, as compras que o registro já reconhece tiram da fila o
+  // lançamento delas: sem isso, a segunda compra idêntica do mesmo dia seria
+  // tomada como cópia do lançamento que é da primeira.
+  statement.items.forEach((item, i) => {
+    const prev = known[i];
+    if (!prev || prev.kind === 'skipped') return;
+    const { pool, key } = copyKey(item);
+    pools[pool].take(key);
+  });
 
   const rows: DraftRow[] = [];
   let alreadyImported = 0;
   statement.items.forEach((item, i) => {
-    const prev = registry.get(docIds[i]);
-    if (prev && (prev.until === null || prev.until >= currentMonth)) {
+    if (known[i]) {
       alreadyImported++;
       return;
     }
@@ -224,21 +326,20 @@ export async function prepareImport(
       }
     }
     const fromBank = fromHistory ? null : matchBankCategory(item.bankCategory, ctx.categories);
-    const dupKey = `${item.date}|${item.amount}`;
-    const dupCount = manual.get(dupKey) ?? 0;
-    if (dupCount > 0) manual.set(dupKey, dupCount - 1);
+    const { pool, key } = copyKey(item);
+    const copyOf = pools[pool].take(key);
     rows.push({
       id: item.index,
       item,
       key: keys[i],
       docId: docIds[i],
       kind: item.installment ? 'fixed' : 'expense',
-      include: dupCount === 0,
+      include: copyOf === null,
       description: tidyTitle(item.title),
       categoryId: fromHistory?.categoryId ?? fromBank?.id ?? defaultCategory?.id ?? null,
       newCategory: null,
       source: fromHistory ? 'history' : fromBank ? 'bank' : 'default',
-      possibleDuplicate: dupCount > 0,
+      copyOf,
     });
   });
 

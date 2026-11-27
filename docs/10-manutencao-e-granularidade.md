@@ -7,25 +7,25 @@ Referência de novembro de 2026, depois da importação de fatura e da IA
 
 | Arquivo | Linhas |
 |---|---|
-| `styles.css` | 3352 |
+| `styles.css` | 3367 |
 | `services/months.ts` | 696 |
 | `components/MonthScreen.tsx` | 694 |
 | `components/ExpenseHistory.tsx` | 682 |
 | `components/PlanView.tsx` | 568 |
 | `components/ManageScreen.tsx` | 558 |
 | `services/aiProviders.ts` | 541 |
+| `services/imports.ts` | 522 |
 | `types.ts` | 503 |
 | `services/expenses.ts` | 473 |
 | `components/PlanForm.tsx` | 427 |
-| `services/imports.ts` | 421 |
 | `utils/projection.ts` | 398 |
+| `components/ImportReview.tsx` | 374 |
 | `utils/statement.ts` | 355 |
-| `components/StatementImport.tsx` | 334 |
+| `components/StatementImport.tsx` | 340 |
 | `components/ManageOrigins.tsx` | 320 |
 | `components/AddStatsCard.tsx` | 315 |
 | `services/ai.ts` | 314 |
 | `components/AddExpenseScreen.tsx` | 310 |
-| `components/ImportReview.tsx` | 296 |
 | `components/shared.tsx` | 281 |
 | `components/AiModelChain.tsx` | 275 |
 | `components/PlanningScreen.tsx` | 266 |
@@ -46,7 +46,10 @@ A importação nasceu dividida pelo critério da seção 10.2: a leitura do arqu
 é pura e mora em `utils/` (`csv.ts`, `statement.ts`, `zip.ts`), testável sem
 navegador; o serviço separa o banco (`imports.ts`) da IA (`ai.ts`, a
 funcionalidade, e `aiProviders.ts`, os provedores); e a tela separa o card de importação, a revisão, a tela de
-IA e o editor da fila. `aiProviders.ts` passou de 500 linhas, mas é um bloco
+IA e o editor da fila. `services/imports.ts` passou de 500 linhas com a busca
+de cópias (`CopyPool`, `existingPools` e `copyKey`); se crescer de novo, ela é
+a primeira candidata a sair para um módulo próprio, porque só o
+`prepareImport` a usa. `aiProviders.ts` passou de 500 linhas, mas é um bloco
 só (quatro adaptadores, a fila e a lista de modelos que dependem uns dos
 outros); se crescer, o primeiro candidato a sair é a lista de modelos ao vivo.
 

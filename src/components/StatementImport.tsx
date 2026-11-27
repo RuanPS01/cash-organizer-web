@@ -182,8 +182,14 @@ export function StatementImport(props: {
     setDraft((d) => (d ? { ...d, rows: d.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) } : d));
   };
 
-  const toggleAll = (include: boolean) =>
-    setDraft((d) => (d ? { ...d, rows: d.rows.map((r) => ({ ...r, include })) } : d));
+  // Vale só para um dos dois grupos da revisão: "marcar todas" nas compras
+  // novas não pode puxar junto as cópias, que ficam de fora por padrão.
+  const toggleAll = (include: boolean, copies: boolean) =>
+    setDraft((d) =>
+      d
+        ? { ...d, rows: d.rows.map((r) => (Boolean(r.copyOf) === copies ? { ...r, include } : r)) }
+        : d,
+    );
 
   const confirm = async () => {
     if (!draft || busy) return;
