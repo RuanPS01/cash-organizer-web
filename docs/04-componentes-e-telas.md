@@ -130,14 +130,17 @@ anterior é descartada (contador `run`). Ver
 
 `props: { draft, categories, origin, ai, busy, error, onRowChange, onToggleAll, onConfirm, onCancel }`
 
-Revisão da fatura: resumo (compras novas, já no app, pagamentos e créditos
-fora, linhas ilegíveis), a origem, o estado da IA e uma linha por compra nova
-com caixa de marcação, descrição editável, valor, data, título original e
-cartão, e a classificação: categoria (com o selo da origem da sugestão e as
+Revisão da fatura: resumo (compras novas, cópias, já no app, pagamentos e
+créditos fora, linhas ilegíveis), a origem, o estado da IA e uma linha por
+compra com caixa de marcação, descrição editável, valor, data, título original
+e cartão, e a classificação: categoria (com o selo da origem da sugestão e as
 categorias novas sugeridas pela IA como "Nova: Nome") ou, na compra parcelada,
-a escolha entre "Fixo N/M" e "Só esta parcela". No rodapé, os totais de
-variáveis e de fixos parcelados e o botão que importa as marcadas. Exporta o
-tipo `AiRunState`.
+a escolha entre "Fixo N/M" e "Só esta parcela". As compras novas ficam na
+lista principal; as que parecem cópias (`copyOf`) ficam desmarcadas numa seção
+recolhida (a peça `.plan-collapse`), com o "igual a ..." de cada uma. O
+`onToggleAll(include, copies)` vale para um grupo de cada vez. No rodapé, os
+totais de variáveis e de fixos parcelados e o botão que importa as marcadas.
+Exporta o tipo `AiRunState`.
 
 ### `AiSettingsScreen` (Configurações de IA)
 
@@ -579,10 +582,12 @@ gravam.
 ### `services/imports.ts`
 
 `importedItemsCol`, `prepareImport` (rascunho da revisão: tira o que já está no
-registro, sugere categoria pelo histórico e pela categoria do banco, marca
-possível duplicado de lançamento à mão) e `commitImport` (grava lançamentos,
-fixos parcelados, categorias novas e o registro de cada compra, no mesmo lote).
-Tipos `DraftRow`, `ImportDraft`, `SuggestionSource` e `CommitResult`.
+registro, sugere categoria pelo histórico e pela categoria do banco, e marca
+como cópia, desmarcada, a compra com a mesma data e o mesmo valor de um
+lançamento dos últimos três meses do app ou com o mesmo valor e parcelas de um
+gasto fixo parcelado) e `commitImport` (grava lançamentos, fixos parcelados,
+categorias novas e o registro de cada compra, no mesmo lote). Tipos
+`DraftRow`, `CopyMatch`, `ImportDraft`, `SuggestionSource` e `CommitResult`.
 
 ### `services/ai.ts`
 

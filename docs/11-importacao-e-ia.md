@@ -139,18 +139,42 @@ Na ordem:
 A descrição inicial é `tidyTitle`: sem o prefixo da maquininha e, quando o
 título vem todo em maiúsculas, com iniciais maiúsculas ("Casa do Farelo").
 
-### Possível duplicado de lançamento à mão
+### Compras que parecem cópias
 
-Lançamento manual do mês com o mesmo valor no mesmo dia faz a compra da fatura
-vir **desmarcada**, com o selo "parece já lançada à mão". Ela continua na
-revisão (o usuário decide), porque valor e dia iguais não provam que é a mesma
-compra.
+O registro só reconhece a compra pela chave exata (data, título, valor e
+ocorrência). Quem importa o CSV da fatura aberta todo dia, porém, recebe as
+mesmas compras com o título às vezes mudado pelo banco ("DL*SPOTIFY P4870" vira
+"SPOTIFY"), e há a compra que já foi digitada à mão. Por isso, depois do
+registro, cada compra que sobrou é comparada com o que já está no app:
+
+| Compra | Parece cópia de | Onde procura |
+|---|---|---|
+| À vista | lançamento variável com a **mesma data e o mesmo valor** (digitado à mão ou importado) | o mês em aberto (da assinatura da tela) e os dois anteriores (`COPY_MONTHS`): a fatura cobre um ou dois meses de compras, e o mês do app é a referência da fatura |
+| Parcelada | gasto fixo parcelado **ativo** com o mesmo valor de parcela e o mesmo total de parcelas | o cadastro `fixedExpenses` |
+
+Cada lançamento existente cobre uma compra só (`CopyPool`): duas compras de
+R$ 18,40 no mesmo dia na fatura, com uma só no app, dão uma cópia e uma compra
+nova. As compras que o registro já reconhece tiram antes o lançamento delas da
+fila, senão a segunda compra idêntica seria tomada como cópia do lançamento da
+primeira.
+
+A cópia entra no rascunho com `include: false` e `copyOf` (a descrição e a data
+do lançamento, ou o nome do gasto fixo, com que ela se parece). A revisão a
+mostra recolhida (seção 11.5): **o padrão é importar só o que é diferente do
+que o app já tem**, e o usuário marca uma cópia quando ela é, de fato, outra
+compra. Desmarcada, ela vai para o registro como ignorada ao confirmar, e o
+mesmo arquivo não a traz de novo. As leituras de comparação são de apoio:
+falhando (rede), a revisão abre sem a detecção.
 
 ## 11.5 Revisão e gravação
 
 A revisão (`ImportReview`) mostra, por compra: caixa de marcação, descrição
 editável, valor, data, título original e cartão (quando diferem), e a
-classificação. Compra parcelada escolhe entre **Fixo N/M** (o padrão) e **Só
+classificação. As compras novas ficam na lista principal, com "marcar todas"
+só para elas; as que parecem cópias (seção 11.4) ficam numa seção recolhida
+("Parecem cópias (N)", que diz "não entram" ou quantas foram marcadas), com o
+"igual a ..." de cada uma e o próprio "marcar todas". Sem nenhuma compra nova,
+a revisão avisa que as restantes parecem cópias. Compra parcelada escolhe entre **Fixo N/M** (o padrão) e **Só
 esta parcela** (vira lançamento variável). A categoria vem com o selo da
 origem da sugestão (histórico, categoria do banco ou IA). Categoria nova
 sugerida pela IA aparece no seletor como "Nova: Nome" e fica disponível em
@@ -389,6 +413,7 @@ volta para a aba de onde veio. Duas abas:
 | Compras por chamada e prazo de cada parte | 60 e 3 min | `services/ai.ts` |
 | `withRetries` | 3 tentativas, 400 ms vezes a tentativa | `services/ai.ts` |
 | Exemplos do histórico no prompt | 40 | `services/imports.ts` |
+| Meses do app comparados na busca de cópias (`COPY_MONTHS`) | 3 (o em aberto e os dois anteriores) | `services/imports.ts` |
 | Registro lido para aprender categorias | 400 | `services/imports.ts` |
 | Valores por filtro `in` | 30 | `services/imports.ts` |
 | Operações por lote | 400 | `services/imports.ts` |
