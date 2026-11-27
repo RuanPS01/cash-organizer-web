@@ -3035,6 +3035,21 @@ td .badge.plan { margin-left: 0.4rem; }
   padding: 0.2rem 0.45rem;
 }
 
+/* Compras que parecem cópias do que já está no app: a mesma peça recolhível
+   do rendimento do planejamento, fechada por padrão, com a lista da revisão
+   dentro. */
+.review-copies { margin-top: 0.9rem; }
+
+.review-copies .plan-collapse-body .card-hint { margin: 0; }
+
+.review-copies .bulk-bar { margin-bottom: 0; }
+
+/* "igual a ..." diz com qual lançamento a compra se parece. */
+.review-copy-of {
+  color: var(--gold-soft);
+  overflow-wrap: anywhere;
+}
+
 .import-totals {
   display: flex;
   flex-wrap: wrap;

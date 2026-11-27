@@ -165,7 +165,9 @@ grade de ícones, é mais alto que a tela de um celular.
   A caixa de marcação ocupa as três linhas, a descrição é um campo em
   `minmax(0, 1fr)` e o valor nunca quebra. Na linha de baixo, o seletor de
   categoria cresce até 22rem e desce com o selo da sugestão quando não cabe; o
-  título original e o cartão quebram com `overflow-wrap: anywhere`.
+  título original, o cartão e o "igual a ..." da cópia quebram com
+  `overflow-wrap: anywhere`. As cópias usam a mesma grade dentro da seção
+  recolhida, que ocupa a largura do card.
 - **Área de anexo.** O input de arquivo fica invisível por cima da peça
   inteira: o toque em qualquer ponto abre o seletor de arquivo do sistema, e no
   desktop dá para arrastar o arquivo.

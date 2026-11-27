@@ -115,8 +115,12 @@ flowchart TD
    ZIP protegido pede a senha, que vale só para abrir aquele arquivo.
 3. **Revisão.** Só aparecem as compras que ainda não entraram no app; o resumo
    conta as que já estavam e os pagamentos e créditos da fatura, que não são
-   gasto. Compra com o mesmo valor no mesmo dia de um lançamento feito à mão
-   vem desmarcada, com o aviso "parece já lançada à mão".
+   gasto. Compra com a mesma data e o mesmo valor de um lançamento que já está
+   no app (digitado à mão ou importado antes, mesmo com outro título), ou a
+   parcelada com o mesmo valor e parcelas de um gasto fixo, **parece cópia**:
+   fica numa seção recolhida, desmarcada. O padrão é importar só o que é
+   diferente do que o app já tem; abrir a seção e marcar a compra a importa
+   mesmo assim. Por isso dá para importar o CSV da fatura aberta todo dia.
 4. **Categoria.** Vem do que o usuário já classificou (o mesmo estabelecimento
    em importações anteriores ou no mês), da categoria do banco (C6) ou da IA,
    com um selo dizendo de onde veio. A IA pode sugerir uma categoria nova, que

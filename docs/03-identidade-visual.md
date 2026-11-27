@@ -272,6 +272,7 @@ borda própria. Ver [04-componentes-e-telas.md](04-componentes-e-telas.md).
 | Liga e desliga a IA da importação | `.plan-check.ai-toggle` | `.off` quando a IA não está configurada |
 | Revisão da fatura | `.import-review`, `.import-summary`, `.import-origin`, `.import-ai-status`, `.review-list`, `.import-totals`, `.import-actions` | `li.row-off` apaga a compra desmarcada e risca o valor |
 | Linha da revisão | `.review-desc` (campo inline), `.review-value`, `.review-meta`, `.review-class`, `.review-kind`, `.review-category` | grade com a caixa de marcação à esquerda nas três linhas |
+| Compras que parecem cópias | `.plan-collapse.review-copies`, `.review-copy-of` | a peça recolhível do planejamento, fechada por padrão, com a lista da revisão dentro; o "igual a ..." em ouro suave |
 | Origem da sugestão | `.badge.source` | `.ai` em ouro (sugestão da IA); neutro para histórico e banco |
 | Lançamento importado no histórico | `.badge.imported` | "fatura", neutro e pequeno |
 | Botão de IA no topo | `.btn.icon.topbar-ai` | `.active` com a tela de IA aberta |
